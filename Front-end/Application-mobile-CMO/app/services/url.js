@@ -1,3 +1,3 @@
 export default function url() {
-    return "http://localhost:3000/";
+    return "http://192.168.100.20:3000/";
 }
