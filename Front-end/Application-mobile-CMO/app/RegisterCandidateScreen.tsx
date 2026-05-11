@@ -1,271 +1,382 @@
 import React, { useState } from "react";
+import { signCandidat } from "./services/sign"
 import { router } from "expo-router";
-import { login } from "./services/login";
-import { setTokenId } from "./candidat/services/token_id";
+
 import {
   View,
   Text,
   TextInput,
-  Image,
   TouchableOpacity,
+  ScrollView,
   StyleSheet,
+  Switch,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 
-export default function LoginScreen() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+import { Menu, Eye, EyeOff } from "lucide-react-native";
+import LoginScreen from "./loginEmp";
+
+export default function RegisterCandidateScreen() {
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+ 
 
-  
+const [civilite, setCivilite] = useState("Monsieur");
+const [showCivilite, setShowCivilite] = useState(false);
 
-  const handleLogin = async () => {
-    try {
-      console.log("Login data:", { email, password });
-       const loginObject = { email, password };
 
-      const response = await login(loginObject);
-      console.log("Login response:", response);
 
-      if(response.success) {
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    country: "France",
+    password: "",
+    confirmPassword: "",
+    acceptTerms: false,
+  });
 
-          await setTokenId(response.token_id);
-        router.push("/candidat/tabs/DashboardScreen");
+          const handleChange = (field: any, value: any) => {
+            setFormData({
+              ...formData,
+              [field]: value,
+            });
+          };
 
-      } else {
-        alert("Email ou mot de passe incorrect");
-      }
+        async function handleRegister() {
+          if (!validateForm()) return;
 
-    } catch (error) {
-      console.log(error);
-      alert("Erreur serveur");
+          try {
+            const finalObject = {
+              civilite: civilite,
+              prenom: formData.firstName,
+              nom: formData.lastName,
+              pays: formData.country,
+              email: formData.email,
+              tel: formData.phone,
+              password: formData.password,
+         
+            };
+            console.log("Données envoyées :", finalObject);
+
+            const response = await signCandidat(finalObject);
+            console.log("Réponse du serveur :", response);
+
+            if (response.success) {
+              alert("Inscription réussie !");
+             
+              router.push("./loginCan");
+            } else {
+              alert(response.message || "Erreur lors de l'inscription");
+            }
+          } catch (error) {
+            console.error("Erreur lors de l'inscription :", error);
+            alert("Erreur serveur");
+          }
+        }
+
+  const validateForm = () => {
+    if (!formData.firstName) {
+      alert("Le prénom est obligatoire");
+      return false;
     }
-   
-   
+
+    if (!formData.lastName) {
+      alert("Le nom est obligatoire");
+      return false;
+    }
+
+    if (!formData.email) {
+      alert("L'email est obligatoire");
+      return false;
+    }
+
+    if (!formData.phone) {
+      alert("Le téléphone est obligatoire");
+      return false;
+    }
+
+    if (!formData.password) {
+      alert("Le mot de passe est obligatoire");
+      return false;
+    }
+
+    if (!formData.confirmPassword) {
+      alert("Confirmation du mot de passe obligatoire");
+      return false;
+    }
+
+    if (formData.password.length < 8) {
+      alert("Mot de passe minimum 8 caractères");
+      return false;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      alert("Les mots de passe ne correspondent pas");
+      return false;
+    }
+
+    if (!formData.acceptTerms) {
+      alert("Veuillez accepter les conditions");
+      return false;
+    }
+
+    return true;
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.wrapper}>
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <Image
-            source={require("./../img/logoBlue.png")}
-            style={styles.logo}
-          />
+    <ScrollView style={styles.container}>
+      {/* TITLE */}
+      <View style={styles.titleBox}>
+        <Text style={styles.title}>Créer un compte</Text>
+        <Text style={styles.subtitle}>Bienvenue dans votre espace My CMO</Text>
+      </View>
+
+      {/* CARD */}
+      <View style={styles.card}>
+        
+
+        <Text style={styles.label}>Votre civilité *</Text>
+
+        <TouchableOpacity
+          style={styles.select}
+          onPress={() => setShowCivilite(!showCivilite)}
+        >
+          <Text>{civilite}</Text>
+        </TouchableOpacity>
+
+        {showCivilite && (
+          <View style={styles.dropdown}>
+            {["Monsieur", "Madame", "Mademoiselle"].map((item) => (
+              <TouchableOpacity
+                key={item}
+                style={styles.option}
+                onPress={() => {
+                  setCivilite(item);
+                  setShowCivilite(false);
+                }}
+              >
+                <Text>{item}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Prénom */}
+        <Text style={styles.label}>Prénom *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Le prénom"
+          placeholderTextColor="#7a8ab8"
+          value={formData.firstName}
+          onChangeText={(text) => handleChange("firstName", text)}
+        />
+
+        {/* Nom */}
+        <Text style={styles.label}>Nom *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Le nom"
+          placeholderTextColor="#7a8ab8"
+          value={formData.lastName}
+          onChangeText={(text) => handleChange("lastName", text)}
+        />
+
+        {/* Pays */}
+        <Text style={styles.label}>Pays</Text>
+        <View style={styles.select}>
+          <Text>France</Text>
         </View>
 
-        {/* Card */}
-        <View style={styles.card}>
-          {/* Email */}
-          <Text style={styles.label}>Identifiant</Text>
+        {/* Email */}
+        <Text style={styles.label}>Email *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="***@email.com"
+          placeholderTextColor="#7a8ab8"
+          value={formData.email}
+          onChangeText={(text) => handleChange("email", text)}
+        />
+
+        {/* Phone */}
+        <Text style={styles.label}>Téléphone *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="0********"
+          placeholderTextColor="#7a8ab8"
+          value={formData.phone}
+          onChangeText={(text) => handleChange("phone", text)}
+        />
+
+        {/* Password */}
+        <Text style={styles.label}>Mot de passe *</Text>
+        <View style={styles.passwordBox}>
           <TextInput
-            placeholder="Votre email"
+            style={styles.passwordInput}
+            secureTextEntry={!showPassword}
+            placeholder="••••••••"
             placeholderTextColor="#7a8ab8"
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
+            value={formData.password}
+            onChangeText={(text) => handleChange("password", text)}
           />
-
-          {/* Password */}
-          <Text style={styles.label}>Mot de passe</Text>
-          <View style={styles.passwordBox}>
-            <TextInput
-              placeholder="Votre mot de passe"
-              placeholderTextColor="#7a8ab8"
-              style={styles.inputFlex}
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
-            />
-
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Feather
-                name={showPassword ? "eye-off" : "eye"}
-                size={20}
-                color="#5b6a8e"
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Forgot */}
-          <Text style={styles.forgot}>Mot de passe oublié ?</Text>
-
-          {/* Buttons */}
-          <View style={styles.row}>
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin}>
-              <Text style={styles.primaryText}>Se connecter</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.secondaryBtn}
-              onPress={() => router.push("/RegisterCandidateScreen")}
-            >
-              <Text style={styles.secondaryText}>Créer un compte</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Back */}
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.replace("/")}
-          >
-            <Text style={styles.backText}>Retour à l'accueil</Text>
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            {showPassword ? (
+              <EyeOff size={18} color="#5b6a8e" />
+            ) : (
+              <Eye size={18} color="#5b6a8e" />
+            )}
           </TouchableOpacity>
         </View>
+
+        <Text style={styles.hint}>
+          Le mot de passe doit contenir 8 caractères minimum
+        </Text>
+
+        {/* Confirm */}
+        <Text style={styles.label}>Confirmer *</Text>
+        <View style={styles.passwordBox}>
+          <TextInput
+            style={styles.passwordInput}
+            secureTextEntry={!showConfirmPassword}
+            placeholder="••••••••"
+            placeholderTextColor="#7a8ab8"
+            value={formData.confirmPassword}
+            onChangeText={(text) => handleChange("confirmPassword", text)}
+          />
+          <TouchableOpacity
+            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+          >
+            {showConfirmPassword ? (
+              <EyeOff size={18} color="#5b6a8e" />
+            ) : (
+              <Eye size={18} color="#5b6a8e" />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Terms */}
+        <View style={styles.row}>
+          <Switch
+            value={formData.acceptTerms}
+            onValueChange={(value) => handleChange("acceptTerms", value)}
+          />
+          <Text style={styles.terms}>J'accepte les CGU et CGV</Text>
+        </View>
+
+        {/* Button */}
+        <TouchableOpacity style={styles.button} onPress={handleRegister}>
+          <Text style={styles.buttonText}>Valider</Text>
+        </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f3f6ff",
-    justifyContent: "center",
+  },
+
+  titleBox: {
     padding: 20,
   },
 
-  wrapper: {
-    maxWidth: 380,
-    width: "100%",
-    alignSelf: "center",
+  title: {
+    fontSize: 22,
+    color: "#1f3872",
+    fontWeight: "600",
   },
 
-  logoContainer: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-
-  logo: {
-    width: 140,
-    height: 60,
-    resizeMode: "contain",
+  subtitle: {
+    color: "#3a4a74",
+    marginTop: 5,
   },
 
   card: {
     backgroundColor: "#fff",
-    borderRadius: 24,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "#e1e9fb",
+    margin: 15,
+    padding: 15,
+    borderRadius: 20,
   },
 
   label: {
     fontSize: 13,
-    color: "#2b5bbb",
-    marginBottom: 6,
+    color: "#1f3872",
+    marginTop: 10,
   },
 
   input: {
-    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#e1e9fb",
-    borderRadius: 30,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 14,
-    color: "#000",
+    borderColor: "#2b5bbb",
+    padding: 12,
+    borderRadius: 25,
+    marginTop: 5,
+    color: "#1f3872",
   },
 
-  inputFlex: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: "#000",
+  select: {
+    borderWidth: 1,
+    borderColor: "#2b5bbb",
+    padding: 12,
+    borderRadius: 25,
+    marginTop: 5,
   },
 
   passwordBox: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#e1e9fb",
-    borderRadius: 30,
-    paddingRight: 12,
-    marginBottom: 14,
+    borderColor: "#2b5bbb",
+    borderRadius: 25,
+    paddingHorizontal: 12,
+    marginTop: 5,
   },
+dropdown: {
+  borderWidth: 1,
+  borderColor: "#2b5bbb",
+  borderRadius: 15,
+  marginTop: 5,
+  backgroundColor: "#fff",
+},
 
-  captcha: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#e1e9fb",
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 12,
-  },
-
-  checkbox: {
-    width: 18,
-    height: 18,
-    borderWidth: 1,
-    borderColor: "#cfd9ee",
-    borderRadius: 3,
-    marginRight: 8,
-  },
-
-  captchaText: {
+option: {
+  padding: 12,
+  borderBottomWidth: 1,
+  borderBottomColor: "#eee",
+},
+  passwordInput: {
     flex: 1,
-    fontSize: 12,
+    padding: 10,
+    color: "#1f3872",
+  },
+
+  hint: {
+    fontSize: 11,
     color: "#5b6a8e",
-  },
-
-  recaptcha: {
-    fontSize: 10,
-    color: "#7a8ab8",
-  },
-
-  forgot: {
-    textAlign: "right",
-    color: "#4c6bd6",
-    fontSize: 12,
-    marginBottom: 10,
+    marginTop: 5,
   },
 
   row: {
     flexDirection: "row",
-    gap: 10,
-    marginTop: 10,
+    alignItems: "center",
+    marginTop: 15,
   },
 
-  primaryBtn: {
-    flex: 1,
-    backgroundColor: "#122F78",
-    paddingVertical: 12,
-    borderRadius: 30,
+  terms: {
+    marginLeft: 10,
+    color: "#1f3872",
+  },
+
+  button: {
+    backgroundColor: "#3f58a6",
+    padding: 15,
+    borderRadius: 25,
+    marginTop: 20,
     alignItems: "center",
   },
 
-  primaryText: {
+  buttonText: {
     color: "#fff",
-    fontWeight: "600",
-  },
-
-  secondaryBtn: {
-    flex: 1,
-    backgroundColor: "#e8efff",
-    paddingVertical: 12,
-    borderRadius: 30,
-    alignItems: "center",
-  },
-
-  secondaryText: {
-    color: "#122F78",
-    fontWeight: "600",
-  },
-
-  backBtn: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: "#cfd9ee",
-    paddingVertical: 12,
-    borderRadius: 30,
-    alignItems: "center",
-  },
-
-  backText: {
-    color: "#2b5bbb",
     fontWeight: "600",
   },
 });

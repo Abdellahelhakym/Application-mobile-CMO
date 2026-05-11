@@ -4,10 +4,14 @@ async function signCandidat(candidat) {
   try {
     const response = await fetch(url() + "signup/candidat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(candidat),
     });
+
     const text = await response.text();
+
     let data = null;
 
     try {
@@ -16,16 +20,30 @@ async function signCandidat(candidat) {
       data = { message: text };
     }
 
+  
     if (!response.ok) {
-      console.log("Backend error:", data || text);
-      return { success: false, error: data || text };
+      console.log("Backend error:", data);
+
+      return {
+        success: false,
+        message: data?.message || "Erreur serveur",
+      };
     }
 
-    return data || { success: true };
+  
+    return {
+      success: true,
+      message: data?.message || "Succès",
+      data,
+    };
 
   } catch (error) {
     console.error("Error signing up candidat:", error);
-    return { success: false, error };
+
+    return {
+      success: false,
+      message: "Erreur réseau ou serveur",
+    };
   }
 }
 
