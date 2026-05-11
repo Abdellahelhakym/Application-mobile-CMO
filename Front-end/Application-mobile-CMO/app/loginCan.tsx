@@ -9,6 +9,7 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  Linking
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
@@ -89,7 +90,15 @@ export default function LoginScreen() {
           </View>
 
           {/* Forgot */}
+          <TouchableOpacity
+          onPress={() =>
+            Linking.openURL(
+              "https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie"
+            )
+          }
+        >
           <Text style={styles.forgot}>Mot de passe oublié ?</Text>
+        </TouchableOpacity>
 
           {/* Buttons */}
           <View style={styles.row}>

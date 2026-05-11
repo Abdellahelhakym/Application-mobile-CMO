@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 

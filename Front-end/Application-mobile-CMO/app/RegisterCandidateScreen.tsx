@@ -21,7 +21,8 @@ export default function RegisterCandidateScreen() {
  
 
 const [civilite, setCivilite] = useState("Monsieur");
-const [showCivilite, setShowCivilite] = useState(false);
+  const [showCivilite, setShowCivilite] = useState(false);
+  const [showCountry, setShowCountry] = useState(false);
 
 
 
@@ -35,6 +36,39 @@ const [showCivilite, setShowCivilite] = useState(false);
     confirmPassword: "",
     acceptTerms: false,
   });
+
+ const countryOptions = [
+  "Autriche",
+  "Belgique",
+  "Bulgarie",
+  "Croatie",
+  "Chypre",
+  "République tchèque",
+  "Danemark",
+  "Estonie",
+  "Finlande",
+  "France",
+  "Allemagne",
+  "Grèce",
+  "Hongrie",
+  "Irlande",
+  "Italie",
+  "Lettonie",
+  "Lituanie",
+  "Luxembourg",
+  "Malte",
+  "Pays-Bas",
+  "Pologne",
+  "Portugal",
+  "Roumanie",
+  "Slovaquie",
+  "Slovénie",
+  "Espagne",
+  "Suède",
+  "Maroc",
+  "Tunisie",
+  "Algerie"
+];
 
           const handleChange = (field: any, value: any) => {
             setFormData({
@@ -184,9 +218,29 @@ const [showCivilite, setShowCivilite] = useState(false);
 
         {/* Pays */}
         <Text style={styles.label}>Pays</Text>
-        <View style={styles.select}>
-          <Text>France</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.select}
+          onPress={() => setShowCountry(!showCountry)}
+        >
+          <Text>{formData.country}</Text>
+        </TouchableOpacity>
+
+        {showCountry && (
+          <View style={styles.dropdown}>
+            {countryOptions.map((item) => (
+              <TouchableOpacity
+                key={item}
+                style={styles.option}
+                onPress={() => {
+                  handleChange("country", item);
+                  setShowCountry(false);
+                }}
+              >
+                <Text>{item}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Email */}
         <Text style={styles.label}>Email *</Text>
