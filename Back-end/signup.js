@@ -6,6 +6,10 @@ const path = require('path');
 const signUp = express.Router();
 const db = require('./db');
 
+
+//il doit changer le url pour le lien d'activation dans l'email selon son ip et port de son serveur backend
+const url = "http://192.168.1.64:3000/";
+
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -99,9 +103,10 @@ signUp.post('/candidat', async (req, res) => {
                     pays,
                     email,
                     tel,
-                    token_id
+                    token_id,
+                    deleted
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
             db.query(
@@ -113,7 +118,8 @@ signUp.post('/candidat', async (req, res) => {
                     pays,
                     email,
                     tel,
-                    token_id
+                    token_id,
+                    2
                 ],
                 (err, result) => {
 
@@ -169,7 +175,7 @@ signUp.post('/candidat', async (req, res) => {
 
                             console.log('Candidat et User créés avec succès');
                             try {
-                                const link = `http://localhost:3000/signup/verify-email?token=${token_id}`;
+                                const link = `${url}signup/verify-email?token=${token_id}`;
                                 const fullName = `${prenom} ${nom}`;
                                 const html = `
                                     <div style="background:#f4f7ff;padding:24px 0;font-family:Arial, sans-serif;">
@@ -260,7 +266,18 @@ signUp.get('/verify-email', (req, res) => {
         if (result.affectedRows === 0)
             return res.status(400).send("Token invalide");
 
-        res.send("Compte CMO activé 🎉");
+        const sqlCandidat = `
+            UPDATE cmo_candidats
+            SET deleted = 0
+            WHERE token_id = ?
+        `;
+
+        db.query(sqlCandidat, [token], (err2) => {
+
+            if (err2) return res.status(500).send("Erreur serveur");
+
+            res.send("Compte CMO activé 🎉");
+        });
     });
 });
 

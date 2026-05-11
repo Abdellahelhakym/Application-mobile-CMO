@@ -1,6 +1,10 @@
 import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { View, Text, Image, Platform, StyleSheet } from "react-native";
+import {
+ 
+  getUserPseudo,
+} from "@/app/candidat/services/DashboardScreen";
 
 const TITLES: Record<string, string> = {
   DashboardScreen: "Accueil",
@@ -12,8 +16,13 @@ const TITLES: Record<string, string> = {
 
 export default function Layout() {
 
+  async function test_pseudo() {
+    const pseudo = await getUserPseudo();
+   return pseudo;
+  }
+
   const user = {
-    name: "Abdellah El Hakym",
+    name: test_pseudo() || "Utilisateur",
     avatar: "https://i.pravatar.cc/100",
   };
 
@@ -123,15 +132,6 @@ export default function Layout() {
         }}
       />
 
-      <Tabs.Screen
-        name="JobsScreen"
-        options={{
-          title: "Offres",
-          tabBarIcon: ({ color }) => (
-            <Feather name="briefcase" size={22} color={color} />
-          ),
-        }}
-      />
 
       <Tabs.Screen
         name="CandidateLandingScreen"

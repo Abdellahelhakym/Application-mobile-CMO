@@ -7,6 +7,8 @@ const db = require('./db'); // Importer la connexion à la base de données
 app.use(express.json());
 app.use(cors());
 
+const port = 3000;
+
 // routes
 //login route
 const loginRoute = require('./login');
@@ -17,9 +19,15 @@ app.use('/login', loginRoute);
 const signupRoute = require('./signup');
 app.use('/signup', signupRoute);
 
+//--------------------candidat route----------------------------
+
+//dashboard route
+const dashboard = require('./candidat/DashboardScreen');
+app.use('/candidat/dashboard', dashboard);
 
 
-const port = 3000;
+
+
 
 
 

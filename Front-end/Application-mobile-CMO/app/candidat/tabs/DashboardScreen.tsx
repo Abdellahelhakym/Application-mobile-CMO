@@ -1,76 +1,200 @@
-import React from 'react';
+import { Feather } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
   ScrollView,
-  TouchableOpacity,
   StyleSheet,
-} from 'react-native';
-import { Feather } from '@expo/vector-icons';
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+import {
+  getDashboardData,
+} from "@/app/candidat/services/DashboardScreen";
+
+type DashboardDataType = {
+  user: {
+    nom: string;
+    verification: number;
+  };
+  inscriptionStatus: {
+    informations: number;
+    attestations: number;
+    competences: number;
+  };
+  candidatureStats: {
+    sent: number;
+    replied: number;
+    favorites: number;
+  };
+  sectors: { name: string }[];
+  documents: { name: string }[];
+};
+
+const emptyDashboardData: DashboardDataType = {
+  user: {
+    nom: "",
+    verification: 0,
+  },
+  inscriptionStatus: {
+    informations: 0,
+    attestations: 0,
+    competences: 0,
+  },
+  candidatureStats: {
+    sent: 0,
+    replied: 0,
+    favorites: 0,
+  },
+  sectors: [],
+  documents: [],
+};
+
+function normalizeDashboardData(
+  data: Partial<DashboardDataType> | null | undefined
+): DashboardDataType {
+  return {
+    user: {
+      nom: data?.user?.nom ?? emptyDashboardData.user.nom,
+      verification: data?.user?.verification ?? emptyDashboardData.user.verification,
+    },
+    inscriptionStatus: {
+      informations:
+        data?.inscriptionStatus?.informations ??
+        emptyDashboardData.inscriptionStatus.informations,
+      attestations:
+        data?.inscriptionStatus?.attestations ??
+        emptyDashboardData.inscriptionStatus.attestations,
+      competences:
+        data?.inscriptionStatus?.competences ??
+        emptyDashboardData.inscriptionStatus.competences,
+    },
+    candidatureStats: {
+      sent:
+        data?.candidatureStats?.sent ??
+        emptyDashboardData.candidatureStats.sent,
+      replied:
+        data?.candidatureStats?.replied ??
+        emptyDashboardData.candidatureStats.replied,
+      favorites:
+        data?.candidatureStats?.favorites ??
+        emptyDashboardData.candidatureStats.favorites,
+    },
+    sectors: data?.sectors ?? emptyDashboardData.sectors,
+    documents: data?.documents ?? emptyDashboardData.documents,
+  };
+}
 
 export default function DashboardScreen() {
-  const candidatureStats = {
-    sent: 2,
-    replied: 0,
-    favorites: 1,
-  };
+  const [dashboardData, setDashboardData] =
+    useState<DashboardDataType | null>(null);
 
-  const sectors = [
-    { name: 'Agriculture', color: '#3b82f6' },
-    { name: 'Transport', color: '#22c55e' },
-  ];
+  // 🔥 LOAD DATA API
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  async function loadDashboard() {
+    try {
+      const data = await getDashboardData();
+      console.log("Dashboard data:", data);
+
+      setDashboardData(normalizeDashboardData(data));
+    } catch (error) {
+      console.error("Error fetching dashboard:", error);
+      setDashboardData(emptyDashboardData);
+    }
+  }
+
+ 
+
+  // ⛔ LOADING STATE
+  if (!dashboardData) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Chargement...</Text>
+      </View>
+    );
+  }
 
   const total =
-    candidatureStats.sent +
-    candidatureStats.replied +
-    candidatureStats.favorites;
+    dashboardData.candidatureStats.sent +
+    dashboardData.candidatureStats.replied +
+    dashboardData.candidatureStats.favorites;
 
-  const sentPercent = total > 0 ? (candidatureStats.sent / total) * 100 : 0;
-
-  const documents = [
-    'cni',
-    'passeport',
-    'carte_securite_sociale',
-    'titre_sejour',
-    'permis_conduire',
-    'certificat_travail',
-  ];
+  const sentPercent =
+    total > 0
+      ? (dashboardData.candidatureStats.sent / total) * 100
+      : 0;
 
   return (
     <ScrollView style={styles.container}>
-
-      {/* ❌ HEADER SUPPRIMÉ */}
-
       <View style={styles.content}>
 
-        {/* WELCOME CARD */}
+        {/* WELCOME */}
         <View style={styles.card}>
           <View style={styles.row}>
             <View style={styles.iconBox}>
-              <Feather name="check-circle" size={26} color="#2b5bbb" />
+              <Feather
+                name={
+                  dashboardData.user.verification === 1
+                    ? "check-circle"
+                    : "user"
+                }
+                size={26}
+                color={
+                  dashboardData.user.verification === 1
+                    ? "#22c55e"
+                    : "#2b5bbb"
+                }
+              />
             </View>
+              
 
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>
-                Bonjour, Abdellah El Hakym
+                Bonjour, {dashboardData.user.nom}
               </Text>
 
               <Text style={styles.subtitle}>
-                Félicitations, votre compte est vérifier
+                {dashboardData.user.verification === 1
+                  ? "Compte vérifié"
+                  : "Compte non vérifié"}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* STATUS */}
+       
+
+        {/* INSCRIPTION STATUS */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>État de l'inscription</Text>
+          <Text style={styles.sectionTitle}>
+            État de l'inscription
+          </Text>
 
           <View style={styles.grid}>
-            {['Informations', 'Attestations', 'Compétences'].map((item) => (
-              <View key={item} style={styles.statusBox}>
-                <Feather name="check-circle" size={20} color="#22c55e" />
-                <Text style={styles.statusText}>{item}</Text>
+            {[
+              {
+                label: "Informations",
+                value: dashboardData.inscriptionStatus.informations,
+              },
+              {
+                label: "Attestations",
+                value: dashboardData.inscriptionStatus.attestations,
+              },
+              {
+                label: "Compétences",
+                value: dashboardData.inscriptionStatus.competences,
+              },
+            ].map((item) => (
+              <View key={item.label} style={styles.statusBox}>
+                <Feather
+                  name={item.value === 1 ? "check-circle" : "x-circle"}
+                  size={26}
+                  color={item.value === 1 ? "#22c55e" : "#ef4444"}
+                />
+                <Text style={styles.statusText}>{item.label}</Text>
               </View>
             ))}
           </View>
@@ -78,20 +202,24 @@ export default function DashboardScreen() {
 
         {/* CANDIDATURES */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Mes candidatures</Text>
+          <Text style={styles.sectionTitle}>
+            Mes candidatures
+          </Text>
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.item}>● {candidatureStats.sent} Envoyées</Text>
-              <Text style={styles.item}>● {candidatureStats.replied} Répondu</Text>
-              <Text style={styles.item}>● {candidatureStats.favorites} Favoris</Text>
-            </View>
-
-            <View style={styles.circle}>
-              <Text style={styles.circleText}>
-                {Math.round(sentPercent)}%
+              <Text style={styles.item}>
+                ● {dashboardData.candidatureStats.sent} Envoyées
+              </Text>
+              <Text style={styles.item}>
+                ● {dashboardData.candidatureStats.replied} Répondues
+              </Text>
+              <Text style={styles.item}>
+                ● {dashboardData.candidatureStats.favorites} Favoris
               </Text>
             </View>
+
+           
           </View>
         </View>
 
@@ -101,28 +229,22 @@ export default function DashboardScreen() {
             Mes secteurs d'activités
           </Text>
 
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              {sectors.map((s) => (
-                <Text key={s.name} style={styles.item}>
-                  ● {s.name}
-                </Text>
-              ))}
-            </View>
-
-            <View style={styles.circleBlue}>
-              <Text style={{ color: '#fff' }}>100%</Text>
-            </View>
-          </View>
+          {dashboardData.sectors.map((s, i) => (
+            <Text key={i} style={styles.item}>
+              ● {s.name}
+            </Text>
+          ))}
         </View>
 
         {/* DOCUMENTS */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Documents manquants</Text>
+          <Text style={styles.sectionTitle}>
+            Documents manquants
+          </Text>
 
-          {documents.map((doc) => (
-            <View key={doc} style={styles.docRow}>
-              <Text style={styles.docText}>{doc}</Text>
+          {dashboardData.documents.map((doc, i) => (
+            <View key={i} style={styles.docRow}>
+              <Text style={styles.docText}>{doc.name}</Text>
 
               <TouchableOpacity style={styles.uploadBtn}>
                 <Feather name="upload" size={16} color="#2b5bbb" />
@@ -132,7 +254,6 @@ export default function DashboardScreen() {
         </View>
 
         <Text style={styles.footer}>© 2026 CMO</Text>
-
       </View>
     </ScrollView>
   );
@@ -142,122 +263,96 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#eef3ff',
+    backgroundColor: "#eef3ff",
   },
-
   content: {
     padding: 15,
     gap: 15,
   },
-
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 15,
   },
-
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
-
   iconBox: {
     width: 50,
     height: 50,
     borderRadius: 12,
-    backgroundColor: '#eef3ff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#eef3ff",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 10,
   },
-
   title: {
     fontSize: 16,
-    color: '#1b2d5a',
+    color: "#1b2d5a",
   },
-
   subtitle: {
     fontSize: 12,
-    color: '#5b6a8e',
+    color: "#5b6a8e",
   },
-
   sectionTitle: {
     fontSize: 14,
     marginBottom: 10,
-    color: '#1b2d5a',
-    fontWeight: '600',
+    color: "#1b2d5a",
+    fontWeight: "600",
   },
-
   grid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
-
   statusBox: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
-
   statusText: {
     fontSize: 11,
     marginTop: 5,
-    color: '#1b2d5a',
+    color: "#1b2d5a",
   },
-
   item: {
     fontSize: 12,
-    color: '#1b2d5a',
+    color: "#1b2d5a",
     marginVertical: 2,
   },
-
   circle: {
     width: 70,
     height: 70,
     borderRadius: 35,
     borderWidth: 10,
-    borderColor: '#2b5bbb',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "#2b5bbb",
+    alignItems: "center",
+    justifyContent: "center",
   },
-
   circleText: {
     fontSize: 12,
-    color: '#5b6a8e',
+    color: "#5b6a8e",
   },
-
-  circleBlue: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#2b5bbb',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
   docRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#f6f8ff',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#f6f8ff",
     padding: 10,
     borderRadius: 10,
     marginBottom: 8,
   },
-
   docText: {
     fontSize: 12,
-    color: '#1b2d5a',
+    color: "#1b2d5a",
   },
-
   uploadBtn: {
     padding: 5,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 20,
   },
-
   footer: {
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 20,
-    color: '#7a8ab8',
+    color: "#7a8ab8",
     fontSize: 12,
   },
 });
