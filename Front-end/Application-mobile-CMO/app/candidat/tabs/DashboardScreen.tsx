@@ -89,26 +89,23 @@ export default function DashboardScreen() {
   const [dashboardData, setDashboardData] =
     useState<DashboardDataType | null>(null);
 
-  // 🔥 LOAD DATA API
-  useEffect(() => {
-    loadDashboard();
-  }, []);
+const loadDashboard = React.useCallback(async () => {
+  try {
+    const data = await getDashboardData();
+    console.log("Dashboard data:", data);
 
-  async function loadDashboard() {
-    try {
-      const data = await getDashboardData();
-      console.log("Dashboard data:", data);
-
-      setDashboardData(normalizeDashboardData(data));
-    } catch (error) {
-      console.error("Error fetching dashboard:", error);
-      setDashboardData(emptyDashboardData);
-    }
+    setDashboardData(normalizeDashboardData(data));
+  } catch (error) {
+    console.error("Error fetching dashboard:", error);
+    setDashboardData(emptyDashboardData);
   }
+}, []);
+
+useEffect(() => {
+  loadDashboard();
+}, [loadDashboard]);
 
  
-
-  // ⛔ LOADING STATE
   if (!dashboardData) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -158,8 +155,8 @@ export default function DashboardScreen() {
 
               <Text style={styles.subtitle}>
                 {dashboardData.user.verification === 1
-                  ? "Compte vérifié"
-                  : "Compte non vérifié"}
+                  ? "Félicitations votre compte est confirmé(e)"
+                  : "Vous avez presque finalisé votre inscription en tant que candidat"}
               </Text>
             </View>
           </View>

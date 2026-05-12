@@ -3,7 +3,7 @@ import { Feather } from "@expo/vector-icons";
 import { View, Text, Image, Platform, StyleSheet } from "react-native";
 import {
  
-  getUserPseudo,
+  getDashboardData,
 } from "@/app/candidat/services/DashboardScreen";
 
 const TITLES: Record<string, string> = {
@@ -17,7 +17,7 @@ const TITLES: Record<string, string> = {
 export default function Layout() {
 
   async function test_pseudo() {
-    const pseudo = await getUserPseudo();
+    const pseudo = "test";
    return pseudo;
   }
 
