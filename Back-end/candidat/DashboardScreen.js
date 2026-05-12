@@ -104,45 +104,53 @@ dashboard.post('/', (req, res) => {
 
                                             const favoritesCount = favoritesResults[0].total;
 
-                                            // DATA FINAL
-                                            const dashboardData = {
+                                            // DOCUMENTS MANQUANTS
+                                            db.query(
+                                                    'SELECT titre_attestation FROM documents_manquants WHERE token_id_cand = ?',
+                                                    [token_id],
+                                                    (err, documentsManquantsResults) => {
 
-                                                user: {
-                                                    nom: pseudo,
-                                                },
+                                                        if (err) {
+                                                            console.error(err);
+                                                            return res.status(500).json({
+                                                                error: 'Internal server error'
+                                                            });
+                                                        }
 
-                                                inscriptionStatus: {
-                                                    verification: verifier,
-                                                },
+                                                        const documentsManquants = (documentsManquantsResults || []).map(
+                                                            doc => doc.titre_attestation
+                                                        );
 
-                                                candidatureStats: {
-                                                    sent: sentCount,
-                                                    replied: repliedCount,
-                                                    favorites: favoritesCount,
-                                                },
+                                                        const dashboardData = {
 
-                                                sectors: [
-                                                    { name: "Agriculture" },
-                                                    { name: "Transport" },
-                                                    { name: "BTP" },
-                                                    { name: "Santé" },
-                                                ],
+                                                            user: {
+                                                                nom: pseudo,
+                                                            },
 
-                                                documents: [
-                                                    { name: "cni" },
-                                                    { name: "passeport" },
-                                                    { name: "carte_securite_sociale" },
-                                                    { name: "titre_sejour" },
-                                                    { name: "permis_conduire" },
-                                                    { name: "hello_test" },
-                                                    { name: "certificat_travail" },
-                                                ],
-                                            };
+                                                            inscriptionStatus: {
+                                                                verification: verifier,
+                                                            },
 
-                                            return res.json(dashboardData);
+                                                            candidatureStats: {
+                                                                sent: sentCount,
+                                                                replied: repliedCount,
+                                                                favorites: favoritesCount,
+                                                            },
 
-                                        }
-                                    );
+                                                            sectors: [
+                                                                { name: "Agriculture" },
+                                                                { name: "Transport" },
+                                                                { name: "BTP" },
+                                                                { name: "Santé" },
+                                                            ],
+
+                                                            documentsManquants: documentsManquants
+                                                        };
+
+                                                        return res.json(dashboardData);
+
+                                                    }
+                                                );
 
                                 }
                             );
@@ -155,7 +163,7 @@ dashboard.post('/', (req, res) => {
 
         }
     );
-
+        });
 });
 
 module.exports = dashboard;

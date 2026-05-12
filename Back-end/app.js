@@ -31,6 +31,10 @@ const candidature = require('./candidat/CandidatureScreen');
 app.use('/candidat/candidature', candidature);
 
 
+//profile route
+const profile = require('./candidat/ProfileScreen');
+app.use('/candidat/profile', profile);
+
 
 
 

@@ -1,10 +1,9 @@
 import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
 import { View, Text, Image, Platform, StyleSheet } from "react-native";
-import {
- 
-  getDashboardData,
-} from "@/app/candidat/services/DashboardScreen";
+import { getDashboardData } from "@/app/candidat/services/DashboardScreen";
+import { getPsaudo } from "@/app/candidat/services/token_id";
 
 const TITLES: Record<string, string> = {
   DashboardScreen: "Accueil",
@@ -15,15 +14,33 @@ const TITLES: Record<string, string> = {
 };
 
 export default function Layout() {
+  const [userName, setUserName] = useState("Utilisateur");
 
-  async function test_pseudo() {
-    const pseudo = "test";
-   return pseudo;
-  }
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadUserName = async () => {
+      const cached = getPsaudo();
+      if (cached && isMounted) {
+        setUserName(cached);
+      }
+
+      const data = await getDashboardData();
+      const fetched = data?.user?.nom;
+      if (fetched && isMounted) {
+        setUserName(fetched);
+      }
+    };
+
+    loadUserName();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const user = {
-    name: test_pseudo() || "Utilisateur",
-    avatar: "https://i.pravatar.cc/100",
+    name: userName,
   };
 
   return (
@@ -79,15 +96,7 @@ export default function Layout() {
               {user.name}
             </Text>
 
-            <Image
-              source={{ uri: user.avatar }}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                backgroundColor: "#e7eeff",
-              }}
-            />
+            
           </View>
         ),
 

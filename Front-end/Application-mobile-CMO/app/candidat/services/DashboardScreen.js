@@ -1,6 +1,6 @@
 // services/dashboard.js
 
-import { getTokenId } from "./token_id";
+import { getTokenId, getPsaudo, setPsaudo } from "./token_id";
 import url from "@/app/services/url.js";
 
 let dashboardRequestPromise = null;
@@ -34,12 +34,14 @@ export async function getDashboardData() {
       const data = await response.json();
       lastDashboardData = data;
       lastDashboardFetchAt = Date.now();
+      setPsaudo(data?.user?.nom ?? "");
       return data;
     })();
 
     return await dashboardRequestPromise;
   } catch (error) {
     console.log("Dashboard Error:", error);
+    setPsaudo("");
     return null;
   } finally {
     dashboardRequestPromise = null;
@@ -48,7 +50,6 @@ export async function getDashboardData() {
 
 // Compatible helper for legacy callers expecting getUserPseudo.
 export async function getUserPseudo() {
-  const data = await getDashboardData();
-  return data?.user?.nom ?? "";
+  return getPsaudo() ?? "";
 }
 

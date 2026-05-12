@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +19,7 @@ type DashboardDataType = {
     verification: number;
   };
   inscriptionStatus: {
+    verification?: number;
     informations: number;
     attestations: number;
     competences: number;
@@ -53,21 +55,33 @@ const emptyDashboardData: DashboardDataType = {
 function normalizeDashboardData(
   data: Partial<DashboardDataType> | null | undefined
 ): DashboardDataType {
+  const verificationLevel =
+    data?.inscriptionStatus?.verification ?? data?.user?.verification ?? 0;
+
+  const computedInscriptionStatus =
+    verificationLevel === 1
+      ? { informations: 1, attestations: 1, competences: 1 }
+      : {
+          informations: verificationLevel >= 2 ? 1 : 0,
+          attestations: verificationLevel >= 3 ? 1 : 0,
+          competences: verificationLevel >= 4 ? 1 : 0,
+        };
+
+  const rawDocuments = (data as { documentsManquants?: string[] })
+    ?.documentsManquants;
+  const normalizedDocuments = Array.isArray(rawDocuments)
+    ? rawDocuments.map((name) => ({ name }))
+    : data?.documents ?? emptyDashboardData.documents;
+
   return {
     user: {
       nom: data?.user?.nom ?? emptyDashboardData.user.nom,
-      verification: data?.user?.verification ?? emptyDashboardData.user.verification,
+      verification: verificationLevel,
     },
     inscriptionStatus: {
-      informations:
-        data?.inscriptionStatus?.informations ??
-        emptyDashboardData.inscriptionStatus.informations,
-      attestations:
-        data?.inscriptionStatus?.attestations ??
-        emptyDashboardData.inscriptionStatus.attestations,
-      competences:
-        data?.inscriptionStatus?.competences ??
-        emptyDashboardData.inscriptionStatus.competences,
+      informations: computedInscriptionStatus.informations,
+      attestations: computedInscriptionStatus.attestations,
+      competences: computedInscriptionStatus.competences,
     },
     candidatureStats: {
       sent:
@@ -81,7 +95,7 @@ function normalizeDashboardData(
         emptyDashboardData.candidatureStats.favorites,
     },
     sectors: data?.sectors ?? emptyDashboardData.sectors,
-    documents: data?.documents ?? emptyDashboardData.documents,
+    documents: normalizedDocuments,
   };
 }
 
@@ -131,21 +145,15 @@ useEffect(() => {
         {/* WELCOME */}
         <View style={styles.card}>
           <View style={styles.row}>
-            <View style={styles.iconBox}>
-              <Feather
-                name={
-                  dashboardData.user.verification === 1
-                    ? "check-circle"
-                    : "user"
-                }
-                size={26}
-                color={
-                  dashboardData.user.verification === 1
-                    ? "#22c55e"
-                    : "#2b5bbb"
-                }
-              />
-            </View>
+            {dashboardData.user.verification === 1 && (
+              <View style={styles.iconBox}>
+                <Image
+                  source={require("@/img/badge_verifie.png")}
+                  style={styles.badgeIcon}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
               
 
             <View style={{ flex: 1 }}>
@@ -283,6 +291,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
+  },
+  badgeIcon: {
+    width: 28,
+    height: 28,
   },
   title: {
     fontSize: 16,
