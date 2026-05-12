@@ -89,6 +89,7 @@ dashboard.post('/', (req, res) => {
                                 { name: "carte_securite_sociale" },
                                 { name: "titre_sejour" },
                                 { name: "permis_conduire" },
+                                { name: "hello_test" },
                                 { name: "certificat_travail" },
                             ],
                         };

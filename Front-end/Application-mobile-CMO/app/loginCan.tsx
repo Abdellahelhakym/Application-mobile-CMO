@@ -22,11 +22,11 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     try {
-      console.log("Login data:", { email, password });
+      
        const loginObject = { email, password };
 
       const response = await login(loginObject);
-      console.log("Login response:", response);
+      
 
       if(response.success) {
 

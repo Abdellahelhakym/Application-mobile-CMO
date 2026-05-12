@@ -19,11 +19,17 @@ app.use('/login', loginRoute);
 const signupRoute = require('./signup');
 app.use('/signup', signupRoute);
 
+
 //--------------------candidat route----------------------------
 
 //dashboard route
 const dashboard = require('./candidat/DashboardScreen');
 app.use('/candidat/dashboard', dashboard);
+
+//candidature route
+const candidature = require('./candidat/CandidatureScreen');
+app.use('/candidat/candidature', candidature);
+
 
 
 

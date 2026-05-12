@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 import {
   View,
@@ -7,41 +7,54 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+
 import { Star, AlertCircle } from 'lucide-react-native';
 
-const applications = [
-  {
-    id: 1,
-    title: 'Ouvrier viticole (H/F)',
-    reference: '#18293758',
-    type: 'CDD',
-    duration: '4 à 6 mois',
-    region: 'Bourgogne-Franche-Comté',
-    category: 'Viticulture',
-    description:
-      "Nous recrutons un ouvrier viticole en CDD afin de realiser les travaux saisonniers de la vigne.",
-    applied: true,
-  },
-  {
-    id: 2,
-    title: 'Tractoriste polyvalent (H/F)',
-    reference: '#18293756',
-    type: 'CDI',
-    duration: 'Indéterminé',
-    region: 'Occitanie',
-    category: 'Viticulture',
-    description:
-      "Nous recrutons un tractoriste polyvalent en CDI afin de realiser les activites agricoles.",
-    applied: false,
-  },
-];
+import {
+  getCandidatures,
+} from "@/app/candidat/services/CandidateLandingScreen";
+
+// TYPE
+interface Application {
+  id: number;
+  title: string;
+  reference: string;
+  type: string;
+  duration: string;
+  region: string;
+  category: string;
+  description: string;
+  applied: boolean;
+}
 
 export default function ApplicationsScreen() {
+
+  // STATE
+  const [applications, setApplications] = useState<Application[]>([]);
+
+  // GET DATA
+  async function getData() {
+    try {
+
+      const data: Application[] = await getCandidatures();
+
+      console.log("Candidatures data:", data);
+
+      setApplications(data);
+
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  useEffect(() => {
+    getData();
+  }, []);
+
   return (
     <ScrollView style={styles.container}>
-
-      {/* LIST */}
       <View style={styles.content}>
+
         {applications.map((app) => (
           <View key={app.id} style={styles.card}>
 
@@ -52,12 +65,16 @@ export default function ApplicationsScreen() {
               </View>
 
               <View style={styles.category}>
-                <Text style={styles.categoryText}>{app.category}</Text>
+                <Text style={styles.categoryText}>
+                  {app.category}
+                </Text>
               </View>
             </View>
 
             {/* TITLE */}
-            <Text style={styles.title}>{app.title}</Text>
+            <Text style={styles.title}>
+              {app.title}
+            </Text>
 
             <Text style={styles.ref}>
               Référence : {app.reference}
@@ -77,20 +94,11 @@ export default function ApplicationsScreen() {
             </Text>
 
             {/* DESC */}
-            <Text style={styles.desc}>{app.description}</Text>
+            <Text style={styles.desc}>
+              {app.description}
+            </Text>
 
-            {/* BUTTONS */}
-            <View style={styles.actions}>
-              <TouchableOpacity style={styles.primaryBtn}>
-                <Text style={styles.primaryText}>
-                  {app.applied ? 'Déjà postulé' : 'Postuler'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.secondaryBtn}>
-                <Text style={styles.secondaryText}>Lire +</Text>
-              </TouchableOpacity>
-            </View>
+          
 
           </View>
         ))}
@@ -102,18 +110,18 @@ export default function ApplicationsScreen() {
             <Text>Aucune candidature</Text>
           </View>
         )}
-      </View>
 
+      </View>
     </ScrollView>
   );
 }
-
 /* ================= STYLE ================= */
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#eef3ff',
+    marginBottom: 50,
   },
 
   content: {
