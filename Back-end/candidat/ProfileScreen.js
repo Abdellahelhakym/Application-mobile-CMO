@@ -7,7 +7,7 @@ profile.get('/', (req, res) => {
     
 });
 
-profile.post('/', (req, res) => {
+profile.post('/data', (req, res) => {
 
     const { token_id } = req.body;
 

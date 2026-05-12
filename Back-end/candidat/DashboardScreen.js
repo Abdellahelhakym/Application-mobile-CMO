@@ -22,7 +22,7 @@ dashboard.post('/', (req, res) => {
 
     // USER
     db.query(
-        'SELECT pseudo FROM users WHERE token_id = ?',
+        'SELECT pseudo FROM users WHERE token_id = ? AND deleted = 0',
         [token_id],
         (err, userResults) => {
 
@@ -43,7 +43,7 @@ dashboard.post('/', (req, res) => {
 
             // CANDIDAT
             db.query(
-                'SELECT verifier FROM cmo_candidats WHERE token_id = ?',
+                'SELECT verifier FROM cmo_candidats WHERE token_id = ? AND deleted = 0',
                 [token_id],
                 (err, candidatResults) => {
 
@@ -61,7 +61,7 @@ dashboard.post('/', (req, res) => {
 
                     // TOTAL CANDIDATURES
                     db.query(
-                        'SELECT COUNT(*) AS total FROM postuler WHERE token_id = ?',
+                        'SELECT COUNT(*) AS total FROM postuler WHERE token_id = ? AND deleted = 0',
                         [token_id],
                         (err, sentResults) => {
 
@@ -76,7 +76,7 @@ dashboard.post('/', (req, res) => {
 
                             // CANDIDATURES REPONDUES
                             db.query(
-                                'SELECT COUNT(*) AS total FROM postuler WHERE statut = 1 AND token_id = ?',
+                                'SELECT COUNT(*) AS total FROM postuler WHERE statut = 1 AND token_id = ? AND deleted = 0',
                                 [token_id],
                                 (err, repliedResults) => {
 
@@ -91,7 +91,7 @@ dashboard.post('/', (req, res) => {
 
                                     // FAVORIS
                                     db.query(
-                                        'SELECT COUNT(*) AS total FROM favoris_offres WHERE token_id = ?',
+                                        'SELECT COUNT(*) AS total FROM favoris_offres WHERE token_id = ? AND deleted = 0',
                                         [token_id],
                                         (err, favoritesResults) => {
 
@@ -106,7 +106,7 @@ dashboard.post('/', (req, res) => {
 
                                             // DOCUMENTS MANQUANTS
                                             db.query(
-                                                    'SELECT titre_attestation FROM documents_manquants WHERE token_id_cand = ?',
+                                                    'SELECT titre_attestation FROM documents_manquants WHERE token_id_cand = ? AND deleted = 0',
                                                     [token_id],
                                                     (err, documentsManquantsResults) => {
 

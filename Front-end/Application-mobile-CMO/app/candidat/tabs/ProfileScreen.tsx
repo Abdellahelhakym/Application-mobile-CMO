@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { router, Router } from 'expo-router';
 import {
   View,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   Image,
+  Button,
 } from 'react-native';
 
 import {
@@ -24,9 +25,38 @@ import {
 } from 'lucide-react-native';
 
 
+import {
+  getProfile,
+} from "@/app/candidat/services/ProfileScreen";
+import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
+
+
 
 
 export default function ProfileScreen() {
+  const [profileData, setProfileData] = useState({
+    pseudo: '',
+    email: '',
+    tel: '',
+    pays: '',
+  });
+
+  async function getData() {
+    try {
+      const test = await getProfile();
+      setProfileData(test);
+   
+      return "";
+    }catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+  useEffect( () => {
+     getData(); 
+    
+  }, []);
 
 
   function handleLogout() {
@@ -64,8 +94,8 @@ export default function ProfileScreen() {
           </View>
 
           <View>
-            <Text style={styles.name}>Abdellah El Hakym</Text>
-            <Text style={styles.email}>abdellah5420@gmail.com</Text>
+            <Text style={styles.name}>{profileData.pseudo}</Text>
+            <Text style={styles.email}>{profileData.email}</Text>
           </View>
         </View>
       </View>
@@ -77,7 +107,7 @@ export default function ProfileScreen() {
           <Phone size={18} color="#2b5bbb" />
           <View>
             <Text style={styles.label}>Téléphone</Text>
-            <Text style={styles.value}>0650195273</Text>
+            <Text style={styles.value}>{profileData.tel}</Text>
           </View>
         </View>
 
@@ -85,17 +115,11 @@ export default function ProfileScreen() {
           <MapPin size={18} color="#2b5bbb" />
           <View>
             <Text style={styles.label}>Localisation</Text>
-            <Text style={styles.value}>France</Text>
+            <Text style={styles.value}>{profileData.pays}</Text>
           </View>
         </View>
 
-        <View style={styles.item}>
-          <Briefcase size={18} color="#2b5bbb" />
-          <View>
-            <Text style={styles.label}>Secteur</Text>
-            <Text style={styles.value}>Mécanicien - Plombier</Text>
-          </View>
-        </View>
+      
 
       </View>
 
@@ -132,6 +156,8 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
       </View>
+
+    
 
      
       {/* LOGOUT */}

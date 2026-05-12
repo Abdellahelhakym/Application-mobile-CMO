@@ -49,6 +49,13 @@ interface Education {
   description: string;
 }
 
+interface Sector {
+  id: number;
+  category: string;
+  subCategory: string;
+  job: string;
+}
+
 type TabKey =
   | 'identity'
   | 'mobility'
@@ -70,13 +77,105 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'education', label: 'Formation' },
 ];
 
-const PERMITS = ['AM','A1','A2','A','B1','B','C1','C','D1','D','BE','C1E','CE','D1E','DE'];
-const NAUTIC_PERMITS = ['Permis côtier','Permis fluvial','Permis eaux intérieures','Permis hauturier'];
-const LANGUAGES = ['Français','Anglais','Allemand','Espagnol','Italien','Arabe','Portugais','Néerlandais','Polonais','Russe','Danois','Norvégien','Finnois','Chinois'];
-const SECTORS = ['Agriculture','BTP','Transport','Logistique','Industrie','Services','Santé','Commerce','Hôtellerie-Restauration'];
-const CONTRACT_OPTIONS = ['','CDI','CDD','Intérim','Saisonnier','Alternance'];
-const EDUCATION_LEVELS = ['','Sans diplôme','CAP / BEP','Bac','Bac +2','Bac +3','Bac +5 et plus'];
-const AVAILABILITY_OPTIONS = ['','Immédiate','1 semaine','2 semaines','1 mois','2 mois','3 mois'];
+const PERMITS = ['AM', 'A1', 'A2', 'A', 'B1', 'B', 'C1', 'C', 'D1', 'D', 'BE', 'C1E', 'CE', 'D1E', 'DE'];
+const NAUTIC_PERMITS = ['Permis côtier', 'Permis fluvial', 'Permis eaux intérieures', 'Permis hauturier'];
+const LANGUAGES = ['Allemand', 'Anglais', 'Arabe', 'Chinois', 'Danois', 'Espagnol', 'Finnois', 'Français', 'Italien', 'Néerlandais', 'Norvégien', 'Polonais', 'Portugais', 'Russe'];
+const SECTORS = ['Agriculture', 'BTP', 'Transport', 'Logistique', 'Industrie', 'Services', 'Santé', 'Commerce', 'Hôtellerie-Restauration'];
+
+// Données hiérarchiques : Catégories -> Sous-catégories -> Métiers
+const HIERARCHY_DATA: {
+  [key: string]: {
+    subCategories: string[];
+    jobs: { [subCat: string]: string[] };
+  };
+} = {
+  Agriculture: {
+    subCategories: ['Culture', 'Élevage', 'Viticulture', 'Horticulture'],
+    jobs: {
+      Culture: ['Ouvrier agricole', 'Tractoriste', 'Mécanicien agricole'],
+      Élevage: ['Éleveur', 'Soigneur animal', 'Vétérinaire'],
+      Viticulture: ['Ouvrier viticole', 'Vendangeur', 'Vigneron'],
+      Horticulture: ['Horticulteur', 'Jardinier', 'Pépiniériste'],
+    },
+  },
+  BTP: {
+    subCategories: ['Gros œuvre', 'Second œuvre', 'Électricité', 'Plomberie'],
+    jobs: {
+      'Gros œuvre': ['Maçon', 'Terrassier', 'Charpentier'],
+      'Second œuvre': ['Menuisier', 'Peintre', 'Carreleur'],
+      Électricité: ['Électricien', 'Technicien électricité'],
+      Plomberie: ['Plombier', 'Chauffagiste'],
+    },
+  },
+  Transport: {
+    subCategories: ['Routier', 'Ferroviaire', 'Aérien', 'Maritime'],
+    jobs: {
+      Routier: ['Chauffeur routier', 'Cariste', 'Logisticien'],
+      Ferroviaire: ['Conducteur train', 'Agent gare'],
+      Aérien: ['Pilote', 'Hôtesse de l\'air'],
+      Maritime: ['Marin', 'Capitaine'],
+    },
+  },
+  Logistique: {
+    subCategories: ['Stockage', 'Préparation commande', 'Planification', 'Livraison'],
+    jobs: {
+      Stockage: ['Préparateur commande', 'Magasinier', 'Gestionnaire stock'],
+      'Préparation commande': ['Préparateur commande', 'Emballeur'],
+      Planification: ['Planificateur', 'Responsable logistique'],
+      Livraison: ['Livreur', 'Coursier'],
+    },
+  },
+  Industrie: {
+    subCategories: ['Mécanique', 'Chimie', 'Textile', 'Agroalimentaire'],
+    jobs: {
+      Mécanique: ['Mécanicien', 'Outilleur', 'Contrôleur qualité'],
+      Chimie: ['Chimiste', 'Opérateur chimie'],
+      Textile: ['Tisserand', 'Coupeur'],
+      Agroalimentaire: ['Opérateur production', 'Superviseur'],
+    },
+  },
+  Services: {
+    subCategories: ['Nettoyage', 'Sécurité', 'Maintenance', 'Conseil'],
+    jobs: {
+      Nettoyage: ['Agent nettoyage', 'Agent service'],
+      Sécurité: ['Agent sécurité', 'Vigile'],
+      Maintenance: ['Technicien maintenance', 'Électricien'],
+      Conseil: ['Consultant', 'Coach'],
+    },
+  },
+  Santé: {
+    subCategories: ['Médical', 'Infirmier', 'Auxiliaire', 'Administratif'],
+    jobs: {
+      Médical: ['Médecin', 'Infirmier', 'Chirurgien'],
+      Infirmier: ['Infirmier', 'Aide-soignant'],
+      Auxiliaire: ['Aide-soignant', 'Auxiliaire de puériculture'],
+      Administratif: ['Secrétaire médical', 'Responsable administratif'],
+    },
+  },
+  Commerce: {
+    subCategories: ['Vente', 'Achat', 'E-commerce', 'Commercial'],
+    jobs: {
+      Vente: ['Vendeur', 'Caissier', 'Chef rayon'],
+      Achat: ['Acheteur', 'Approvisionnement'],
+      'E-commerce': ['Responsable e-commerce', 'Packager'],
+      Commercial: ['Commercial', 'Business Developer'],
+    },
+  },
+  'Hôtellerie-Restauration': {
+    subCategories: ['Cuisine', 'Service', 'Réception', 'Housekeeping'],
+    jobs: {
+      Cuisine: ['Chef cuisinier', 'Commis cuisine', 'Pâtissier'],
+      Service: ['Serveur', 'Barman', 'Sommelier'],
+      Réception: ['Réceptionniste', 'Concierge'],
+      Housekeeping: ['Femme de chambre', 'Manager housekeeping'],
+    },
+  },
+};
+
+const CONTRACT_OPTIONS = ['', 'CDI', 'CDD', 'Intérim', 'Saisonnier', 'Alternance'];
+const EDUCATION_LEVELS = ['', 'Sans diplôme', 'CAP / BEP', 'Bac', 'Bac +2', 'Bac +3', 'Bac +5 et plus'];
+const EXPERIENCE_LEVELS = ['', 'Moins d\'1 an', '1-2 ans', '3-5 ans', '5-10 ans', '10 ans et plus'];
+const AVAILABILITY_OPTIONS = ['', 'Immédiate', '1 semaine', '2 semaines', '1 mois', '2 mois', '3 mois'];
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -320,8 +419,14 @@ const IdentityTab = ({
         <Label>{'Adresse postale'}</Label>
         <InputField value={formData.address} onChangeText={set('address')} />
 
+        <Label>{'Code postal'}</Label>
+        <InputField value={formData.postalCode} onChangeText={set('postalCode')} />
+
         <Label>{'Ville'}</Label>
         <InputField value={formData.city} onChangeText={set('city')} />
+
+        <Label>{'Pays'}</Label>
+        <InputField value={formData.country} onChangeText={set('country')} />
 
         <Label>{'Numéro de sécurité sociale'}</Label>
         <InputField value={formData.socialSecurity} onChangeText={set('socialSecurity')} />
@@ -355,6 +460,9 @@ const MobilityTab = ({
 
       <Label>{"Niveau d'étude"}</Label>
       <SelectPicker value={formData.educationLevel} options={EDUCATION_LEVELS} onChange={set('educationLevel')} />
+
+      <Label>{"Expériences"}</Label>
+      <SelectPicker value={formData.experienceLevel} options={EXPERIENCE_LEVELS} onChange={set('experienceLevel')} />
 
       <View style={{ height: 12 }} />
       <Label>{'Contrat préféré 1'}</Label>
@@ -447,27 +555,111 @@ const LanguagesTab = ({ formData, setFormData }: { formData: any; setFormData: a
   );
 };
 
-const SectorsTab = ({ formData, setFormData }: { formData: any; setFormData: any }) => {
-  const set = (key: string) => (v: string) =>
-    setFormData((p: any) => ({ ...p, [key]: v }));
+const SectorsTab = ({
+  sectors,
+  setSectors,
+}: {
+  sectors: Sector[];
+  setSectors: React.Dispatch<React.SetStateAction<Sector[]>>;
+}) => {
+  const add = () =>
+    setSectors((p) => [
+      ...p,
+      { id: Date.now(), category: '', subCategory: '', job: '' },
+    ]);
+
+  const update = (id: number, key: keyof Sector, value: string) => {
+    setSectors((p) =>
+      p.map((s) => {
+        if (s.id === id) {
+          const updated: Sector = { ...s, [key]: value };
+          // Si on change la catégorie, réinitialiser sous-catégorie et métier
+          if (key === 'category') {
+            updated.subCategory = '';
+            updated.job = '';
+          }
+          // Si on change la sous-catégorie, réinitialiser le métier
+          if (key === 'subCategory') {
+            updated.job = '';
+          }
+          return updated;
+        }
+        return s;
+      })
+    );
+  };
+
+  const remove = (id: number) => {
+    // Ne pas supprimer si on a moins de 3 secteurs
+    if (sectors.length <= 3) return;
+    setSectors((p) => p.filter((s) => s.id !== id));
+  };
+
+  const saveSector = (id: number) => {
+    console.log('Saving sector with id:', id);
+  };
+
+  const getSubCategoriesForCategory = (category: string): string[] => {
+    return HIERARCHY_DATA[category]?.subCategories || [];
+  };
+
+  const getJobsForSubCategory = (category: string, subCategory: string): string[] => {
+    return HIERARCHY_DATA[category]?.jobs[subCategory] || [];
+  };
 
   return (
-    <Card>
-      <SectionTitle icon={<Briefcase size={18} color={C.blue} />}>
-        {"Secteurs d'activité"}
-      </SectionTitle>
+    <View style={{ gap: 16 }}>
+      <View style={styles.rowBetween}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionTitleIcon}>
+            <Briefcase size={18} color={C.blue} />
+          </View>
+          <Text style={styles.sectionTitlePlain}>{"Secteurs d'activité"}</Text>
+        </View>
+        <TouchableOpacity style={styles.addBtn} onPress={add}>
+          <Plus size={14} color={C.blueDark} />
+          <Text style={styles.addBtnText}>{'Ajouter'}</Text>
+        </TouchableOpacity>
+      </View>
 
-      <Label>{"Secteur d'activité 1"}</Label>
-      <SelectPicker value={formData.sector1} options={['', ...SECTORS]} onChange={set('sector1')} />
+      {sectors.map((sector, index) => (
+        <Card key={sector.id}>
+          <Label>{`Secteur d'activité ${index + 1}`}</Label>
 
-      <View style={{ height: 12 }} />
-      <Label>{"Secteur d'activité 2"}</Label>
-      <SelectPicker value={formData.sector2} options={['', ...SECTORS]} onChange={set('sector2')} />
+          <View style={styles.sectorColumn}>
 
-      <View style={{ height: 12 }} />
-      <Label>{"Secteur d'activité 3"}</Label>
-      <SelectPicker value={formData.sector3} options={['', ...SECTORS]} onChange={set('sector3')} />
-    </Card>
+            <Label>Catégorie</Label>
+            <SelectPicker
+              value={sector.category}
+              options={['', ...SECTORS]}
+              onChange={(v) => update(sector.id, 'category', v)}
+            />
+
+            <Label>Sous-catégorie</Label>
+            <SelectPicker
+              value={sector.subCategory}
+              options={['', ...getSubCategoriesForCategory(sector.category)]}
+              onChange={(v) => update(sector.id, 'subCategory', v)}
+            />
+
+            <Label>Métier</Label>
+            <SelectPicker
+              value={sector.job}
+              options={['', ...getJobsForSubCategory(sector.category, sector.subCategory)]}
+              onChange={(v) => update(sector.id, 'job', v)}
+            />
+
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={() => saveSector(sector.id)}
+            >
+              <Text style={styles.saveButtonText}>Sauvegarder</Text>
+            </TouchableOpacity>
+
+          </View>
+        </Card>
+      ))}
+    </View>
   );
 };
 
@@ -655,6 +847,27 @@ export default function CVScreen() {
     },
   ]);
 
+  const [sectors, setSectors] = useState<Sector[]>([
+    {
+      id: 1,
+      category: '',
+      subCategory: '',
+      job: '',
+    },
+    {
+      id: 2,
+      category: '',
+      subCategory: '',
+      job: '',
+    },
+    {
+      id: 3,
+      category: '',
+      subCategory: '',
+      job: '',
+    },
+  ]);
+
   const renderTab = () => {
     switch (activeTab) {
       case 'identity':
@@ -666,7 +879,7 @@ export default function CVScreen() {
       case 'languages':
         return <LanguagesTab formData={formData} setFormData={setFormData} />;
       case 'sectors':
-        return <SectorsTab formData={formData} setFormData={setFormData} />;
+        return <SectorsTab sectors={sectors} setSectors={setSectors} />;
       case 'experience':
         return <ExperienceTab experiences={experiences} setExperiences={setExperiences} />;
       case 'education':
@@ -1043,4 +1256,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  saveButton: {
+    backgroundColor: C.blueDark,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonText: {
+    color: C.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sectorColumn: {
+  gap: 14,
+},
 });
