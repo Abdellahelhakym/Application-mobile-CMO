@@ -35,7 +35,9 @@ app.use('/candidat/candidature', candidature);
 const profile = require('./candidat/ProfileScreen');
 app.use('/candidat/profile', profile);
 
-
+//favorites route
+const favorites = require('./candidat/FavoritesScreen');
+app.use('/candidat/favorites', favorites);
 
 
 

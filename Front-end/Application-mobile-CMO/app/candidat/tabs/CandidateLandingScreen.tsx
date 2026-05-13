@@ -1,16 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View
 } from 'react-native';
 
 import { AlertCircle, Star } from 'lucide-react-native';
 
+import { useFocusEffect } from '@react-navigation/native';
+
 import {
+  addtoFavorites,
   getCandidatures,
+  isfavorite
 } from "@/app/candidat/services/CandidateLandingScreen";
 
 // TYPE
@@ -30,6 +35,46 @@ interface Application {
 }
 
 export default function ApplicationsScreen() {
+  const [favorites, setFavorites] = useState<Record<number, boolean>>({});
+  const isFav = (id: number) => !!favorites[id];
+
+  async function loadFavorites(ids: number[]) {
+    try {
+      const results = await Promise.all(
+        ids.map(async (id) => {
+          const res = await isfavorite(id);
+          const isFavorite = !!(
+            res?.isFavorite ?? res?.favorite ?? res?.data?.isFavorite
+          );
+          return [id, isFavorite] as const;
+        })
+      );
+
+      const next: Record<number, boolean> = {};
+      results.forEach(([id, isFavorite]) => {
+        if (isFavorite) {
+          next[id] = true;
+        }
+      });
+
+      setFavorites(next);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function handleAddToFavorites(id: number, title: string) {
+    try {
+      const response = await addtoFavorites(id, title);
+      console.log("Add to favorites response:", response);
+      setFavorites((prev) => ({
+        ...prev,
+        [id]: true,
+      }));
+    } catch (error) {
+      console.error("Error adding to favorites:", error);
+    }
+  }
 
   // STATE
   const [applications, setApplications] = useState<Application[]>([]);
@@ -41,20 +86,43 @@ export default function ApplicationsScreen() {
 
       const list: Application[] = Array.isArray(payload)
         ? payload
-        : payload?.data || payload?.candidatures || [];
+        : Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload?.candidatures)
+        ? payload.candidatures
+        : Array.isArray(payload?.offres)
+        ? payload.offres
+        : Array.isArray(payload?.offers)
+        ? payload.offers
+        : Array.isArray(payload?.results)
+        ? payload.results
+        : [];
 
-      console.log("Candidatures data:", list);
+      console.log("Offres data:", list);
 
       setApplications(list);
+      if (list.length > 0) {
+        loadFavorites(list.map((item) => item.id));
+      }
 
     } catch (error) {
       console.log(error);
     }
   }
 
-  useEffect(() => {
-    getData();
-  }, []);
+useEffect(() => {
+  getData();
+}, []);
+
+useFocusEffect(
+  useCallback(() => {
+    if (applications.length === 0) {
+      getData();
+    } else {
+      loadFavorites(applications.map((item) => item.id));
+    }
+  }, [applications])
+);
 
   return (
     <ScrollView style={styles.container}>
@@ -65,9 +133,17 @@ export default function ApplicationsScreen() {
 
             {/* TOP */}
             <View style={styles.topRow}>
-              <View style={styles.star}>
-                <Star size={16} color="#b88907" />
-              </View>
+
+              <TouchableOpacity
+                style={styles.star}
+                onPress={() => handleAddToFavorites(app.id, app.title)}
+              >
+                <Star
+                  size={16}
+                  color={isFav(app.id) ? "#d8c83b" : "#9ca3af"}
+                  fill={isFav(app.id) ? "#d8c83b" : "transparent"}
+                />
+              </TouchableOpacity>
 
               <View style={styles.category}>
                 <Text style={styles.categoryText}>
@@ -112,7 +188,7 @@ export default function ApplicationsScreen() {
         {applications.length === 0 && (
           <View style={styles.empty}>
             <AlertCircle size={50} color="#aaa" />
-            <Text>Aucune candidature</Text>
+            <Text>Aucune offre</Text>
           </View>
         )}
 
