@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 
 import {
-  View,
-  Text,
   ScrollView,
-  TouchableOpacity,
   StyleSheet,
+  Text,
+  View
 } from 'react-native';
 
-import { Star, AlertCircle } from 'lucide-react-native';
+import { AlertCircle, Star } from 'lucide-react-native';
 
 import {
   getCandidatures,
@@ -24,7 +23,10 @@ interface Application {
   region: string;
   category: string;
   description: string;
-  applied: boolean;
+  applied: number | boolean;
+  created_at?: string;
+  updated_at?: string;
+  deleted?: number;
 }
 
 export default function ApplicationsScreen() {
@@ -35,12 +37,15 @@ export default function ApplicationsScreen() {
   // GET DATA
   async function getData() {
     try {
+      const payload = await getCandidatures();
 
-      const data: Application[] = await getCandidatures();
+      const list: Application[] = Array.isArray(payload)
+        ? payload
+        : payload?.data || payload?.candidatures || [];
 
-      console.log("Candidatures data:", data);
+      console.log("Candidatures data:", list);
 
-      setApplications(data);
+      setApplications(list);
 
     } catch (error) {
       console.log(error);

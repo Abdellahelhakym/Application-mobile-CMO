@@ -68,6 +68,7 @@ const [civilite, setCivilite] = useState("Monsieur");
   "Maroc",
   "Tunisie",
   "Algerie"
+
 ];
 
           const handleChange = (field: any, value: any) => {
@@ -91,7 +92,7 @@ const [civilite, setCivilite] = useState("Monsieur");
               password: formData.password,
          
             };
-            console.log("Données envoyées :", finalObject);
+         
 
             const response = await signCandidat(finalObject);
             console.log("Réponse du serveur :", response);
@@ -181,7 +182,7 @@ const [civilite, setCivilite] = useState("Monsieur");
 
         {showCivilite && (
           <View style={styles.dropdown}>
-            {["Monsieur", "Madame", "Mademoiselle"].map((item) => (
+            {["Monsieur", "Madame"].map((item) => (
               <TouchableOpacity
                 key={item}
                 style={styles.option}

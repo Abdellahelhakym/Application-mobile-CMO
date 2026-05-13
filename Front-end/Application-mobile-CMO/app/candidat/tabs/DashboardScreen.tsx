@@ -106,7 +106,7 @@ export default function DashboardScreen() {
 const loadDashboard = React.useCallback(async () => {
   try {
     const data = await getDashboardData();
-    console.log("Dashboard data:", data);
+   
 
     setDashboardData(normalizeDashboardData(data));
   } catch (error) {
