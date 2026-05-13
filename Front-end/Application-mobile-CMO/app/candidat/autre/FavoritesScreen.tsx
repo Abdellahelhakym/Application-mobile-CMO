@@ -22,8 +22,8 @@ const initialFavorites = [
     title: "Tractoriste polyvalent (H/F)",
     reference: "#18293756",
     type: "CDI",
-    duration: "Indéterminé",
-    region: "Occitanie",
+    duration: "test",
+    region: "test",
     description:
       "Nous recrutons un tractoriste polyvalent en CDI afin de réaliser les activités de cultures (élevage de porcs, cultures mécaniques…).",
     salary: "2150€ - 2200€ brut mensuel",

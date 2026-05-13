@@ -66,7 +66,7 @@ export default function ApplicationsScreen() {
             {/* TOP */}
             <View style={styles.topRow}>
               <View style={styles.star}>
-                <Star size={16} color="#f7b500" />
+                <Star size={16} color="#b88907" />
               </View>
 
               <View style={styles.category}>
