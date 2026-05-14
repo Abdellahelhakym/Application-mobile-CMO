@@ -67,9 +67,14 @@ export default function ApplicationsScreen() {
     try {
       const response = await addtoFavorites(id, title);
       console.log("Add to favorites response:", response);
+      const res = await isfavorite(id);
+      const isFavorite = !!(
+        res?.isFavorite ?? res?.favorite ?? res?.data?.isFavorite
+      );
+
       setFavorites((prev) => ({
         ...prev,
-        [id]: true,
+        [id]: isFavorite,
       }));
     } catch (error) {
       console.error("Error adding to favorites:", error);

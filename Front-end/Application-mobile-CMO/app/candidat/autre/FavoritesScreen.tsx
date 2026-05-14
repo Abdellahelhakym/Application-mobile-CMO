@@ -3,12 +3,19 @@ import {
   FlatList,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
 import { AlertCircle, Star } from "lucide-react-native";
 
 import { getFavorites } from "@/app/candidat/services/FavoritesScreen";
+
+import {
+  addtoFavorites,
+  isfavorite
+} from "@/app/candidat/services/CandidateLandingScreen";
+
 
 /* =========================
    TYPE
@@ -31,6 +38,8 @@ interface Favorite {
 ========================= */
 export default function FavoritesScreen() {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [favoriteState, setFavoriteState] = useState<Record<number, boolean>>({});
+  const isFav = (id: number) => !!favoriteState[id];
 
   /* =========================
      LOAD FAVORITES FROM API
@@ -55,15 +64,72 @@ export default function FavoritesScreen() {
     loadFavorites();
   }, []);
 
+  useEffect(() => {
+    if (favorites.length > 0) {
+      refreshFavoriteState(favorites.map((item) => item.id));
+    }
+  }, [favorites]);
+
+  async function refreshFavoriteState(ids: number[]) {
+    try {
+      const results = await Promise.all(
+        ids.map(async (id) => {
+          const res = await isfavorite(id);
+          const isFavorite = !!(
+            res?.isFavorite ?? res?.favorite ?? res?.data?.isFavorite
+          );
+          return [id, isFavorite] as const;
+        })
+      );
+
+      const next: Record<number, boolean> = {};
+      results.forEach(([id, isFavorite]) => {
+        if (isFavorite) {
+          next[id] = true;
+        }
+      });
+
+      setFavoriteState(next);
+    } catch (error) {
+      console.log("Error loading favorite state:", error);
+    }
+  }
+
+  async function handleToggleFavorite(id: number, title: string) {
+    try {
+      const response = await addtoFavorites(id, title);
+      console.log("Toggle favorite response:", response);
+
+      const res = await isfavorite(id);
+      const isFavorite = !!(
+        res?.isFavorite ?? res?.favorite ?? res?.data?.isFavorite
+      );
+
+      setFavoriteState((prev) => ({
+        ...prev,
+        [id]: isFavorite,
+      }));
+    } catch (error) {
+      console.log("Error toggling favorite:", error);
+    }
+  }
+
   /* =========================
      RENDER ITEM
   ========================= */
   const renderItem = ({ item }: any) => (
     <View style={styles.card}>
       <View style={styles.topRow}>
-        <View style={styles.star}>
-          <Star size={16} color="#d8c83b" fill="#d8c83b" />
-        </View>
+        <TouchableOpacity
+          style={styles.star}
+          onPress={() => handleToggleFavorite(item.id, item.title)}
+        >
+          <Star
+            size={16}
+            color={isFav(item.id) ? "#d8c83b" : "#9ca3af"}
+            fill={isFav(item.id) ? "#d8c83b" : "transparent"}
+          />
+        </TouchableOpacity>
 
         <View style={styles.category}>
           <Text style={styles.categoryText}>{item.category}</Text>

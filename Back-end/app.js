@@ -39,6 +39,10 @@ app.use('/candidat/profile', profile);
 const favorites = require('./candidat/FavoritesScreen');
 app.use('/candidat/favorites', favorites);
 
+//attestations route
+const attestations = require('./candidat/AttestationsScreen');
+app.use('/candidat/attestations', attestations);
+
 
 
 
