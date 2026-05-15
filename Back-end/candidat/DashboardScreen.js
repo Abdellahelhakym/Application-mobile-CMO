@@ -162,4 +162,62 @@ dashboard.post('/', (req, res) => {
         });
 });
 
+
+dashboard.post('/secteurs', (req, res) => {
+
+    const { token_id } = req.body;
+
+    console.log('Received secteurs request with token_id:', token_id);
+
+    if (!token_id) {
+        return res.status(400).json({
+            error: 'token_id is required'
+        });
+    }
+
+    db.query(
+        `
+        SELECT 
+            c.id AS id_categorie,
+            c.titre AS categorie,
+            COUNT(p.id) AS total_candidatures
+
+        FROM postuler p
+
+        INNER JOIN offres_emploi o 
+            ON p.id_offre = o.id
+
+        INNER JOIN metier m 
+            ON o.id_metiers = m.id
+
+        INNER JOIN sous_categorie_metier sc 
+            ON m.id_sous = sc.id
+
+        INNER JOIN categorie_metier c 
+            ON sc.id_categorie = c.id
+
+        WHERE p.token_id = ?
+        AND p.deleted = 0
+        AND o.deleted = 0
+        AND m.deleted = 0
+        AND sc.deleted = 0
+        AND c.deleted = 0
+
+        GROUP BY c.id, c.titre
+        ORDER BY total_candidatures DESC
+        `,
+        [token_id],
+        (err, results) => {
+
+            if (err) {
+                console.error(err);
+                return res.status(500).json({
+                    error: 'Internal server error'
+                });
+            }
+
+            return res.json(results);
+        }
+    );
+});
 module.exports = dashboard;

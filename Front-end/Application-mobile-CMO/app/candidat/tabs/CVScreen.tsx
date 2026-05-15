@@ -68,7 +68,7 @@ type TabKey =
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'identity', label: 'Identité' },
+  { key: 'identity', label: 'Informations' },
   { key: 'mobility', label: 'Mobilité' },
   { key: 'permits', label: 'Permis' },
   { key: 'languages', label: 'Langues' },
@@ -234,6 +234,15 @@ const InputField = ({
 
 const Card = ({ children, style }: { children: React.ReactNode; style?: object }) => (
   <View style={[styles.card, style]}>{children}</View>
+);
+
+const SectionSaveButton = ({ label, onPress }: { label: string; onPress: () => void }) => (
+  <View style={styles.saveContainer}>
+    <TouchableOpacity style={styles.saveBtn} onPress={onPress}>
+      <Save size={18} color={C.white} />
+      <Text style={styles.saveBtnText}>{label}</Text>
+    </TouchableOpacity>
+  </View>
 );
 
 // ✅ icon prop is always React.ReactNode — never a raw emoji string
@@ -431,6 +440,11 @@ const IdentityTab = ({
         <Label>{'Numéro de sécurité sociale'}</Label>
         <InputField value={formData.socialSecurity} onChangeText={set('socialSecurity')} />
       </Card>
+
+      <SectionSaveButton
+        label={'Sauvegarder les informations'}
+        onPress={() => Alert.alert('Enregistré', 'Informations enregistrées avec succès.')}
+      />
     </View>
   );
 };
@@ -446,36 +460,43 @@ const MobilityTab = ({
     setFormData((p: any) => ({ ...p, [key]: v }));
 
   return (
-    <Card>
-      <SectionTitle icon={<MapPin size={18} color={C.blue} />}>
-        {'Mobilité & Profil'}
-      </SectionTitle>
+    <View style={{ gap: 16 }}>
+      <Card>
+        <SectionTitle icon={<MapPin size={18} color={C.blue} />}>
+          {'Mobilité & Profil'}
+        </SectionTitle>
 
-      <Label>{'Zone de mobilité'}</Label>
-      <InputField
-        value={formData.mobilityZone}
-        onChangeText={set('mobilityZone')}
-        placeholder="Ex: Île-de-France, National, International"
+        <Label>{'Zone de mobilité'}</Label>
+        <InputField
+          value={formData.mobilityZone}
+          onChangeText={set('mobilityZone')}
+          placeholder="Ex: Île-de-France, National, International"
+        />
+
+        <Label>{"Niveau d'étude"}</Label>
+        <SelectPicker value={formData.educationLevel} options={EDUCATION_LEVELS} onChange={set('educationLevel')} />
+
+        <Label>{"Expériences"}</Label>
+        <SelectPicker value={formData.experienceLevel} options={EXPERIENCE_LEVELS} onChange={set('experienceLevel')} />
+
+        <View style={{ height: 12 }} />
+        <Label>{'Contrat préféré 1'}</Label>
+        <SelectPicker value={formData.contract1} options={CONTRACT_OPTIONS} onChange={set('contract1')} />
+
+        <View style={{ height: 12 }} />
+        <Label>{'Contrat préféré 2'}</Label>
+        <SelectPicker value={formData.contract2} options={CONTRACT_OPTIONS} onChange={set('contract2')} />
+
+        <View style={{ height: 12 }} />
+        <Label>{'Disponibilité'}</Label>
+        <SelectPicker value={formData.availability} options={AVAILABILITY_OPTIONS} onChange={set('availability')} />
+      </Card>
+
+      <SectionSaveButton
+        label={'Sauvegarder la mobilité'}
+        onPress={() => Alert.alert('Enregistré', 'Mobilité enregistrée avec succès.')}
       />
-
-      <Label>{"Niveau d'étude"}</Label>
-      <SelectPicker value={formData.educationLevel} options={EDUCATION_LEVELS} onChange={set('educationLevel')} />
-
-      <Label>{"Expériences"}</Label>
-      <SelectPicker value={formData.experienceLevel} options={EXPERIENCE_LEVELS} onChange={set('experienceLevel')} />
-
-      <View style={{ height: 12 }} />
-      <Label>{'Contrat préféré 1'}</Label>
-      <SelectPicker value={formData.contract1} options={CONTRACT_OPTIONS} onChange={set('contract1')} />
-
-      <View style={{ height: 12 }} />
-      <Label>{'Contrat préféré 2'}</Label>
-      <SelectPicker value={formData.contract2} options={CONTRACT_OPTIONS} onChange={set('contract2')} />
-
-      <View style={{ height: 12 }} />
-      <Label>{'Disponibilité'}</Label>
-      <SelectPicker value={formData.availability} options={AVAILABILITY_OPTIONS} onChange={set('availability')} />
-    </Card>
+    </View>
   );
 };
 
@@ -521,6 +542,11 @@ const PermitsTab = ({ formData, setFormData }: { formData: any; setFormData: any
           ))}
         </View>
       </Card>
+
+      <SectionSaveButton
+        label={'Sauvegarder les permis'}
+        onPress={() => Alert.alert('Enregistré', 'Permis enregistrés avec succès.')}
+      />
     </View>
   );
 };
@@ -536,22 +562,29 @@ const LanguagesTab = ({ formData, setFormData }: { formData: any; setFormData: a
   };
 
   return (
-    <Card>
-      <SectionTitle icon={<Globe size={18} color={C.blue} />}>
-        {'Langues'}
-      </SectionTitle>
-      <View style={styles.checkGrid2}>
-        {LANGUAGES.map((l) => (
-          <CheckItem
-            key={l}
-            label={l}
-            checked={formData.languages.includes(l)}
-            onToggle={() => toggle(l)}
-            wide
-          />
-        ))}
-      </View>
-    </Card>
+    <View style={{ gap: 16 }}>
+      <Card>
+        <SectionTitle icon={<Globe size={18} color={C.blue} />}>
+          {'Langues'}
+        </SectionTitle>
+        <View style={styles.checkGrid2}>
+          {LANGUAGES.map((l) => (
+            <CheckItem
+              key={l}
+              label={l}
+              checked={formData.languages.includes(l)}
+              onToggle={() => toggle(l)}
+              wide
+            />
+          ))}
+        </View>
+      </Card>
+
+      <SectionSaveButton
+        label={'Sauvegarder les langues'}
+        onPress={() => Alert.alert('Enregistré', 'Langues enregistrées avec succès.')}
+      />
+    </View>
   );
 };
 
@@ -593,10 +626,6 @@ const SectorsTab = ({
     // Ne pas supprimer si on a moins de 3 secteurs
     if (sectors.length <= 3) return;
     setSectors((p) => p.filter((s) => s.id !== id));
-  };
-
-  const saveSector = (id: number) => {
-    console.log('Saving sector with id:', id);
   };
 
   const getSubCategoriesForCategory = (category: string): string[] => {
@@ -648,17 +677,14 @@ const SectorsTab = ({
               options={['', ...getJobsForSubCategory(sector.category, sector.subCategory)]}
               onChange={(v) => update(sector.id, 'job', v)}
             />
-
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={() => saveSector(sector.id)}
-            >
-              <Text style={styles.saveButtonText}>Sauvegarder</Text>
-            </TouchableOpacity>
-
           </View>
         </Card>
       ))}
+
+      <SectionSaveButton
+        label={'Sauvegarder les secteurs'}
+        onPress={() => Alert.alert('Enregistré', 'Secteurs enregistrés avec succès.')}
+      />
     </View>
   );
 };
@@ -727,6 +753,11 @@ const ExperienceTab = ({
           </TouchableOpacity>
         </Card>
       ))}
+
+      <SectionSaveButton
+        label={'Sauvegarder les expériences'}
+        onPress={() => Alert.alert('Enregistré', 'Expériences enregistrées avec succès.')}
+      />
     </View>
   );
 };
@@ -792,6 +823,11 @@ const EducationTab = ({
           </TouchableOpacity>
         </Card>
       ))}
+
+      <SectionSaveButton
+        label={'Sauvegarder la formation'}
+        onPress={() => Alert.alert('Enregistré', 'Formation enregistrée avec succès.')}
+      />
     </View>
   );
 };
@@ -918,16 +954,6 @@ export default function CVScreen() {
         showsVerticalScrollIndicator={false}
       >
         {renderTab()}
-
-        <View style={styles.saveContainer}>
-          <TouchableOpacity
-            style={styles.saveBtn}
-            onPress={() => Alert.alert('Enregistré', 'Votre CV a été enregistré avec succès.')}
-          >
-            <Save size={18} color={C.white} />
-            <Text style={styles.saveBtnText}>{'Enregistrer mon CV'}</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -1254,19 +1280,6 @@ const styles = StyleSheet.create({
   saveBtnText: {
     color: C.white,
     fontSize: 15,
-    fontWeight: '600',
-  },
-  saveButton: {
-    backgroundColor: C.blueDark,
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveButtonText: {
-    color: C.white,
-    fontSize: 14,
     fontWeight: '600',
   },
   sectorColumn: {

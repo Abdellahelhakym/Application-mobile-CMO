@@ -10,7 +10,7 @@ import {
 } from "react-native";
 
 import {
-  getDashboardData,
+  getDashboardData,getSecteursActivite
 } from "@/app/candidat/services/DashboardScreen";
 
 type DashboardDataType = {
@@ -32,6 +32,14 @@ type DashboardDataType = {
   sectors: { name: string }[];
   documents: { name: string }[];
 };
+
+type SecteurActivite = {
+  id_categorie: number;
+  categorie: string;
+  total_candidatures: number;
+};
+
+
 
 const emptyDashboardData: DashboardDataType = {
   user: {
@@ -102,16 +110,21 @@ function normalizeDashboardData(
 export default function DashboardScreen() {
   const [dashboardData, setDashboardData] =
     useState<DashboardDataType | null>(null);
+  const [secteursActivite, setSecteursActivite] = useState<SecteurActivite[]>([]);
 
 const loadDashboard = React.useCallback(async () => {
   try {
-    const data = await getDashboardData();
-   
+    const [data, secteurs] = await Promise.all([
+      getDashboardData(),
+      getSecteursActivite(),
+    ]);
 
     setDashboardData(normalizeDashboardData(data));
+    setSecteursActivite(Array.isArray(secteurs) ? secteurs : []);
   } catch (error) {
     console.error("Error fetching dashboard:", error);
     setDashboardData(emptyDashboardData);
+    setSecteursActivite([]);
   }
 }, []);
 
@@ -234,9 +247,9 @@ useEffect(() => {
             Mes secteurs d'activités
           </Text>
 
-          {dashboardData.sectors.map((s, i) => (
-            <Text key={i} style={styles.item}>
-              ● {s.name}
+          {secteursActivite.map((s) => (
+            <Text key={s.id_categorie} style={styles.item}>
+              {s.total_candidatures} {s.categorie}
             </Text>
           ))}
         </View>
