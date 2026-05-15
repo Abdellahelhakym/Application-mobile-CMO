@@ -104,9 +104,10 @@ signUp.post('/candidat', async (req, res) => {
                     email,
                     tel,
                     token_id,
+                    disponibilite,
                     deleted
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?,?, ?)
             `;
 
             db.query(
@@ -119,7 +120,8 @@ signUp.post('/candidat', async (req, res) => {
                     email,
                     tel,
                     token_id,
-                    2
+                    0, // disponibilite par defaut = 0
+                    0
                 ],
                 (err, result) => {
 

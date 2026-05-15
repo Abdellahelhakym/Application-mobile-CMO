@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,8 @@ import {
   Car,
   Plus,
 } from 'lucide-react-native';
+
+import { getInformations , updateInformations} from "@/app/candidat/services/CVScreen";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -175,7 +177,6 @@ const HIERARCHY_DATA: {
 const CONTRACT_OPTIONS = ['', 'CDI', 'CDD', 'Intérim', 'Saisonnier', 'Alternance'];
 const EDUCATION_LEVELS = ['', 'Sans diplôme', 'CAP / BEP', 'Bac', 'Bac +2', 'Bac +3', 'Bac +5 et plus'];
 const EXPERIENCE_LEVELS = ['', 'Moins d\'1 an', '1-2 ans', '3-5 ans', '5-10 ans', '10 ans et plus'];
-const AVAILABILITY_OPTIONS = ['', 'Immédiate', '1 semaine', '2 semaines', '1 mois', '2 mois', '3 mois'];
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -339,6 +340,29 @@ const IdentityTab = ({
   const set = (key: string) => (v: string) =>
     setFormData((p: any) => ({ ...p, [key]: v }));
 
+  const handleSaveInformations = async () => {
+    try {
+      const codePostalValue = formData.postalCode ? Number(formData.postalCode) : 0;
+
+      await updateInformations(
+        formData.civility,
+        formData.firstName,
+        formData.lastName,
+        formData.email,
+        formData.phone,
+        codePostalValue,
+        formData.city,
+        formData.country,
+        formData.socialSecurity
+      );
+
+      Alert.alert('Enregistré', 'Informations enregistrées avec succès.');
+    } catch (error) {
+      console.log('Error updating informations:', error);
+      Alert.alert('Erreur', 'Impossible de sauvegarder les informations.');
+    }
+  };
+
   return (
     <View style={{ gap: 16 }}>
       <Card>
@@ -443,7 +467,7 @@ const IdentityTab = ({
 
       <SectionSaveButton
         label={'Sauvegarder les informations'}
-        onPress={() => Alert.alert('Enregistré', 'Informations enregistrées avec succès.')}
+        onPress={handleSaveInformations}
       />
     </View>
   );
@@ -458,6 +482,14 @@ const MobilityTab = ({
 }) => {
   const set = (key: string) => (v: string) =>
     setFormData((p: any) => ({ ...p, [key]: v }));
+
+  const setAvailabilityChoice = (v: string) => {
+    setFormData((p: any) => ({
+      ...p,
+      availabilityChoice: v,
+      availabilityDate: v === 'Oui' ? p.availabilityDate : '',
+    }));
+  };
 
   return (
     <View style={{ gap: 16 }}>
@@ -489,7 +521,18 @@ const MobilityTab = ({
 
         <View style={{ height: 12 }} />
         <Label>{'Disponibilité'}</Label>
-        <SelectPicker value={formData.availability} options={AVAILABILITY_OPTIONS} onChange={set('availability')} />
+        <SelectPicker value={formData.availabilityChoice} options={['Non', 'Oui']} onChange={setAvailabilityChoice} />
+
+        {formData.availabilityChoice === 'Oui' ? (
+          <View>
+            <Label>{'Disponible le :'}</Label>
+            <InputField
+              value={formData.availabilityDate}
+              onChangeText={set('availabilityDate')}
+              placeholder="mm/jj/aaaa"
+            />
+          </View>
+        ) : null}
       </Card>
 
       <SectionSaveButton
@@ -838,21 +881,24 @@ export default function CVScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('identity');
 
   const [formData, setFormData] = useState({
-    civility: 'Monsieur',
-    firstName: 'Abdellah',
-    lastName: 'El Hakym',
-    email: 'abdellah5420@gmail.com',
-    phone: '0650195273',
+    civility: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
     phone2: '',
     address: '',
+    postalCode: '', 
     city: '',
+    country: '', 
     socialSecurity: '',
     photo: '',
     mobilityZone: '',
     educationLevel: '',
     contract1: '',
     contract2: '',
-    availability: '',
+    availabilityChoice: 'Non',
+    availabilityDate: '',
     permits: [] as string[],
     languages: ['Français', 'Arabe'] as string[],
     sector1: 'Agriculture',
@@ -903,6 +949,37 @@ export default function CVScreen() {
       job: '',
     },
   ]);
+
+  useEffect(() => {
+    const loadInformations = async () => {
+      try {
+        const data = await getInformations();
+        const info = Array.isArray(data)
+          ? data[0]
+          : data?.data?.[0] ?? data;
+
+        if (!info) return;
+
+        setFormData((prev) => ({
+          ...prev,
+          photo: info.photo ?? prev.photo,
+          civility: info.civilite ?? prev.civility,
+          firstName: info.prenom ?? prev.firstName,
+          lastName: info.nom ?? prev.lastName,
+          email: info.email ?? prev.email,
+          phone: info.tel ?? prev.phone,
+          postalCode: info.code_postal != null ? String(info.code_postal) : prev.postalCode,
+          city: info.ville ?? prev.city,
+          country: info.pays ?? prev.country,
+          socialSecurity: info.num_secur_social ?? prev.socialSecurity,
+        }));
+      } catch (error) {
+        console.log('Error loading informations:', error);
+      }
+    };
+
+    loadInformations();
+  }, []);
 
   const renderTab = () => {
     switch (activeTab) {
