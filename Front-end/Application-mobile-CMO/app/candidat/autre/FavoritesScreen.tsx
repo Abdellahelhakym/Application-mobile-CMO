@@ -22,15 +22,13 @@ import {
 ========================= */
 interface Favorite {
   id: number;
-  title: string;
-  reference: string;
-  type: string;
-  duration: string;
-  region: string;
-  description: string;
-  salary?: string;
-  category: string;
-  savedDate?: string;
+  titre: string;
+  type_contrat: string;
+  duree: string;
+  lieu: string;
+  categorie: string;
+  descr: string;
+  date: string;
 }
 
 /* =========================
@@ -95,9 +93,9 @@ export default function FavoritesScreen() {
     }
   }
 
-  async function handleToggleFavorite(id: number, title: string) {
+  async function handleToggleFavorite(id: number, titre: string) {
     try {
-      const response = await addtoFavorites(id, title);
+      const response = await addtoFavorites(id, titre);
       console.log("Toggle favorite response:", response);
 
       const res = await isfavorite(id);
@@ -122,7 +120,7 @@ export default function FavoritesScreen() {
       <View style={styles.topRow}>
         <TouchableOpacity
           style={styles.star}
-          onPress={() => handleToggleFavorite(item.id, item.title)}
+          onPress={() => handleToggleFavorite(item.id, item.titre)}
         >
           <Star
             size={16}
@@ -132,31 +130,31 @@ export default function FavoritesScreen() {
         </TouchableOpacity>
 
         <View style={styles.category}>
-          <Text style={styles.categoryText}>{item.category}</Text>
+          <Text style={styles.categoryText}>{item.categorie}</Text>
         </View>
       </View>
 
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.ref}>Référence : {item.reference}</Text>
+          <Text style={styles.title}>{item.titre}</Text>
+          <Text style={styles.ref}>Date : {item.date}</Text>
         </View>
       </View>
 
       <Text style={styles.text}>
-        <Text style={styles.bold}>Type :</Text> {item.type}
+        <Text style={styles.bold}>Type contrat :</Text> {item.type_contrat}
       </Text>
 
       <Text style={styles.text}>
-        <Text style={styles.bold}>Durée :</Text> {item.duration}
+        <Text style={styles.bold}>Duree :</Text> {item.duree}
       </Text>
 
       <Text style={styles.text}>
-        <Text style={styles.bold}>Région :</Text> {item.region}
+        <Text style={styles.bold}>Lieu :</Text> {item.lieu}
       </Text>
 
-      <Text numberOfLines={2} style={styles.desc}>
-        {item.description}
+      <Text numberOfLines={3} style={styles.desc}>
+        {item.descr}
       </Text>
     </View>
   );

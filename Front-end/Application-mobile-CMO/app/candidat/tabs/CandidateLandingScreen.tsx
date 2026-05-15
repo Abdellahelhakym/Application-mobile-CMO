@@ -18,20 +18,18 @@ import {
   isfavorite
 } from "@/app/candidat/services/CandidateLandingScreen";
 
-// TYPE
+//(`id`, `titre`, `type_contrat`, `duree`, `lieu`, `categorie`, `descr`, `id_metiers`, `date`, `deleted`)
+// type_contrat
 interface Application {
   id: number;
-  title: string;
+  titre: string;
   reference: string;
-  type: string;
-  duration: string;
-  region: string;
-  category: string;
-  description: string;
-  applied: number | boolean;
-  created_at?: string;
-  updated_at?: string;
-  deleted?: number;
+  type_contrat: string;
+  duree: string;
+  lieu: string;
+  categorie: string;
+  descr: string;
+
 }
 
 export default function ApplicationsScreen() {
@@ -63,9 +61,9 @@ export default function ApplicationsScreen() {
     }
   }
 
-  async function handleAddToFavorites(id: number, title: string) {
+  async function handleAddToFavorites(id: number, titre: string) {
     try {
-      const response = await addtoFavorites(id, title);
+      const response = await addtoFavorites(id, titre);
       console.log("Add to favorites response:", response);
       const res = await isfavorite(id);
       const isFavorite = !!(
@@ -141,7 +139,7 @@ useFocusEffect(
 
               <TouchableOpacity
                 style={styles.star}
-                onPress={() => handleAddToFavorites(app.id, app.title)}
+                onPress={() => handleAddToFavorites(app.id, app.titre)}
               >
                 <Star
                   size={16}
@@ -150,16 +148,16 @@ useFocusEffect(
                 />
               </TouchableOpacity>
 
-              <View style={styles.category}>
-                <Text style={styles.categoryText}>
-                  {app.category}
+              <View style={styles.categorie}>
+                <Text style={styles.categorieText}>
+                  {app.categorie}
                 </Text>
               </View>
             </View>
 
-            {/* TITLE */}
-            <Text style={styles.title}>
-              {app.title}
+            {/* titre */}
+            <Text style={styles.titre}>
+              {app.titre}
             </Text>
 
             <Text style={styles.ref}>
@@ -168,20 +166,20 @@ useFocusEffect(
 
             {/* INFO */}
             <Text style={styles.text}>
-              <Text style={styles.bold}>Type :</Text> {app.type}
+              <Text style={styles.bold}>type_contrat :</Text> {app.type_contrat}
             </Text>
 
             <Text style={styles.text}>
-              <Text style={styles.bold}>Durée :</Text> {app.duration}
+              <Text style={styles.bold}>Durée :</Text> {app.duree}
             </Text>
 
             <Text style={styles.text}>
-              <Text style={styles.bold}>Région :</Text> {app.region}
+              <Text style={styles.bold}>Région :</Text> {app.lieu}
             </Text>
 
             {/* DESC */}
             <Text style={styles.desc}>
-              {app.description}
+              {app.descr}
             </Text>
 
           
@@ -233,19 +231,19 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
 
-  category: {
+  categorie: {
     backgroundColor: '#fff1dc',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
   },
 
-  categoryText: {
+  categorieText: {
     fontSize: 12,
     color: '#b87900',
   },
 
-  title: {
+  titre: {
     fontSize: 16,
     color: '#1b2d5a',
   },

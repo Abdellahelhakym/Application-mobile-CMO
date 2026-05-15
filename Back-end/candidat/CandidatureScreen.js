@@ -11,12 +11,11 @@ CandidatureScreen.get('/', (req, res) => {
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
-
 CandidatureScreen.post('/', (req, res) => {
     try {
         const { token_id } = req.body;
 
-        console.log('Received candidature request with token_id:');
+        console.log('Received candidature request with token_id:', token_id);
 
         if (!token_id) {
             return res.status(400).json({
@@ -28,7 +27,50 @@ CandidatureScreen.post('/', (req, res) => {
             'SELECT id_offre FROM postuler WHERE token_id = ? AND deleted = 0',
             [token_id],
             (err, results) => {
-                try {
+
+                if (err) {
+                    console.error(err);
+                    return res.status(500).json({
+                        error: 'Internal server error'
+                    });
+                }
+
+                if (results.length === 0) {
+                    return res.json([]);
+                }
+
+                // Récupérer les IDs des offres
+                const offerIds = results.map(item => item.id_offre);
+
+                const query = `
+                    SELECT 
+                        o.id,
+                        o.titre,
+                        o.type_contrat,
+                        o.duree,
+                        o.lieu,
+                        o.descr,
+                        o.date,
+
+                        c.titre AS categorie
+
+                    FROM offres_emploi o
+
+                    INNER JOIN metier m 
+                        ON o.id_metiers = m.id
+
+                    INNER JOIN sous_categorie_metier sc 
+                        ON m.id_sous = sc.id
+
+                    INNER JOIN categorie_metier c 
+                        ON sc.id_categorie = c.id
+
+                    WHERE o.id IN (?)
+                    AND o.deleted = 0
+                `;
+
+                db.query(query, [offerIds], (err, offers) => {
+
                     if (err) {
                         console.error(err);
                         return res.status(500).json({
@@ -36,44 +78,18 @@ CandidatureScreen.post('/', (req, res) => {
                         });
                     }
 
-                    if (results.length === 0) {
-                        return res.json([]);
-                    }
-
-                    // Extraire seulement les IDs
-                    const offerIds = results.map(item => item.id_offre);
-
-                    db.query(
-                        'SELECT * FROM offre_emplois WHERE id IN (?)',
-                        [offerIds],
-                        (err, offers) => {
-                            try {
-                                if (err) {
-                                    console.error(err);
-                                    return res.status(500).json({
-                                        error: 'Internal server error'
-                                    });
-                                }
-
-                                return res.json(offers);
-                            } catch (innerErr) {
-                                console.error(innerErr);
-                                return res.status(500).json({ error: 'Internal server error' });
-                            }
-                        }
-                    );
-                } catch (innerErr) {
-                    console.error(innerErr);
-                    return res.status(500).json({ error: 'Internal server error' });
-                }
+                    return res.json(offers);
+                });
             }
         );
+
     } catch (err) {
         console.error(err);
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({
+            error: 'Internal server error'
+        });
     }
 });
-
 
 
 

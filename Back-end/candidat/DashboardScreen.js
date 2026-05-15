@@ -120,6 +120,7 @@ dashboard.post('/', (req, res) => {
                                                         const documentsManquants = (documentsManquantsResults || []).map(
                                                             doc => doc.titre_attestation
                                                         );
+                                                        
 
                                                         const dashboardData = {
 
@@ -137,12 +138,7 @@ dashboard.post('/', (req, res) => {
                                                                 favorites: favoritesCount,
                                                             },
 
-                                                            sectors: [
-                                                                { name: "Agriculture" },
-                                                                { name: "Transport" },
-                                                                { name: "BTP" },
-                                                                { name: "Santé" },
-                                                            ],
+                                                            
 
                                                             documentsManquants: documentsManquants
                                                         };
