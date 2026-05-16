@@ -9,7 +9,7 @@ import {
   SafeAreaView,
   Platform,
   Image,
-  Alert,
+  Alert
 } from 'react-native';
 import {
   Camera,
@@ -28,7 +28,7 @@ import {
   Plus,
 } from 'lucide-react-native';
 
-import { getInformations , updateInformations} from "@/app/candidat/services/CVScreen";
+import { getInformations , updateInformations , getMobiliteUser , getToutMobilite , updateMobilite , getPermis , updatePermis , getLangues} from "@/app/candidat/services/CVScreen";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -58,6 +58,12 @@ interface Sector {
   job: string;
 }
 
+interface MobiliteOption {
+  id: number;
+  titre: string;
+  deleted?: number;
+}
+
 type TabKey =
   | 'identity'
   | 'mobility'
@@ -84,7 +90,6 @@ const NAUTIC_PERMITS = ['Permis côtier', 'Permis fluvial', 'Permis eaux intéri
 const LANGUAGES = ['Allemand', 'Anglais', 'Arabe', 'Chinois', 'Danois', 'Espagnol', 'Finnois', 'Français', 'Italien', 'Néerlandais', 'Norvégien', 'Polonais', 'Portugais', 'Russe'];
 const SECTORS = ['Agriculture', 'BTP', 'Transport', 'Logistique', 'Industrie', 'Services', 'Santé', 'Commerce', 'Hôtellerie-Restauration'];
 
-// Données hiérarchiques : Catégories -> Sous-catégories -> Métiers
 const HIERARCHY_DATA: {
   [key: string]: {
     subCategories: string[];
@@ -174,9 +179,9 @@ const HIERARCHY_DATA: {
   },
 };
 
-const CONTRACT_OPTIONS = ['', 'CDI', 'CDD', 'Intérim', 'Saisonnier', 'Alternance'];
-const EDUCATION_LEVELS = ['', 'Sans diplôme', 'CAP / BEP', 'Bac', 'Bac +2', 'Bac +3', 'Bac +5 et plus'];
-const EXPERIENCE_LEVELS = ['', 'Moins d\'1 an', '1-2 ans', '3-5 ans', '5-10 ans', '10 ans et plus'];
+const CONTRACT_OPTIONS = ['', 'CDD', 'CDI', 'SAISONIER', 'ALTERNANCE', 'STAGE','MI-TEMPS','INTERIM','LIBERAL'];
+const EDUCATION_LEVELS = ['', 'Niveau Bac', 'Bac', 'Bac +2', 'Bac +3', 'Bac +5 ','Bac+7'];
+const EXPERIENCE_LEVELS = ['', 'Moins d\'1 an', 'Entre 1 et 2 ans', 'Entre 3 et 5 ans', 'Entre 5 et 10 ans', 'plus de 10 ans'];
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -246,7 +251,6 @@ const SectionSaveButton = ({ label, onPress }: { label: string; onPress: () => v
   </View>
 );
 
-// ✅ icon prop is always React.ReactNode — never a raw emoji string
 const SectionTitle = ({
   icon,
   children,
@@ -476,9 +480,11 @@ const IdentityTab = ({
 const MobilityTab = ({
   formData,
   setFormData,
+  mobilityOptions,
 }: {
   formData: any;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
+  mobilityOptions: MobiliteOption[];
 }) => {
   const set = (key: string) => (v: string) =>
     setFormData((p: any) => ({ ...p, [key]: v }));
@@ -491,6 +497,31 @@ const MobilityTab = ({
     }));
   };
 
+  const handleSaveMobilite = async () => {
+    try {
+      const disponibiliteValue = formData.availabilityChoice === 'Oui' ? 1 : 0;
+      const selectedMobilite = mobilityOptions.find(
+        (item) => item.titre === formData.mobilityZone
+      );
+      const mobiliteId = selectedMobilite?.id ?? null;
+
+      await updateMobilite(
+        mobiliteId,
+        formData.educationLevel,
+        formData.experienceLevel,
+        formData.contract1,
+        formData.contract2,
+        disponibiliteValue,
+        formData.availabilityDate
+      );
+
+      Alert.alert('Enregistré', 'Mobilité enregistrée avec succès.');
+    } catch (error) {
+      console.log('Error updating mobilite:', error);
+      Alert.alert('Erreur', 'Impossible de sauvegarder la mobilité.');
+    }
+  };
+
   return (
     <View style={{ gap: 16 }}>
       <Card>
@@ -498,11 +529,11 @@ const MobilityTab = ({
           {'Mobilité & Profil'}
         </SectionTitle>
 
-        <Label>{'Zone de mobilité'}</Label>
-        <InputField
+        <Label>{'Mobilité'}</Label>
+        <SelectPicker
           value={formData.mobilityZone}
-          onChangeText={set('mobilityZone')}
-          placeholder="Ex: Île-de-France, National, International"
+          options={['', ...mobilityOptions.map((item) => item.titre)]}
+          onChange={set('mobilityZone')}
         />
 
         <Label>{"Niveau d'étude"}</Label>
@@ -537,7 +568,7 @@ const MobilityTab = ({
 
       <SectionSaveButton
         label={'Sauvegarder la mobilité'}
-        onPress={() => Alert.alert('Enregistré', 'Mobilité enregistrée avec succès.')}
+        onPress={handleSaveMobilite}
       />
     </View>
   );
@@ -551,6 +582,39 @@ const PermitsTab = ({ formData, setFormData }: { formData: any; setFormData: any
         ? p.permits.filter((x: string) => x !== permit)
         : [...p.permits, permit],
     }));
+  };
+
+  const handleSavePermits = async () => {
+    try {
+      const has = (label: string) => (formData.permits.includes(label) ? 1 : 0);
+
+      await updatePermis(
+        has('AM'),
+        has('A1'),
+        has('A2'),
+        has('A'),
+        has('B1'),
+        has('B'),
+        has('C1'),
+        has('C'),
+        has('D1'),
+        has('D'),
+        has('BE'),
+        has('C1E'),
+        has('CE'),
+        has('D1E'),
+        has('DE'),
+        has('Permis côtier'),
+        has('Permis fluvial'),
+        has('Permis eaux intérieures'),
+        has('Permis hauturier')
+      );
+
+      Alert.alert('Enregistré', 'Permis enregistrés avec succès.');
+    } catch (error) {
+      console.log('Error updating permis:', error);
+      Alert.alert('Erreur', 'Impossible de sauvegarder les permis.');
+    }
   };
 
   return (
@@ -588,45 +652,35 @@ const PermitsTab = ({ formData, setFormData }: { formData: any; setFormData: any
 
       <SectionSaveButton
         label={'Sauvegarder les permis'}
-        onPress={() => Alert.alert('Enregistré', 'Permis enregistrés avec succès.')}
+        onPress={handleSavePermits}
       />
     </View>
   );
 };
 
-const LanguagesTab = ({ formData, setFormData }: { formData: any; setFormData: any }) => {
-  const toggle = (lang: string) => {
-    setFormData((p: any) => ({
-      ...p,
-      languages: p.languages.includes(lang)
-        ? p.languages.filter((x: string) => x !== lang)
-        : [...p.languages, lang],
-    }));
-  };
-
+// ✅ FIX: LanguagesTab now receives langues as a prop — no hooks at module level
+const LanguagesTab = ({ langues }: { langues: string[] }) => {
   return (
     <View style={{ gap: 16 }}>
       <Card>
         <SectionTitle icon={<Globe size={18} color={C.blue} />}>
           {'Langues'}
         </SectionTitle>
+
         <View style={styles.checkGrid2}>
-          {LANGUAGES.map((l) => (
-            <CheckItem
-              key={l}
-              label={l}
-              checked={formData.languages.includes(l)}
-              onToggle={() => toggle(l)}
-              wide
-            />
-          ))}
+          {langues.length > 0 ? (
+            langues.map((lang, index) => (
+              <View key={index} style={styles.checkItem}>
+                <Text style={styles.checkLabel}>{lang}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={{ color: C.textMuted }}>
+              Aucune langue renseignée
+            </Text>
+          )}
         </View>
       </Card>
-
-      <SectionSaveButton
-        label={'Sauvegarder les langues'}
-        onPress={() => Alert.alert('Enregistré', 'Langues enregistrées avec succès.')}
-      />
     </View>
   );
 };
@@ -649,12 +703,10 @@ const SectorsTab = ({
       p.map((s) => {
         if (s.id === id) {
           const updated: Sector = { ...s, [key]: value };
-          // Si on change la catégorie, réinitialiser sous-catégorie et métier
           if (key === 'category') {
             updated.subCategory = '';
             updated.job = '';
           }
-          // Si on change la sous-catégorie, réinitialiser le métier
           if (key === 'subCategory') {
             updated.job = '';
           }
@@ -666,7 +718,6 @@ const SectorsTab = ({
   };
 
   const remove = (id: number) => {
-    // Ne pas supprimer si on a moins de 3 secteurs
     if (sectors.length <= 3) return;
     setSectors((p) => p.filter((s) => s.id !== id));
   };
@@ -699,7 +750,6 @@ const SectorsTab = ({
           <Label>{`Secteur d'activité ${index + 1}`}</Label>
 
           <View style={styles.sectorColumn}>
-
             <Label>Catégorie</Label>
             <SelectPicker
               value={sector.category}
@@ -879,7 +929,10 @@ const EducationTab = ({
 
 export default function CVScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('identity');
+  const [mobilityOptions, setMobilityOptions] = useState<MobiliteOption[]>([]);
 
+  // ✅ FIX: Single declaration of langues state — only here in CVScreen
+const [langues, setLangues] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     civility: '',
     firstName: '',
@@ -888,15 +941,16 @@ export default function CVScreen() {
     phone: '',
     phone2: '',
     address: '',
-    postalCode: '', 
+    postalCode: '',
     city: '',
-    country: '', 
+    country: '',
     socialSecurity: '',
     photo: '',
     mobilityZone: '',
     educationLevel: '',
     contract1: '',
     contract2: '',
+    experienceLevel: '',
     availabilityChoice: 'Non',
     availabilityDate: '',
     permits: [] as string[],
@@ -930,25 +984,45 @@ export default function CVScreen() {
   ]);
 
   const [sectors, setSectors] = useState<Sector[]>([
-    {
-      id: 1,
-      category: '',
-      subCategory: '',
-      job: '',
-    },
-    {
-      id: 2,
-      category: '',
-      subCategory: '',
-      job: '',
-    },
-    {
-      id: 3,
-      category: '',
-      subCategory: '',
-      job: '',
-    },
+    { id: 1, category: '', subCategory: '', job: '' },
+    { id: 2, category: '', subCategory: '', job: '' },
+    { id: 3, category: '', subCategory: '', job: '' },
   ]);
+
+  // ✅ FIX: Single useEffect for langues — only here in CVScreen
+  useEffect(() => {
+  const loadLangues = async () => {
+    try {
+      const data = await getLangues();
+
+      const langInfo = Array.isArray(data)
+        ? data[0]
+        : data?.data?.[0] ?? data;
+
+      // ✅ CAS OBJET VIDE => tout à 0
+      if (!langInfo || Object.keys(langInfo).length === 0) {
+        setLangues([]);
+        return;
+      }
+
+      setLangues([
+  langInfo.lang_fr ? "Français" : "",
+  langInfo.lang_en ? "Anglais" : "",
+  langInfo.lang_es ? "Espagnol" : "",
+  langInfo.lang_ar ? "Arabe" : "",
+  langInfo.lang_de ? "Allemand" : "",
+].filter(Boolean));
+
+    } catch (error) {
+      console.log('Error langues:', error);
+
+      // fallback => tout décoché
+      setLangues([]);
+    }
+  };
+
+  loadLangues();
+}, []);
 
   useEffect(() => {
     const loadInformations = async () => {
@@ -981,16 +1055,112 @@ export default function CVScreen() {
     loadInformations();
   }, []);
 
+  useEffect(() => {
+    const loadMobilite = async () => {
+      try {
+        const [tout, user] = await Promise.all([
+          getToutMobilite(),
+          getMobiliteUser(),
+        ]);
+
+        const allOptions: MobiliteOption[] = Array.isArray(tout)
+          ? tout
+          : tout?.data || [];
+
+        setMobilityOptions(
+          allOptions.filter((item) => item?.deleted !== 1)
+        );
+
+        const userMobilite = user?.mobilite?.[0];
+        const disponibiliteValue = user?.disponibilite;
+        const disponibiliteChoice =
+          disponibiliteValue === 1 || disponibiliteValue === '1' ? 'Oui' : 'Non';
+
+        setFormData((prev) => ({
+          ...prev,
+          mobilityZone: userMobilite?.region ?? prev.mobilityZone,
+          educationLevel: user?.niveau_etude ?? prev.educationLevel,
+          experienceLevel: user?.experience ?? prev.experienceLevel,
+          contract1: user?.contrat_prefere1 ?? prev.contract1,
+          contract2: user?.contrat_prefere2 ?? prev.contract2,
+          availabilityChoice: disponibiliteChoice,
+          availabilityDate: user?.date_disponibilite ?? prev.availabilityDate,
+        }));
+      } catch (error) {
+        console.log('Error loading mobilite:', error);
+      }
+    };
+
+    loadMobilite();
+  }, []);
+
+  useEffect(() => {
+    const loadPermis = async () => {
+      try {
+        const data = await getPermis();
+        console.log('Permis data:', data);
+        const permisInfo = Array.isArray(data)
+          ? data[0]
+          : data?.data?.[0] ?? data;
+
+        if (!permisInfo) return;
+
+        const nextPermits: string[] = [];
+        const addIf = (key: string, label: string) => {
+          if (permisInfo?.[key] === 1 || permisInfo?.[key] === '1') {
+            nextPermits.push(label);
+          }
+        };
+
+        addIf('perm_am', 'AM');
+        addIf('perm_a1', 'A1');
+        addIf('perm_a2', 'A2');
+        addIf('perm_a', 'A');
+        addIf('perm_b1', 'B1');
+        addIf('perm_b', 'B');
+        addIf('perm_c1', 'C1');
+        addIf('perm_c', 'C');
+        addIf('perm_d1', 'D1');
+        addIf('perm_d', 'D');
+        addIf('perm_be', 'BE');
+        addIf('perm_c1e', 'C1E');
+        addIf('perm_ce', 'CE');
+        addIf('perm_d1e', 'D1E');
+        addIf('perm_de', 'DE');
+        addIf('perm_cotier', 'Permis côtier');
+        addIf('perm_fluvial', 'Permis fluvial');
+        addIf('perm_grandes_eaux', 'Permis eaux intérieures');
+        addIf('perm_hauturier', 'Permis hauturier');
+
+        setFormData((prev) => ({
+          ...prev,
+          permits: nextPermits,
+        }));
+      } catch (error) {
+        console.log('Error loading permis:', error);
+      }
+    };
+
+    loadPermis();
+  }, []);
+
   const renderTab = () => {
     switch (activeTab) {
       case 'identity':
         return <IdentityTab formData={formData} setFormData={setFormData} />;
       case 'mobility':
-        return <MobilityTab formData={formData} setFormData={setFormData} />;
+        return (
+          <MobilityTab
+            formData={formData}
+            setFormData={setFormData}
+            mobilityOptions={mobilityOptions}
+          />
+        );
       case 'permits':
         return <PermitsTab formData={formData} setFormData={setFormData} />;
       case 'languages':
-        return <LanguagesTab formData={formData} setFormData={setFormData} />;
+        // ✅ FIX: Pass langues as prop to LanguagesTab
+        return <LanguagesTab langues={langues} />;
       case 'sectors':
         return <SectorsTab sectors={sectors} setSectors={setSectors} />;
       case 'experience':
@@ -1360,6 +1530,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   sectorColumn: {
-  gap: 14,
-},
+    gap: 14,
+  },
 });
