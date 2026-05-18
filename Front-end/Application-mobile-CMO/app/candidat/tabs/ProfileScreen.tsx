@@ -1,35 +1,33 @@
-import React, { useEffect, useState } from 'react';
-import { router, Router } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
+import { router } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
   Alert,
   Image,
-  Button,
   Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import {
-  User,
-  Phone,
-  MapPin,
-  Briefcase,
   FileText,
-  Settings,
+  Heart,
   Lock,
   LogOut,
+  MapPin,
+  Phone,
+  Settings,
   Trash2,
-  Heart,
+  User
 } from 'lucide-react-native';
 
 
-import {
-  getProfile,
-} from "@/app/candidat/services/ProfileScreen";
-import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
+import { getImage } from "@/app/candidat/services/CVScreen";
+import { getProfile } from "@/app/candidat/services/ProfileScreen";
+import url from "@/app/services/url";
 
 
 
@@ -41,23 +39,31 @@ export default function ProfileScreen() {
     tel: '',
     pays: '',
   });
+  const [photo, setPhoto] = useState('');
 
-  async function getData() {
+  const getData = useCallback(async () => {
     try {
-      const test = await getProfile();
-      setProfileData(test);
+      const [profile, imageData] = await Promise.all([
+        getProfile(),
+        getImage(),
+      ]);
 
-      return "";
+      setProfileData(profile);
+
+      const imageUrl = imageData?.image
+        ? url() + "files/img_user/" + imageData.image
+        : '';
+      setPhoto(imageUrl);
     } catch (error) {
       console.log(error);
-      return null;
     }
-  }
-
-  useEffect(() => {
-    getData();
-
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      getData();
+    }, [getData])
+  );
 
 
   function handleLogout() {
@@ -91,7 +97,11 @@ export default function ProfileScreen() {
       <View style={styles.card}>
         <View style={styles.row}>
           <View style={styles.avatarBig}>
-            <User size={40} color="#2b5bbb" />
+            {photo ? (
+              <Image source={{ uri: photo }} style={styles.avatarImage} />
+            ) : (
+              <User size={40} color="#2b5bbb" />
+            )}
           </View>
 
           <View>
@@ -158,9 +168,19 @@ export default function ProfileScreen() {
           <Text style={styles.btnText}>Attestations</Text>
         </TouchableOpacity>
 
+         <TouchableOpacity
+          style={styles.btn}
+          onPress={() => router.push('https://conceptmaindoeuvre.com/nos-offres-emploi#')}
+        >
+          <Settings size={20} color="#2b5bbb" />
+          <Text style={styles.btnText}> Offres d’emploi</Text>
+        </TouchableOpacity>
+
+
+
       </View>
 
-
+     
 
 
       {/* LOGOUT */}
@@ -219,6 +239,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#eef3ff',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
 
   name: {

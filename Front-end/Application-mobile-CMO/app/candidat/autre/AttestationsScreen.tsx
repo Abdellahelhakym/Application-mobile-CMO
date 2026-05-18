@@ -81,9 +81,19 @@ export default function AttestationsScreen() {
       if (result.canceled || !result.assets?.length) return;
 
       const asset = result.assets[0];
+      const fileName = asset.name ?? '';
+      const isPdf =
+        asset.mimeType === 'application/pdf' ||
+        fileName.toLowerCase().endsWith('.pdf');
+
+      if (!isPdf) {
+        Alert.alert('Format invalide', 'Veuillez selectionner un fichier PDF.');
+        return;
+      }
+
       const file = {
         uri: asset.uri,
-        name: asset.name ?? `document_${Date.now()}`,
+        name: fileName || `document_${Date.now()}.pdf`,
         type: asset.mimeType ?? 'application/octet-stream',
       };
 

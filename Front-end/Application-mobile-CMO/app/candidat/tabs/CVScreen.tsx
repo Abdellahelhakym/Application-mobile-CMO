@@ -34,6 +34,7 @@ import {
   addFormation,
   deleteExperiences,
   deleteFormation,
+  DeleteImage,
   getExperiences,
   getFormations,
   getImage,
@@ -354,7 +355,6 @@ const IdentityTab = ({
       };
       setPhotoUpload(image);
     } catch (error) {
-      console.log('Error updating image:', error);
       Alert.alert('Erreur', 'Impossible de mettre à jour la photo.');
     }
   };
@@ -382,7 +382,6 @@ const IdentityTab = ({
 
       Alert.alert('Enregistré', 'Informations enregistrées avec succès.');
     } catch (error) {
-      console.log('Error updating informations:', error);
       Alert.alert('Erreur', 'Impossible de sauvegarder les informations.');
     }
   };
@@ -414,6 +413,7 @@ const IdentityTab = ({
               onPress={() => {
                 setFormData((p: any) => ({ ...p, photo: '' }));
                 setPhotoUpload(null);
+                DeleteImage();
               }}
             >
               <Trash2 size={16} color={C.deleteText} />
@@ -540,7 +540,6 @@ const MobilityTab = ({
 
       Alert.alert('Enregistré', 'Mobilité enregistrée avec succès.');
     } catch (error) {
-      console.log('Error updating mobilite:', error);
       Alert.alert('Erreur', 'Impossible de sauvegarder la mobilité.');
     }
   };
@@ -635,7 +634,6 @@ const PermitsTab = ({ formData, setFormData }: { formData: any; setFormData: any
 
       Alert.alert('Enregistré', 'Permis enregistrés avec succès.');
     } catch (error) {
-      console.log('Error updating permis:', error);
       Alert.alert('Erreur', 'Impossible de sauvegarder les permis.');
     }
   };
@@ -1104,7 +1102,6 @@ const [langues, setLangues] = useState<string[]>([]);
 
         setLangues(selected);
       } catch (error) {
-        console.log('Error langues:', error);
         setLangues([]);
       }
     };
@@ -1136,7 +1133,7 @@ const [langues, setLangues] = useState<string[]>([]);
           socialSecurity: info.num_secur_social ?? prev.socialSecurity,
         }));
       } catch (error) {
-        console.log('Error loading informations:', error);
+        return;
       }
     };
 
@@ -1158,7 +1155,7 @@ const [langues, setLangues] = useState<string[]>([]);
           }));
         }
       } catch (error) {
-        console.log('Error loading image:', error);
+        return;
       }
     };
 
@@ -1197,7 +1194,7 @@ const [langues, setLangues] = useState<string[]>([]);
           availabilityDate: user?.date_disponibilite ?? prev.availabilityDate,
         }));
       } catch (error) {
-        console.log('Error loading mobilite:', error);
+        return;
       }
     };
 
@@ -1208,7 +1205,6 @@ const [langues, setLangues] = useState<string[]>([]);
     const loadPermis = async () => {
       try {
         const data = await getPermis();
-        console.log('Permis data:', data);
         const permisInfo = Array.isArray(data)
           ? data[0]
           : data?.data?.[0] ?? data;
@@ -1247,7 +1243,7 @@ const [langues, setLangues] = useState<string[]>([]);
           permits: nextPermits,
         }));
       } catch (error) {
-        console.log('Error loading permis:', error);
+        return;
       }
     };
 
@@ -1289,7 +1285,7 @@ const [langues, setLangues] = useState<string[]>([]);
 
         setExperiences(mapped);
       } catch (error) {
-        console.log('Error loading experiences:', error);
+        return;
       }
     };
 
@@ -1317,7 +1313,7 @@ const [langues, setLangues] = useState<string[]>([]);
 
         setEducation(mapped);
       } catch (error) {
-        console.log('Error loading formations:', error);
+        return;
       }
     };
 
@@ -1335,7 +1331,6 @@ const [langues, setLangues] = useState<string[]>([]);
           jobs: data?.metiers ?? [],
         });
       } catch (error) {
-        console.log('Error loading secteurs:', error);
         setSectorData({ categories: [], subCategories: [], jobs: [] });
       }
     };
@@ -1379,7 +1374,7 @@ const [langues, setLangues] = useState<string[]>([]);
 
         setSectors(filled);
       } catch (error) {
-        console.log('Error loading secteur user:', error);
+        return;
       }
     };
 
@@ -1418,7 +1413,6 @@ const [langues, setLangues] = useState<string[]>([]);
 
       Alert.alert('Enregistré', 'Langues enregistrées avec succès.');
     } catch (error) {
-      console.log('Error updating langues:', error);
       Alert.alert('Erreur', 'Impossible de sauvegarder les langues.');
     }
   };
@@ -1476,7 +1470,6 @@ const [langues, setLangues] = useState<string[]>([]);
 
       Alert.alert('Enregistré', 'Expériences enregistrées avec succès.');
     } catch (error) {
-      console.log('Error updating experiences:', error);
       Alert.alert('Erreur', 'Impossible de sauvegarder les expériences.');
     }
   };
@@ -1486,7 +1479,6 @@ const [langues, setLangues] = useState<string[]>([]);
       await deleteExperiences(exp.id);
       setExperiences((p) => p.filter((e) => e.id !== exp.id));
     } catch (error) {
-      console.log('Error deleting experience:', error);
       Alert.alert('Erreur', 'Impossible de supprimer l\'expérience.');
     }
   };
@@ -1524,7 +1516,6 @@ const [langues, setLangues] = useState<string[]>([]);
 
       Alert.alert('Enregistré', 'Expérience mise à jour.');
     } catch (error) {
-      console.log('Error updating experience:', error);
       Alert.alert('Erreur', 'Impossible de mettre à jour l\'expérience.');
     }
   };
@@ -1572,7 +1563,6 @@ const [langues, setLangues] = useState<string[]>([]);
 
       Alert.alert('Enregistré', 'Formations enregistrées avec succès.');
     } catch (error) {
-      console.log('Error updating formations:', error);
       Alert.alert('Erreur', 'Impossible de sauvegarder les formations.');
     }
   };
@@ -1582,7 +1572,6 @@ const [langues, setLangues] = useState<string[]>([]);
       await deleteFormation(edu.id);
       setEducation((p) => p.filter((e) => e.id !== edu.id));
     } catch (error) {
-      console.log('Error deleting formation:', error);
       Alert.alert('Erreur', 'Impossible de supprimer la formation.');
     }
   };
@@ -1618,7 +1607,6 @@ const [langues, setLangues] = useState<string[]>([]);
 
       Alert.alert('Enregistré', 'Formation mise à jour.');
     } catch (error) {
-      console.log('Error updating formation:', error);
       Alert.alert('Erreur', 'Impossible de mettre à jour la formation.');
     }
   };
@@ -1674,7 +1662,6 @@ const [langues, setLangues] = useState<string[]>([]);
                 await updateSecteur(secteur);
                 Alert.alert('Enregistré', 'Secteurs enregistrés avec succès.');
               } catch (error) {
-                console.log('Error updating secteur:', error);
                 Alert.alert('Erreur', 'Impossible de sauvegarder les secteurs.');
               }
             }}
@@ -1850,6 +1837,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    rowGap: 8,
   },
   photoContainer: {
     borderRadius: 12,
@@ -2031,6 +2020,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
+    marginTop: 4,
+    alignSelf: 'flex-start',
   },
   addBtnText: {
     fontSize: 13,

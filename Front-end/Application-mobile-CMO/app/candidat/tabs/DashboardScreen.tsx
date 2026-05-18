@@ -14,6 +14,8 @@ import {
   getDashboardData, getSecteursActivite
 } from "@/app/candidat/services/DashboardScreen";
 
+import { getListFils } from '@/app/candidat/services/AttestationsScreen';
+
 type DashboardDataType = {
   user: {
     nom: string;
@@ -38,6 +40,13 @@ type SecteurActivite = {
   id_categorie: number;
   categorie: string;
   total_candidatures: number;
+};
+
+type MissingDocument = {
+  id: number;
+  titre: string;
+  titre2?: string;
+  etats?: number;
 };
 
 
@@ -112,20 +121,29 @@ export default function DashboardScreen() {
   const [dashboardData, setDashboardData] =
     useState<DashboardDataType | null>(null);
   const [secteursActivite, setSecteursActivite] = useState<SecteurActivite[]>([]);
+  const [missingDocs, setMissingDocs] = useState<MissingDocument[]>([]);
 
 const loadDashboard = React.useCallback(async () => {
   try {
-    const [data, secteurs] = await Promise.all([
+    const [data, secteurs, docs] = await Promise.all([
       getDashboardData(),
       getSecteursActivite(),
+      getListFils(),
     ]);
 
     setDashboardData(normalizeDashboardData(data));
     setSecteursActivite(Array.isArray(secteurs) ? secteurs : []);
+    const list = Array.isArray(docs)
+      ? docs
+      : Array.isArray(docs?.data)
+      ? docs.data
+      : [];
+    setMissingDocs(list as MissingDocument[]);
   } catch (error) {
     console.error("Error fetching dashboard:", error);
     setDashboardData(emptyDashboardData);
     setSecteursActivite([]);
+    setMissingDocs([]);
   }
 }, []);
 
@@ -261,13 +279,13 @@ useEffect(() => {
             Documents manquants
           </Text>
 
-          {dashboardData.documents.map((doc, i) => (
+          {missingDocs.map((doc) => (
             <TouchableOpacity
-              key={i}
+              key={doc.id}
               style={styles.docRow}
               onPress={() => router.push("/candidat/autre/AttestationsScreen")}
             >
-              <Text style={styles.docText}>{doc.name}</Text>
+              <Text style={styles.docText}>{doc.titre}</Text>
 
               <View style={styles.uploadBtn}>
                 <Feather name="upload" size={16} color="#2b5bbb" />
@@ -287,6 +305,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#eef3ff",
+    marginBottom: 80, 
   },
   content: {
     padding: 15,

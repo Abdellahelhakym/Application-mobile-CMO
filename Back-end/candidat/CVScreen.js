@@ -1039,6 +1039,43 @@ CVScreen.post(
     }
 );
 
+CVScreen.post('/deleteImage', (req, res) => {
+
+    const { token_id } = req.body;
+    console.log('Received CV deleteImage request with token_id');
+
+    if (!token_id) {
+        return res.status(400).json({
+            success: false,
+            message: "token_id required"
+        });
+    }
+
+    db.query(
+        `UPDATE cmo_candidats 
+         SET photo = NULL 
+         WHERE token_id = ? 
+         AND deleted = 0`,
+        [token_id],
+        (err) => {
+
+            if (err) {
+                console.log(err);
+                return res.status(500).json({
+                    success: false,
+                    message: "Database error"
+                });
+            }
+
+            return res.json({
+                success: true,
+                message: "Photo deleted successfully"
+            });
+        }
+    );
+
+});
+
 
 
 
