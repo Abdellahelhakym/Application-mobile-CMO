@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Image,
@@ -10,7 +11,7 @@ import {
 } from "react-native";
 
 import {
-  getDashboardData,getSecteursActivite
+  getDashboardData, getSecteursActivite
 } from "@/app/candidat/services/DashboardScreen";
 
 type DashboardDataType = {
@@ -261,13 +262,17 @@ useEffect(() => {
           </Text>
 
           {dashboardData.documents.map((doc, i) => (
-            <View key={i} style={styles.docRow}>
+            <TouchableOpacity
+              key={i}
+              style={styles.docRow}
+              onPress={() => router.push("/candidat/autre/AttestationsScreen")}
+            >
               <Text style={styles.docText}>{doc.name}</Text>
 
-              <TouchableOpacity style={styles.uploadBtn}>
+              <View style={styles.uploadBtn}>
                 <Feather name="upload" size={16} color="#2b5bbb" />
-              </TouchableOpacity>
-            </View>
+              </View>
+            </TouchableOpacity>
           ))}
         </View>
 

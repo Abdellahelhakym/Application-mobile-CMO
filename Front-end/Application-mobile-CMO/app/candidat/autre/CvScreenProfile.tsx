@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
     ActivityIndicator,
     Image,
@@ -17,6 +17,7 @@ import {
     getMobiliteUser
 } from "@/app/candidat/services/CVScreen";
 import url from "@/app/services/url";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
@@ -31,9 +32,12 @@ export default function ProfileScreen() {
   const [experiences, setExperiences] = useState<any[]>([]);
   const [formations, setFormations] = useState<any[]>([]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadData();
+    }, [])
+  );
 
   const loadData = async () => {
     try {
