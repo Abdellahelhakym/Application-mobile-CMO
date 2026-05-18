@@ -1,42 +1,58 @@
+import * as ImagePicker from 'expo-image-picker';
+import {
+  Briefcase,
+  Camera,
+  Car,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Globe,
+  GraduationCap,
+  MapPin,
+  Plus,
+  Save,
+  Trash2,
+  Upload,
+  User,
+} from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
+  Alert,
+  Image,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  SafeAreaView,
-  Platform,
-  Image,
-  Alert
+  View
 } from 'react-native';
-import {
-  Camera,
-  User,
-  ChevronDown,
-  ChevronUp,
-  Check,
-  Upload,
-  Trash2,
-  Briefcase,
-  GraduationCap,
-  Save,
-  MapPin,
-  Globe,
-  Car,
-  Plus,
-} from 'lucide-react-native';
 
-import { getInformations , updateInformations
-  , getMobiliteUser , getToutMobilite , updateMobilite
-   , getPermis , updatePermis 
-   , getLangues , updateLangues 
-   , getSecteur ,getSecteurUser , updateSecteur,
-   getExperiences , updateExperiences , deleteExperiences , addExperience,
-   getFormations , updateFormation , deleteFormation , addFormation
-  
-  } from "@/app/candidat/services/CVScreen";
+import {
+  addExperience,
+  addFormation,
+  deleteExperiences,
+  deleteFormation,
+  getExperiences,
+  getFormations,
+  getImage,
+  getInformations,
+  getLangues,
+  getMobiliteUser,
+  getPermis,
+  getSecteur, getSecteurUser,
+  getToutMobilite,
+  updateExperiences,
+  updateFormation,
+  updateImage,
+  updateInformations,
+  updateLangues,
+  updateMobilite,
+  updatePermis,
+  updateSecteur
+} from "@/app/candidat/services/CVScreen";
+import url from "@/app/services/url.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -301,12 +317,47 @@ const CheckItem = ({
 const IdentityTab = ({
   formData,
   setFormData,
+  photoUpload,
+  setPhotoUpload,
 }: {
   formData: any;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
+  photoUpload: { uri: string; name: string; type: string } | null;
+  setPhotoUpload: React.Dispatch<React.SetStateAction<{ uri: string; name: string; type: string } | null>>;
 }) => {
   const set = (key: string) => (v: string) =>
     setFormData((p: any) => ({ ...p, [key]: v }));
+
+  const handlePickPhoto = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission requise', 'Autorisez l\'accès à la galerie pour importer une photo.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const asset = result.assets[0];
+      setFormData((p: any) => ({ ...p, photo: asset.uri }));
+
+      const image = {
+        uri: asset.uri,
+        name: asset.fileName ?? `profile_${Date.now()}.jpg`,
+        type: asset.mimeType ?? 'image/jpeg',
+      };
+      setPhotoUpload(image);
+    } catch (error) {
+      console.log('Error updating image:', error);
+      Alert.alert('Erreur', 'Impossible de mettre à jour la photo.');
+    }
+  };
 
   const handleSaveInformations = async () => {
     try {
@@ -323,6 +374,11 @@ const IdentityTab = ({
         formData.country,
         formData.socialSecurity
       );
+
+      if (photoUpload) {
+        await updateImage(photoUpload as any);
+        setPhotoUpload(null);
+      }
 
       Alert.alert('Enregistré', 'Informations enregistrées avec succès.');
     } catch (error) {
@@ -348,14 +404,17 @@ const IdentityTab = ({
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <TouchableOpacity
               style={styles.btnImport}
-              onPress={() => Alert.alert('Import', 'Sélectionner une photo depuis la galerie')}
+              onPress={handlePickPhoto}
             >
               <Upload size={16} color={C.white} />
               <Text style={styles.btnImportText}>{'Importer'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.btnDelete}
-              onPress={() => setFormData((p: any) => ({ ...p, photo: '' }))}
+              onPress={() => {
+                setFormData((p: any) => ({ ...p, photo: '' }));
+                setPhotoUpload(null);
+              }}
             >
               <Trash2 size={16} color={C.deleteText} />
               <Text style={styles.btnDeleteText}>{'Supprimer'}</Text>
@@ -971,6 +1030,7 @@ export default function CVScreen() {
 
   // ✅ FIX: Single declaration of langues state — only here in CVScreen
 const [langues, setLangues] = useState<string[]>([]);
+  const [photoUpload, setPhotoUpload] = useState<{ uri: string; name: string; type: string } | null>(null);
   const [formData, setFormData] = useState({
     civility: '',
     firstName: '',
@@ -1081,6 +1141,28 @@ const [langues, setLangues] = useState<string[]>([]);
     };
 
     loadInformations();
+  }, []);
+
+  useEffect(() => {
+    const loadImage = async () => {
+      try {
+        const data = await getImage();
+        const imageUrl = data?.image
+          ? url() + "files/img_user/" + data.image
+          : '';
+
+        if (imageUrl) {
+          setFormData((prev) => ({
+            ...prev,
+            photo: imageUrl,
+          }));
+        }
+      } catch (error) {
+        console.log('Error loading image:', error);
+      }
+    };
+
+    loadImage();
   }, []);
 
   useEffect(() => {
@@ -1544,7 +1626,14 @@ const [langues, setLangues] = useState<string[]>([]);
   const renderTab = () => {
     switch (activeTab) {
       case 'identity':
-        return <IdentityTab formData={formData} setFormData={setFormData} />;
+        return (
+          <IdentityTab
+            formData={formData}
+            setFormData={setFormData}
+            photoUpload={photoUpload}
+            setPhotoUpload={setPhotoUpload}
+          />
+        );
       case 'mobility':
         return (
           <MobilityTab

@@ -13,6 +13,11 @@ export default function EmployeurLayout() {
         options={{ title: "Attestations", headerShown: true }}
       />
       
+      <Stack.Screen
+        name="autre/CvScreenProfile"
+        options={{ title: "CV", headerShown: true }}
+      />
+      
 
     </Stack>
   );

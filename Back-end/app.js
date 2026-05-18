@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 const db = require('./db'); // Importer la connexion à la base de données
-
+const path = require("path");
 
 app.use(express.json());
 app.use(cors());
@@ -46,6 +46,11 @@ app.use('/candidat/favorites', favorites);
 //attestations route
 const attestations = require('./candidat/AttestationsScreen');
 app.use('/candidat/attestations', attestations);
+
+app.use(
+  '/files',
+  express.static(path.join(__dirname, 'fils'))
+);
 
 
 

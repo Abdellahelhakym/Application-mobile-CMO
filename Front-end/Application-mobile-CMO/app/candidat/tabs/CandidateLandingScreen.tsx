@@ -161,7 +161,7 @@ useFocusEffect(
             </Text>
 
             <Text style={styles.ref}>
-              Référence : {app.reference}
+              Référence : #{'18093' + app.id}
             </Text>
 
             {/* INFO */}

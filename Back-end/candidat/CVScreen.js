@@ -1,11 +1,16 @@
 const express = require('express');
 const db = require('../db');
+const fs = require('fs');
+const multer = require("multer");
+const path = require('path');
+
 
 const CVScreen = express.Router();
 
 CVScreen.get('/', (req, res) => {
     res.send('CV Screen route');
 });
+
 
 //---------------------------------affichage---------------------------------
 CVScreen.post('/Informations', (req, res) => {
@@ -358,6 +363,15 @@ CVScreen.post('/updateInformations', (req, res) => {
                 error: 'Internal server error'
             });
         }
+        const pseudo = prenom + ' ' + nom;
+        db.query('UPDATE users SET pseudo = ? WHERE token_id = ?', [pseudo, token_id], (err) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({
+                    error: 'Internal server error'
+                });
+            }
+        }); 
 
         return res.json(results);
     });
@@ -847,6 +861,183 @@ CVScreen.post('/addFormation', (req, res) => {
     );
 });
 
+
+
+
+//------img
+
+
+CVScreen.post('/getImage', (req, res) => {
+
+    const { token_id } = req.body;
+
+    if (!token_id) {
+        return res.status(400).json({
+            success: false,
+            message: "token_id required"
+        });
+    }
+
+    const sql = `
+        SELECT photo
+        FROM cmo_candidats
+        WHERE token_id = ?
+        AND deleted = 0
+    `;
+
+    db.query(sql, [token_id], (err, results) => {
+
+        if (err) {
+            console.log(err);
+            return res.status(500).json({
+                success: false
+            });
+        }
+
+        if (!results.length || !results[0].photo) {
+            return res.status(404).json({
+                success: false,
+                message: "Image not found"
+            });
+        }
+
+        res.json({
+            success: true,
+            image: results[0].photo
+        });
+    });
+});
+
+CVScreen.post(
+    '/updateImage',
+
+    multer({
+        storage: multer.diskStorage({
+
+           destination: function (req, file, cb) {
+
+                cb(
+                    null,
+                    path.join(__dirname, "../fils/img_user")
+                );
+            },
+
+            filename: function (req, file, cb) {
+
+                const ext = path.extname(file.originalname || "") || ".jpg";
+
+                const nom_fichier =
+                    Date.now() +
+                    "_" +
+                    Math.floor(Math.random() * 1000000) +
+                    ext;
+
+                cb(null, nom_fichier);
+            }
+
+        })
+    }).single("image"),
+
+    async (req, res) => {
+
+        try {
+
+            const token_id = req.body.token_id;
+
+            if (!req.file) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'image is required'
+                });
+            }
+
+            const nom_image = req.file.filename;
+            const imgDir = path.join(__dirname, "../fils/img_user");
+
+            /*
+            |--------------------------------------------------------------------------
+            | UPDATE SQL
+            |--------------------------------------------------------------------------
+            */
+
+            const sql = `
+                UPDATE cmo_candidats
+                SET photo = ?
+                WHERE deleted = 0
+                AND token_id = ?
+            `;
+
+            const updateCandidatPhoto = () => {
+                db.query(
+                    sql,
+                    [nom_image, token_id],
+                    (err) => {
+
+                        if (err) {
+
+                            console.log(err);
+
+                            return res.status(500).json({
+                                success: false
+                            });
+                        }
+
+                        res.json({
+                            success: true,
+                            image: nom_image
+                        });
+                    }
+                );
+            };
+
+            db.query(
+                `SELECT photo FROM cmo_candidats WHERE token_id = ? AND deleted = 0`,
+                [token_id],
+                (err, results) => {
+
+                    if (err) {
+
+                        console.log(err);
+
+                        return res.status(500).json({
+                            success: false
+                        });
+                    }
+
+                    const currentPhoto = results[0] ? results[0].photo : null;
+
+                    if (!currentPhoto) {
+                        return updateCandidatPhoto();
+                    }
+
+                    const oldPath = path.join(imgDir, currentPhoto);
+
+                    fs.access(oldPath, fs.constants.F_OK, (accessErr) => {
+                        if (accessErr) {
+                            return updateCandidatPhoto();
+                        }
+
+                        fs.unlink(oldPath, (unlinkErr) => {
+                            if (unlinkErr) {
+                                console.log(unlinkErr);
+                            }
+
+                            return updateCandidatPhoto();
+                        });
+                    });
+                }
+            );
+
+        } catch (error) {
+
+            console.log(error);
+
+            res.status(500).json({
+                success: false
+            });
+        }
+    }
+);
 
 
 

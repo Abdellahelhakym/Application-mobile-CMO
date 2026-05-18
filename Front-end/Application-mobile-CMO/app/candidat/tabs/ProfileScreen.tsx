@@ -9,6 +9,7 @@ import {
   Alert,
   Image,
   Button,
+  Linking,
 } from 'react-native';
 
 import {
@@ -45,17 +46,17 @@ export default function ProfileScreen() {
     try {
       const test = await getProfile();
       setProfileData(test);
-   
+
       return "";
-    }catch (error) {
+    } catch (error) {
       console.log(error);
       return null;
     }
   }
 
-  useEffect( () => {
-     getData(); 
-    
+  useEffect(() => {
+    getData();
+
   }, []);
 
 
@@ -119,7 +120,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-      
+
 
       </View>
 
@@ -128,13 +129,15 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.btn}
-          onPress={() => router.push('/candidat/tabs/CVScreen')}
+          onPress={() => router.push('/candidat/autre/CvScreenProfile')}
         >
           <Settings size={20} color="#2b5bbb" />
           <Text style={styles.btnText}>CV</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.btn}>
+        <TouchableOpacity
+          style={styles.btn}
+          onPress={() => Linking.openURL("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie")}
+        >
           <Lock size={20} color="#2b5bbb" />
           <Text style={styles.btnText}>Changer mot de passe</Text>
         </TouchableOpacity>
@@ -157,9 +160,9 @@ export default function ProfileScreen() {
 
       </View>
 
-    
 
-     
+
+
       {/* LOGOUT */}
       <TouchableOpacity
         style={styles.logoutBtn}
@@ -169,7 +172,7 @@ export default function ProfileScreen() {
         <Text style={styles.logoutText}>Se déconnecter</Text>
       </TouchableOpacity>
 
-       {/* DELETE */}
+      {/* DELETE */}
       <TouchableOpacity
         style={styles.deleteBtn}
         onPress={handleDeleteAccount}
