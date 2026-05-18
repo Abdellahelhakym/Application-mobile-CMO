@@ -11,6 +11,8 @@ CandidatureScreen.get('/', (req, res) => {
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+
 CandidatureScreen.post('/', (req, res) => {
     try {
         const { token_id } = req.body;

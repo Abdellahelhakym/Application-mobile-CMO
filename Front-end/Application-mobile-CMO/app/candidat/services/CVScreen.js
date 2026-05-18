@@ -96,12 +96,56 @@ export async function getLangues() {
     }
 }
 
+export async function getSecteur() {
+    try {
+        const token_id = await getTokenId();
+
+        const response = await fetch(url() + "candidat/cv/Secteur", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token_id}`,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+
+    } catch (error) {
+        console.error("Error fetching secteur:", error);
+        throw error;
+    }
+}
+
+export async function getSecteurUser() {
+    try {
+        const token_id = await getTokenId();
+        const response = await fetch(url() + "candidat/cv/Secteur", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token_id }),
+        });
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error fetching secteur:", error);
+        throw error;
+    }
+}
+
+
 
 
 export async function getExperiences() {
     try {
         const token_id = await getTokenId();
-        const response = await fetch(url() + "candidat/cv/Experiences", {
+        const response = await fetch(url() + "candidat/cv/experiences", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -120,7 +164,7 @@ export async function getExperiences() {
 export async function getFormations() {
     try {
         const token_id = await getTokenId();
-        const response = await fetch(url() + "candidat/cv/Formations", {
+        const response = await fetch(url() + "candidat/cv/formation", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -198,7 +242,7 @@ export async function updatePermis(perm_am, perm_a1, perm_a2, perm_a, perm_b1, p
 }
 
 
-export async function updateLangues(lang_fr, lang_en, lang_es, lang_de, lang_it, lang_ch, lang_po, lang_da, lang_ru, lang_ar, lang_ne, lang_por, lang_no, lang_fi) {
+export async function updateLangues( lang_fr , lang_en ,  lang_es , lang_de , lang_it , lang_ch , lang_po , lang_da , lang_ru , lang_ar , lang_ne , lang_por , lang_no , lang_fi) {
     try {
         const token_id = await getTokenId();
         const response = await fetch(url() + "candidat/cv/updateLangues", {
@@ -206,7 +250,7 @@ export async function updateLangues(lang_fr, lang_en, lang_es, lang_de, lang_it,
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ token_id, lang_fr, lang_en, lang_es, lang_de, lang_it, lang_ch, lang_po, lang_da, lang_ru, lang_ar, lang_ne, lang_por, lang_no, lang_fi }),
+            body: JSON.stringify({ token_id,  lang_fr , lang_en ,  lang_es , lang_de , lang_it , lang_ch , lang_po , lang_da , lang_ru , lang_ar , lang_ne , lang_por , lang_no , lang_fi }),
         });
         const data = await response.json();
         return data;
@@ -218,10 +262,66 @@ export async function updateLangues(lang_fr, lang_en, lang_es, lang_de, lang_it,
 
 
 
-export async function updateExperiences(date1, date2, titre, societe, ville_pays, pays, description) {
+
+export async function updateSecteur( secteur ) {
+    try {
+        const token_id = await getTokenId();
+        const response = await fetch(url() + "candidat/cv/updateSecteur", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token_id,  secteur }),
+        });
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error updating secteur:", error);
+        throw error;
+    }
+}
+
+
+
+export async function updateExperiences(id ,date1, date2, titre, societe, ville_pays, pays, description) {
     try {
         const token_id = await getTokenId();
         const response = await fetch(url() + "candidat/cv/updateExperiences", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token_id, id ,date1, date2, titre, societe, ville_pays, pays, description }),
+        });
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error updating experiences:", error);
+        throw error;
+    }
+}
+
+export async function deleteExperiences(id_experiences) {
+    try {
+        const token_id = await getTokenId();
+        const response = await fetch(url() + "candidat/cv/deleteExperiences", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token_id,id_experiences}),
+        });
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error updating experiences:", error);
+        throw error;
+    }
+}
+export async function addExperience( date1, date2, titre, societe, ville_pays, pays, description) {
+    try {
+        const token_id = await getTokenId();
+        const response = await fetch(url() + "candidat/cv/addExperience", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -236,11 +336,49 @@ export async function updateExperiences(date1, date2, titre, societe, ville_pays
     }
 }
 
+//-----------formations-----------------
 
-export async function updateFormations(ecole, diplome, mois_debut, annee_debut, mois_obtention, annee_obtention, description) {
+
+
+export async function updateFormation(id , ecole, diplome, mois_debut, annee_debut, mois_obtention, annee_obtention, description) {
     try {
         const token_id = await getTokenId();
-        const response = await fetch(url() + "candidat/cv/updateFormations", {
+        const response = await fetch(url() + "candidat/cv/updateFormation", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token_id, id , ecole, diplome, mois_debut, annee_debut, mois_obtention, annee_obtention, description}),
+        });
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error updating formations:", error);
+        throw error;
+    }
+}
+
+export async function deleteFormation(id_formation) {
+    try {
+        const token_id = await getTokenId();
+        const response = await fetch(url() + "candidat/cv/deleteFormation", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token_id,id_formation}),
+        });
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error updating formations:", error);
+        throw error;
+    }
+}
+export async function addFormation( ecole, diplome, mois_debut, annee_debut, mois_obtention, annee_obtention, description) {
+    try {
+        const token_id = await getTokenId();
+        const response = await fetch(url() + "candidat/cv/addFormation", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

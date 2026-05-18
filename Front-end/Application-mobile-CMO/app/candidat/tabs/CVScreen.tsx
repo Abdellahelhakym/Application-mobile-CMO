@@ -28,7 +28,15 @@ import {
   Plus,
 } from 'lucide-react-native';
 
-import { getInformations , updateInformations , getMobiliteUser , getToutMobilite , updateMobilite , getPermis , updatePermis , getLangues} from "@/app/candidat/services/CVScreen";
+import { getInformations , updateInformations
+  , getMobiliteUser , getToutMobilite , updateMobilite
+   , getPermis , updatePermis 
+   , getLangues , updateLangues 
+   , getSecteur ,getSecteurUser , updateSecteur,
+   getExperiences , updateExperiences , deleteExperiences , addExperience,
+   getFormations , updateFormation , deleteFormation , addFormation
+  
+  } from "@/app/candidat/services/CVScreen";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -36,19 +44,24 @@ interface Experience {
   id: number;
   position: string;
   company: string;
-  location: string;
+  city: string;
+  country: string;
   startDate: string;
   endDate: string;
   description: string;
+  isNew?: boolean;
 }
 
 interface Education {
   id: number;
   school: string;
   degree: string;
-  startDate: string;
-  endDate: string;
+  startMonth: string;
+  startYear: string;
+  endMonth: string;
+  endYear: string;
   description: string;
+  isNew?: boolean;
 }
 
 interface Sector {
@@ -62,6 +75,23 @@ interface MobiliteOption {
   id: number;
   titre: string;
   deleted?: number;
+}
+
+interface SectorCategory {
+  id_categorie: number;
+  titre: string;
+}
+
+interface SectorSubCategory {
+  id_sous: number;
+  id_categorie: number;
+  titre: string;
+}
+
+interface SectorJob {
+  id_metier: number;
+  id_sous: number;
+  titre: string;
 }
 
 type TabKey =
@@ -87,96 +117,23 @@ const TABS: { key: TabKey; label: string }[] = [
 
 const PERMITS = ['AM', 'A1', 'A2', 'A', 'B1', 'B', 'C1', 'C', 'D1', 'D', 'BE', 'C1E', 'CE', 'D1E', 'DE'];
 const NAUTIC_PERMITS = ['Permis côtier', 'Permis fluvial', 'Permis eaux intérieures', 'Permis hauturier'];
+// Langues UI + mapping vers les cles API.
 const LANGUAGES = ['Allemand', 'Anglais', 'Arabe', 'Chinois', 'Danois', 'Espagnol', 'Finnois', 'Français', 'Italien', 'Néerlandais', 'Norvégien', 'Polonais', 'Portugais', 'Russe'];
-const SECTORS = ['Agriculture', 'BTP', 'Transport', 'Logistique', 'Industrie', 'Services', 'Santé', 'Commerce', 'Hôtellerie-Restauration'];
-
-const HIERARCHY_DATA: {
-  [key: string]: {
-    subCategories: string[];
-    jobs: { [subCat: string]: string[] };
-  };
-} = {
-  Agriculture: {
-    subCategories: ['Culture', 'Élevage', 'Viticulture', 'Horticulture'],
-    jobs: {
-      Culture: ['Ouvrier agricole', 'Tractoriste', 'Mécanicien agricole'],
-      Élevage: ['Éleveur', 'Soigneur animal', 'Vétérinaire'],
-      Viticulture: ['Ouvrier viticole', 'Vendangeur', 'Vigneron'],
-      Horticulture: ['Horticulteur', 'Jardinier', 'Pépiniériste'],
-    },
-  },
-  BTP: {
-    subCategories: ['Gros œuvre', 'Second œuvre', 'Électricité', 'Plomberie'],
-    jobs: {
-      'Gros œuvre': ['Maçon', 'Terrassier', 'Charpentier'],
-      'Second œuvre': ['Menuisier', 'Peintre', 'Carreleur'],
-      Électricité: ['Électricien', 'Technicien électricité'],
-      Plomberie: ['Plombier', 'Chauffagiste'],
-    },
-  },
-  Transport: {
-    subCategories: ['Routier', 'Ferroviaire', 'Aérien', 'Maritime'],
-    jobs: {
-      Routier: ['Chauffeur routier', 'Cariste', 'Logisticien'],
-      Ferroviaire: ['Conducteur train', 'Agent gare'],
-      Aérien: ['Pilote', 'Hôtesse de l\'air'],
-      Maritime: ['Marin', 'Capitaine'],
-    },
-  },
-  Logistique: {
-    subCategories: ['Stockage', 'Préparation commande', 'Planification', 'Livraison'],
-    jobs: {
-      Stockage: ['Préparateur commande', 'Magasinier', 'Gestionnaire stock'],
-      'Préparation commande': ['Préparateur commande', 'Emballeur'],
-      Planification: ['Planificateur', 'Responsable logistique'],
-      Livraison: ['Livreur', 'Coursier'],
-    },
-  },
-  Industrie: {
-    subCategories: ['Mécanique', 'Chimie', 'Textile', 'Agroalimentaire'],
-    jobs: {
-      Mécanique: ['Mécanicien', 'Outilleur', 'Contrôleur qualité'],
-      Chimie: ['Chimiste', 'Opérateur chimie'],
-      Textile: ['Tisserand', 'Coupeur'],
-      Agroalimentaire: ['Opérateur production', 'Superviseur'],
-    },
-  },
-  Services: {
-    subCategories: ['Nettoyage', 'Sécurité', 'Maintenance', 'Conseil'],
-    jobs: {
-      Nettoyage: ['Agent nettoyage', 'Agent service'],
-      Sécurité: ['Agent sécurité', 'Vigile'],
-      Maintenance: ['Technicien maintenance', 'Électricien'],
-      Conseil: ['Consultant', 'Coach'],
-    },
-  },
-  Santé: {
-    subCategories: ['Médical', 'Infirmier', 'Auxiliaire', 'Administratif'],
-    jobs: {
-      Médical: ['Médecin', 'Infirmier', 'Chirurgien'],
-      Infirmier: ['Infirmier', 'Aide-soignant'],
-      Auxiliaire: ['Aide-soignant', 'Auxiliaire de puériculture'],
-      Administratif: ['Secrétaire médical', 'Responsable administratif'],
-    },
-  },
-  Commerce: {
-    subCategories: ['Vente', 'Achat', 'E-commerce', 'Commercial'],
-    jobs: {
-      Vente: ['Vendeur', 'Caissier', 'Chef rayon'],
-      Achat: ['Acheteur', 'Approvisionnement'],
-      'E-commerce': ['Responsable e-commerce', 'Packager'],
-      Commercial: ['Commercial', 'Business Developer'],
-    },
-  },
-  'Hôtellerie-Restauration': {
-    subCategories: ['Cuisine', 'Service', 'Réception', 'Housekeeping'],
-    jobs: {
-      Cuisine: ['Chef cuisinier', 'Commis cuisine', 'Pâtissier'],
-      Service: ['Serveur', 'Barman', 'Sommelier'],
-      Réception: ['Réceptionniste', 'Concierge'],
-      Housekeeping: ['Femme de chambre', 'Manager housekeeping'],
-    },
-  },
+const LANGUAGE_KEYS: Record<string, string> = {
+  Allemand: 'lang_de',
+  Anglais: 'lang_en',
+  Arabe: 'lang_ar',
+  Chinois: 'lang_ch',
+  Danois: 'lang_da',
+  Espagnol: 'lang_es',
+  Finnois: 'lang_fi',
+  Français: 'lang_fr',
+  Italien: 'lang_it',
+  Néerlandais: 'lang_ne',
+  Norvégien: 'lang_no',
+  Polonais: 'lang_po',
+  Portugais: 'lang_por',
+  Russe: 'lang_ru',
 };
 
 const CONTRACT_OPTIONS = ['', 'CDD', 'CDI', 'SAISONIER', 'ALTERNANCE', 'STAGE','MI-TEMPS','INTERIM','LIBERAL'];
@@ -238,6 +195,7 @@ const InputField = ({
   />
 );
 
+
 const Card = ({ children, style }: { children: React.ReactNode; style?: object }) => (
   <View style={[styles.card, style]}>{children}</View>
 );
@@ -287,17 +245,23 @@ const SelectPicker = ({
       </TouchableOpacity>
       {open ? (
         <View style={styles.dropdownList}>
-          {options.map((opt) => (
-            <TouchableOpacity
-              key={opt || '__empty__'}
-              style={styles.dropdownItem}
-              onPress={() => { onChange(opt); setOpen(false); }}
-            >
-              <Text style={[styles.dropdownItemText, opt === value ? styles.dropdownItemActive : undefined]}>
-                {opt || 'Sélectionner'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          <ScrollView
+            style={styles.dropdownScroll}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+          >
+            {options.map((opt) => (
+              <TouchableOpacity
+                key={opt || '__empty__'}
+                style={styles.dropdownItem}
+                onPress={() => { onChange(opt); setOpen(false); }}
+              >
+                <Text style={[styles.dropdownItemText, opt === value ? styles.dropdownItemActive : undefined]}>
+                  {opt || 'Sélectionner'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
       ) : null}
     </View>
@@ -658,8 +622,16 @@ const PermitsTab = ({ formData, setFormData }: { formData: any; setFormData: any
   );
 };
 
-// ✅ FIX: LanguagesTab now receives langues as a prop — no hooks at module level
-const LanguagesTab = ({ langues }: { langues: string[] }) => {
+// Affichage des langues avec cases cochees et sauvegarde.
+const LanguagesTab = ({
+  langues,
+  onToggle,
+  onSave,
+}: {
+  langues: string[];
+  onToggle: (label: string) => void;
+  onSave: () => void;
+}) => {
   return (
     <View style={{ gap: 16 }}>
       <Card>
@@ -668,19 +640,22 @@ const LanguagesTab = ({ langues }: { langues: string[] }) => {
         </SectionTitle>
 
         <View style={styles.checkGrid2}>
-          {langues.length > 0 ? (
-            langues.map((lang, index) => (
-              <View key={index} style={styles.checkItem}>
-                <Text style={styles.checkLabel}>{lang}</Text>
-              </View>
-            ))
-          ) : (
-            <Text style={{ color: C.textMuted }}>
-              Aucune langue renseignée
-            </Text>
-          )}
+          {LANGUAGES.map((lang) => (
+            <CheckItem
+              key={lang}
+              label={lang}
+              checked={langues.includes(lang)}
+              onToggle={() => onToggle(lang)}
+              wide
+            />
+          ))}
         </View>
       </Card>
+
+      <SectionSaveButton
+        label={'Sauvegarder les langues'}
+        onPress={onSave}
+      />
     </View>
   );
 };
@@ -688,9 +663,17 @@ const LanguagesTab = ({ langues }: { langues: string[] }) => {
 const SectorsTab = ({
   sectors,
   setSectors,
+  sectorData,
+  onSave,
 }: {
   sectors: Sector[];
   setSectors: React.Dispatch<React.SetStateAction<Sector[]>>;
+  sectorData: {
+    categories: SectorCategory[];
+    subCategories: SectorSubCategory[];
+    jobs: SectorJob[];
+  };
+  onSave: () => void;
 }) => {
   const add = () =>
     setSectors((p) => [
@@ -723,26 +706,34 @@ const SectorsTab = ({
   };
 
   const getSubCategoriesForCategory = (category: string): string[] => {
-    return HIERARCHY_DATA[category]?.subCategories || [];
+    if (!category) return [];
+    const selected = sectorData.categories.find((c) => c.titre === category);
+    if (!selected) return [];
+    return sectorData.subCategories
+      .filter((s) => s.id_categorie === selected.id_categorie)
+      .map((s) => s.titre);
   };
 
   const getJobsForSubCategory = (category: string, subCategory: string): string[] => {
-    return HIERARCHY_DATA[category]?.jobs[subCategory] || [];
+    if (!category || !subCategory) return [];
+    const selectedCategory = sectorData.categories.find((c) => c.titre === category);
+    if (!selectedCategory) return [];
+    const selectedSub = sectorData.subCategories.find(
+      (s) => s.id_categorie === selectedCategory.id_categorie && s.titre === subCategory
+    );
+    if (!selectedSub) return [];
+    return sectorData.jobs
+      .filter((m) => m.id_sous === selectedSub.id_sous)
+      .map((m) => m.titre);
   };
 
   return (
     <View style={{ gap: 16 }}>
-      <View style={styles.rowBetween}>
-        <View style={styles.sectionTitleRow}>
-          <View style={styles.sectionTitleIcon}>
-            <Briefcase size={18} color={C.blue} />
-          </View>
-          <Text style={styles.sectionTitlePlain}>{"Secteurs d'activité"}</Text>
+      <View style={styles.sectionTitleRow}>
+        <View style={styles.sectionTitleIcon}>
+          <Briefcase size={18} color={C.blue} />
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={add}>
-          <Plus size={14} color={C.blueDark} />
-          <Text style={styles.addBtnText}>{'Ajouter'}</Text>
-        </TouchableOpacity>
+        <Text style={styles.sectionTitlePlain}>{"Secteurs d'activité"}</Text>
       </View>
 
       {sectors.map((sector, index) => (
@@ -753,7 +744,7 @@ const SectorsTab = ({
             <Label>Catégorie</Label>
             <SelectPicker
               value={sector.category}
-              options={['', ...SECTORS]}
+              options={['', ...sectorData.categories.map((c) => c.titre)]}
               onChange={(v) => update(sector.id, 'category', v)}
             />
 
@@ -776,7 +767,7 @@ const SectorsTab = ({
 
       <SectionSaveButton
         label={'Sauvegarder les secteurs'}
-        onPress={() => Alert.alert('Enregistré', 'Secteurs enregistrés avec succès.')}
+        onPress={onSave}
       />
     </View>
   );
@@ -785,20 +776,26 @@ const SectorsTab = ({
 const ExperienceTab = ({
   experiences,
   setExperiences,
+  onSave,
+  onDelete,
+  onUpdate,
 }: {
   experiences: Experience[];
   setExperiences: React.Dispatch<React.SetStateAction<Experience[]>>;
+  onSave: () => void;
+  onDelete: (exp: Experience) => void;
+  onUpdate: (exp: Experience) => void;
 }) => {
   const add = () =>
     setExperiences((p) => [
       ...p,
-      { id: Date.now(), position: '', company: '', location: '', startDate: '', endDate: '', description: '' },
+      { id: Date.now(), position: '', company: '', city: '', country: '', startDate: '', endDate: '', description: '', isNew: true },
     ]);
 
   const update = (id: number, key: keyof Experience, value: string) =>
     setExperiences((p) => p.map((e) => (e.id === id ? { ...e, [key]: value } : e)));
 
-  const remove = (id: number) => setExperiences((p) => p.filter((e) => e.id !== id));
+  const remove = (exp: Experience) => onDelete(exp);
 
   return (
     <View style={{ gap: 16 }}>
@@ -823,33 +820,42 @@ const ExperienceTab = ({
           <Label>{'Entreprise'}</Label>
           <InputField value={exp.company} onChangeText={(v) => update(exp.id, 'company', v)} placeholder="Ex: Garage Martin" />
 
-          <Label>{'Ville / Pays'}</Label>
-          <InputField value={exp.location} onChangeText={(v) => update(exp.id, 'location', v)} placeholder="Ex: Paris, France" />
+          <Label>{'Ville'}</Label>
+          <InputField value={exp.city} onChangeText={(v) => update(exp.id, 'city', v)} placeholder="Ex: Paris" />
+
+          <Label>{'Pays'}</Label>
+          <InputField value={exp.country} onChangeText={(v) => update(exp.id, 'country', v)} placeholder="Ex: France" />
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
               <Label>{'Date de début'}</Label>
-              <InputField value={exp.startDate} onChangeText={(v) => update(exp.id, 'startDate', v)} placeholder="AAAA-MM" />
+              <InputField value={exp.startDate} onChangeText={(v) => update(exp.id, 'startDate', v)} placeholder="MM/DD/YY" />
             </View>
             <View style={{ flex: 1 }}>
               <Label>{'Date de fin'}</Label>
-              <InputField value={exp.endDate} onChangeText={(v) => update(exp.id, 'endDate', v)} placeholder="AAAA-MM" />
+              <InputField value={exp.endDate} onChangeText={(v) => update(exp.id, 'endDate', v)} placeholder="MM/DD/YY" />
             </View>
           </View>
 
           <Label>{'Description'}</Label>
           <InputField value={exp.description} onChangeText={(v) => update(exp.id, 'description', v)} placeholder="Décrivez vos missions..." multiline numberOfLines={3} />
 
-          <TouchableOpacity style={styles.deleteBtn} onPress={() => remove(exp.id)}>
-            <Trash2 size={16} color={C.red} />
-            <Text style={styles.deleteBtnText}>{'Supprimer'}</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+            <TouchableOpacity style={styles.btnImport} onPress={() => onUpdate(exp)}>
+              <Save size={16} color={C.white} />
+              <Text style={styles.btnImportText}>{'Mettre à jour'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteBtn} onPress={() => remove(exp)}>
+              <Trash2 size={16} color={C.red} />
+              <Text style={styles.deleteBtnText}>{'Supprimer'}</Text>
+            </TouchableOpacity>
+          </View>
         </Card>
       ))}
 
       <SectionSaveButton
         label={'Sauvegarder les expériences'}
-        onPress={() => Alert.alert('Enregistré', 'Expériences enregistrées avec succès.')}
+        onPress={onSave}
       />
     </View>
   );
@@ -858,20 +864,26 @@ const ExperienceTab = ({
 const EducationTab = ({
   education,
   setEducation,
+  onSave,
+  onDelete,
+  onUpdate,
 }: {
   education: Education[];
   setEducation: React.Dispatch<React.SetStateAction<Education[]>>;
+  onSave: () => void;
+  onDelete: (edu: Education) => void;
+  onUpdate: (edu: Education) => void;
 }) => {
   const add = () =>
     setEducation((p) => [
       ...p,
-      { id: Date.now(), school: '', degree: '', startDate: '', endDate: '', description: '' },
+      { id: Date.now(), school: '', degree: '', startMonth: '', startYear: '', endMonth: '', endYear: '', description: '', isNew: true },
     ]);
 
   const update = (id: number, key: keyof Education, value: string) =>
     setEducation((p) => p.map((e) => (e.id === id ? { ...e, [key]: value } : e)));
 
-  const remove = (id: number) => setEducation((p) => p.filter((e) => e.id !== id));
+  const remove = (edu: Education) => onDelete(edu);
 
   return (
     <View style={{ gap: 16 }}>
@@ -898,28 +910,45 @@ const EducationTab = ({
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Label>{'Date de début'}</Label>
-              <InputField value={edu.startDate} onChangeText={(v) => update(edu.id, 'startDate', v)} placeholder="AAAA-MM" />
+              <Label>{'Mois de début'}</Label>
+              <InputField value={edu.startMonth} onChangeText={(v) => update(edu.id, 'startMonth', v)} placeholder="MM" />
             </View>
             <View style={{ flex: 1 }}>
-              <Label>{"Date d'obtention"}</Label>
-              <InputField value={edu.endDate} onChangeText={(v) => update(edu.id, 'endDate', v)} placeholder="AAAA-MM" />
+              <Label>{'Année de début'}</Label>
+              <InputField value={edu.startYear} onChangeText={(v) => update(edu.id, 'startYear', v)} placeholder="YYYY" />
+            </View>
+          </View>
+
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <Label>{'Mois d\'obtention'}</Label>
+              <InputField value={edu.endMonth} onChangeText={(v) => update(edu.id, 'endMonth', v)} placeholder="MM" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Label>{"Année d'obtention"}</Label>
+              <InputField value={edu.endYear} onChangeText={(v) => update(edu.id, 'endYear', v)} placeholder="YYYY" />
             </View>
           </View>
 
           <Label>{'Description'}</Label>
           <InputField value={edu.description} onChangeText={(v) => update(edu.id, 'description', v)} placeholder="Détails supplémentaires..." multiline numberOfLines={2} />
 
-          <TouchableOpacity style={styles.deleteBtn} onPress={() => remove(edu.id)}>
-            <Trash2 size={16} color={C.red} />
-            <Text style={styles.deleteBtnText}>{'Supprimer'}</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+            <TouchableOpacity style={styles.btnImport} onPress={() => onUpdate(edu)}>
+              <Save size={16} color={C.white} />
+              <Text style={styles.btnImportText}>{'Mettre à jour'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteBtn} onPress={() => remove(edu)}>
+              <Trash2 size={16} color={C.red} />
+              <Text style={styles.deleteBtnText}>{'Supprimer'}</Text>
+            </TouchableOpacity>
+          </View>
         </Card>
       ))}
 
       <SectionSaveButton
         label={'Sauvegarder la formation'}
-        onPress={() => Alert.alert('Enregistré', 'Formation enregistrée avec succès.')}
+        onPress={onSave}
       />
     </View>
   );
@@ -930,6 +959,15 @@ const EducationTab = ({
 export default function CVScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('identity');
   const [mobilityOptions, setMobilityOptions] = useState<MobiliteOption[]>([]);
+  const [sectorData, setSectorData] = useState<{
+    categories: SectorCategory[];
+    subCategories: SectorSubCategory[];
+    jobs: SectorJob[];
+  }>({
+    categories: [],
+    subCategories: [],
+    jobs: [],
+  });
 
   // ✅ FIX: Single declaration of langues state — only here in CVScreen
 const [langues, setLangues] = useState<string[]>([]);
@@ -965,23 +1003,16 @@ const [langues, setLangues] = useState<string[]>([]);
       id: 1,
       position: 'Mécanicien automobile',
       company: 'Garage Martin',
-      location: 'Paris, France',
+      city: 'Paris',
+      country: 'France',
       startDate: '2020-01',
       endDate: '2023-12',
       description: 'Maintenance et réparation de véhicules légers',
+      isNew: false,
     },
   ]);
 
-  const [education, setEducation] = useState<Education[]>([
-    {
-      id: 1,
-      school: 'Lycée professionnel',
-      degree: 'CAP Mécanique',
-      startDate: '2018-09',
-      endDate: '2019-06',
-      description: '',
-    },
-  ]);
+  const [education, setEducation] = useState<Education[]>([]);
 
   const [sectors, setSectors] = useState<Sector[]>([
     { id: 1, category: '', subCategory: '', job: '' },
@@ -989,40 +1020,37 @@ const [langues, setLangues] = useState<string[]>([]);
     { id: 3, category: '', subCategory: '', job: '' },
   ]);
 
-  // ✅ FIX: Single useEffect for langues — only here in CVScreen
+
+  // Chargement langues depuis l'API.
+  // Regle: 0 => decoche, 1 => coche, liste vide => tout decoche.
   useEffect(() => {
-  const loadLangues = async () => {
-    try {
-      const data = await getLangues();
+    const loadLangues = async () => {
+      try {
+        const data = await getLangues();
 
-      const langInfo = Array.isArray(data)
-        ? data[0]
-        : data?.data?.[0] ?? data;
+        const langInfo = Array.isArray(data)
+          ? data[0]
+          : data?.data?.[0] ?? data;
 
-      // ✅ CAS OBJET VIDE => tout à 0
-      if (!langInfo || Object.keys(langInfo).length === 0) {
+        if (!langInfo || Object.keys(langInfo).length === 0) {
+          setLangues([]);
+          return;
+        }
+
+        const selected = LANGUAGES.filter((label) => {
+          const key = LANGUAGE_KEYS[label];
+          return langInfo?.[key] === 1 || langInfo?.[key] === '1';
+        });
+
+        setLangues(selected);
+      } catch (error) {
+        console.log('Error langues:', error);
         setLangues([]);
-        return;
       }
+    };
 
-      setLangues([
-  langInfo.lang_fr ? "Français" : "",
-  langInfo.lang_en ? "Anglais" : "",
-  langInfo.lang_es ? "Espagnol" : "",
-  langInfo.lang_ar ? "Arabe" : "",
-  langInfo.lang_de ? "Allemand" : "",
-].filter(Boolean));
-
-    } catch (error) {
-      console.log('Error langues:', error);
-
-      // fallback => tout décoché
-      setLangues([]);
-    }
-  };
-
-  loadLangues();
-}, []);
+    loadLangues();
+  }, []);
 
   useEffect(() => {
     const loadInformations = async () => {
@@ -1144,6 +1172,375 @@ const [langues, setLangues] = useState<string[]>([]);
     loadPermis();
   }, []);
 
+  // Chargement des experiences utilisateur.
+  useEffect(() => {
+    const loadExperiences = async () => {
+      try {
+        const data = await getExperiences();
+        const items = Array.isArray(data) ? data : data?.data ?? [];
+
+        const toMdYy = (value: string | null | undefined) => {
+          if (!value) return '';
+          const date = new Date(String(value));
+          if (Number.isNaN(date.getTime())) return '';
+          const mm = String(date.getMonth() + 1).padStart(2, '0');
+          const dd = String(date.getDate()).padStart(2, '0');
+          const yy = String(date.getFullYear()).slice(-2);
+          return `${mm}/${dd}/${yy}`;
+        };
+
+        const mapped = items.map((item: any) => {
+          const rawVillePays = String(item.ville_pays ?? '').trim();
+          const [cityPart, countryPart] = rawVillePays.split(',').map((v) => v.trim());
+          return {
+            id: item.id ?? Date.now(),
+            position: item.titre ?? '',
+            company: item.societe ?? '',
+            city: cityPart ?? '',
+            country: item.pays ?? countryPart ?? '',
+            startDate: toMdYy(item.date1),
+            endDate: toMdYy(item.date2),
+            description: item.description ?? '',
+            isNew: false,
+          } as Experience;
+        });
+
+        setExperiences(mapped);
+      } catch (error) {
+        console.log('Error loading experiences:', error);
+      }
+    };
+
+    loadExperiences();
+  }, []);
+
+  // Chargement des formations utilisateur.
+  useEffect(() => {
+    const loadFormations = async () => {
+      try {
+        const data = await getFormations();
+        const items = Array.isArray(data) ? data : data?.data ?? [];
+
+        const mapped = items.map((item: any) => ({
+          id: item.id ?? Date.now(),
+          school: item.ecole ?? '',
+          degree: item.diplome ?? '',
+          startMonth: item.mois_debut != null ? String(item.mois_debut).padStart(2, '0') : '',
+          startYear: item.annee_debut != null ? String(item.annee_debut) : '',
+          endMonth: item.mois_obtention != null ? String(item.mois_obtention).padStart(2, '0') : '',
+          endYear: item.annee_obtention != null ? String(item.annee_obtention) : '',
+          description: item.description ?? '',
+          isNew: false,
+        } as Education));
+
+        setEducation(mapped);
+      } catch (error) {
+        console.log('Error loading formations:', error);
+      }
+    };
+
+    loadFormations();
+  }, []);
+
+  // Chargement des secteurs depuis l'API (categories, sous-categories, metiers).
+  useEffect(() => {
+    const loadSecteurs = async () => {
+      try {
+        const data = await getSecteur();
+        setSectorData({
+          categories: data?.secteurs ?? [],
+          subCategories: data?.sousCategories ?? [],
+          jobs: data?.metiers ?? [],
+        });
+      } catch (error) {
+        console.log('Error loading secteurs:', error);
+        setSectorData({ categories: [], subCategories: [], jobs: [] });
+      }
+    };
+
+    loadSecteurs();
+  }, []);
+
+  // Chargement des choix utilisateur (id_metier) et mapping vers categorie/sous-categorie/metier.
+  useEffect(() => {
+    const loadSecteurUser = async () => {
+      try {
+        if (!sectorData.jobs.length || !sectorData.subCategories.length || !sectorData.categories.length) {
+          return;
+        }
+
+        const data = await getSecteurUser();
+        const items = Array.isArray(data) ? data : data?.data ?? [];
+
+        const mapped = items
+          .filter((item: any) => item?.deleted !== 1)
+          .map((item: any) => {
+            const job = sectorData.jobs.find((m) => m.id_metier === item.id_metier);
+            if (!job) return null;
+            const sub = sectorData.subCategories.find((s) => s.id_sous === job.id_sous);
+            if (!sub) return null;
+            const cat = sectorData.categories.find((c) => c.id_categorie === sub.id_categorie);
+            if (!cat) return null;
+            return {
+              id: item.id ?? Date.now(),
+              category: cat.titre,
+              subCategory: sub.titre,
+              job: job.titre,
+            } as Sector;
+          })
+          .filter(Boolean) as Sector[];
+
+        const filled = mapped.length ? mapped : [{ id: Date.now(), category: '', subCategory: '', job: '' }];
+        while (filled.length < 3) {
+          filled.push({ id: Date.now() + filled.length, category: '', subCategory: '', job: '' });
+        }
+
+        setSectors(filled);
+      } catch (error) {
+        console.log('Error loading secteur user:', error);
+      }
+    };
+
+    loadSecteurUser();
+  }, [sectorData]);
+
+  const toggleLangue = (label: string) => {
+    setLangues((prev) => (
+      prev.includes(label)
+        ? prev.filter((x) => x !== label)
+        : [...prev, label]
+    ));
+  };
+
+  const handleSaveLangues = async () => {
+    try {
+      const selected = new Set(langues);
+      const has = (label: string) => (selected.has(label) ? 1 : 0);
+
+      await updateLangues(
+        has('Français'),
+        has('Anglais'),
+        has('Espagnol'),
+        has('Allemand'),
+        has('Italien'),
+        has('Chinois'),
+        has('Polonais'),
+        has('Danois'),
+        has('Russe'),
+        has('Arabe'),
+        has('Néerlandais'),
+        has('Portugais'),
+        has('Norvégien'),
+        has('Finnois')
+      );
+
+      Alert.alert('Enregistré', 'Langues enregistrées avec succès.');
+    } catch (error) {
+      console.log('Error updating langues:', error);
+      Alert.alert('Erreur', 'Impossible de sauvegarder les langues.');
+    }
+  };
+
+  const buildVillePays = (city: string, country: string) => {
+    if (city && country) return `${city}, ${country}`;
+    return city || country || '';
+  };
+
+  const toApiDate = (val: string) => {
+    if (!val) return '';
+    const [mm, dd, yy] = val.split('/');
+    if (!mm || !dd || !yy) return val;
+    const yearNum = Number(yy);
+    const fullYear = yy.length === 4 ? yearNum : yearNum + 2000;
+    return `${String(fullYear).padStart(4, '0')}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  };
+
+  const handleSaveExperiences = async () => {
+    try {
+      for (const exp of experiences) {
+        const hasAnyField = Boolean(
+          exp.position || exp.company || exp.city || exp.country || exp.startDate || exp.endDate || exp.description
+        );
+        if (!hasAnyField) continue;
+
+        const villePays = buildVillePays(exp.city, exp.country);
+
+        const date1 = toApiDate(exp.startDate);
+        const date2 = toApiDate(exp.endDate);
+
+        if (exp.isNew) {
+          await addExperience(
+            date1,
+            date2,
+            exp.position,
+            exp.company,
+            villePays,
+            exp.country,
+            exp.description
+          );
+        } else {
+          await updateExperiences(
+            exp.id,
+            date1,
+            date2,
+            exp.position,
+            exp.company,
+            villePays,
+            exp.country,
+            exp.description
+          );
+        }
+      }
+
+      Alert.alert('Enregistré', 'Expériences enregistrées avec succès.');
+    } catch (error) {
+      console.log('Error updating experiences:', error);
+      Alert.alert('Erreur', 'Impossible de sauvegarder les expériences.');
+    }
+  };
+
+  const handleDeleteExperience = async (exp: Experience) => {
+    try {
+      await deleteExperiences(exp.id);
+      setExperiences((p) => p.filter((e) => e.id !== exp.id));
+    } catch (error) {
+      console.log('Error deleting experience:', error);
+      Alert.alert('Erreur', 'Impossible de supprimer l\'expérience.');
+    }
+  };
+
+  const handleUpdateExperience = async (exp: Experience) => {
+    try {
+      const villePays = buildVillePays(exp.city, exp.country);
+
+      const date1 = toApiDate(exp.startDate);
+      const date2 = toApiDate(exp.endDate);
+
+      if (exp.isNew) {
+        await addExperience(
+          date1,
+          date2,
+          exp.position,
+          exp.company,
+          villePays,
+          exp.country,
+          exp.description
+        );
+        setExperiences((p) => p.map((e) => (e.id === exp.id ? { ...e, isNew: false } : e)));
+      } else {
+        await updateExperiences(
+          exp.id,
+          date1,
+          date2,
+          exp.position,
+          exp.company,
+          villePays,
+          exp.country,
+          exp.description
+        );
+      }
+
+      Alert.alert('Enregistré', 'Expérience mise à jour.');
+    } catch (error) {
+      console.log('Error updating experience:', error);
+      Alert.alert('Erreur', 'Impossible de mettre à jour l\'expérience.');
+    }
+  };
+
+  const toYearNumber = (val: string) => {
+    if (!val) return null;
+    const num = Number(val);
+    return Number.isNaN(num) ? null : num;
+  };
+
+  const handleSaveFormations = async () => {
+    try {
+      for (const edu of education) {
+        const hasAnyField = Boolean(
+          edu.school || edu.degree || edu.startMonth || edu.startYear || edu.endMonth || edu.endYear || edu.description
+        );
+        if (!hasAnyField) continue;
+
+        const anneeDebut = toYearNumber(edu.startYear);
+        const anneeObtention = toYearNumber(edu.endYear);
+
+        if (edu.isNew) {
+          await addFormation(
+            edu.school,
+            edu.degree,
+            edu.startMonth,
+            anneeDebut,
+            edu.endMonth,
+            anneeObtention,
+            edu.description
+          );
+        } else {
+          await updateFormation(
+            edu.id,
+            edu.school,
+            edu.degree,
+            edu.startMonth,
+            anneeDebut,
+            edu.endMonth,
+            anneeObtention,
+            edu.description
+          );
+        }
+      }
+
+      Alert.alert('Enregistré', 'Formations enregistrées avec succès.');
+    } catch (error) {
+      console.log('Error updating formations:', error);
+      Alert.alert('Erreur', 'Impossible de sauvegarder les formations.');
+    }
+  };
+
+  const handleDeleteFormation = async (edu: Education) => {
+    try {
+      await deleteFormation(edu.id);
+      setEducation((p) => p.filter((e) => e.id !== edu.id));
+    } catch (error) {
+      console.log('Error deleting formation:', error);
+      Alert.alert('Erreur', 'Impossible de supprimer la formation.');
+    }
+  };
+
+  const handleUpdateFormation = async (edu: Education) => {
+    try {
+      const anneeDebut = toYearNumber(edu.startYear);
+      const anneeObtention = toYearNumber(edu.endYear);
+
+      if (edu.isNew) {
+        await addFormation(
+          edu.school,
+          edu.degree,
+          edu.startMonth,
+          anneeDebut,
+          edu.endMonth,
+          anneeObtention,
+          edu.description
+        );
+        setEducation((p) => p.map((e) => (e.id === edu.id ? { ...e, isNew: false } : e)));
+      } else {
+        await updateFormation(
+          edu.id,
+          edu.school,
+          edu.degree,
+          edu.startMonth,
+          anneeDebut,
+          edu.endMonth,
+          anneeObtention,
+          edu.description
+        );
+      }
+
+      Alert.alert('Enregistré', 'Formation mise à jour.');
+    } catch (error) {
+      console.log('Error updating formation:', error);
+      Alert.alert('Erreur', 'Impossible de mettre à jour la formation.');
+    }
+  };
+
   const renderTab = () => {
     switch (activeTab) {
       case 'identity':
@@ -1159,14 +1556,61 @@ const [langues, setLangues] = useState<string[]>([]);
       case 'permits':
         return <PermitsTab formData={formData} setFormData={setFormData} />;
       case 'languages':
-        // ✅ FIX: Pass langues as prop to LanguagesTab
-        return <LanguagesTab langues={langues} />;
+        return (
+          <LanguagesTab
+            langues={langues}
+            onToggle={toggleLangue}
+            onSave={handleSaveLangues}
+          />
+        );
       case 'sectors':
-        return <SectorsTab sectors={sectors} setSectors={setSectors} />;
+        return (
+          <SectorsTab
+            sectors={sectors}
+            setSectors={setSectors}
+            sectorData={sectorData}
+            onSave={async () => {
+              try {
+                const secteur = sectors.slice(0, 3).map((sector, index) => {
+                  if (!sector.job) {
+                    return { secteur_numero: index + 1, id_metier: null };
+                  }
+                  const job = sectorData.jobs.find((m) => m.titre === sector.job);
+                  return {
+                    secteur_numero: index + 1,
+                    id_metier: job ? job.id_metier : null,
+                  };
+                });
+
+                await updateSecteur(secteur);
+                Alert.alert('Enregistré', 'Secteurs enregistrés avec succès.');
+              } catch (error) {
+                console.log('Error updating secteur:', error);
+                Alert.alert('Erreur', 'Impossible de sauvegarder les secteurs.');
+              }
+            }}
+          />
+        );
       case 'experience':
-        return <ExperienceTab experiences={experiences} setExperiences={setExperiences} />;
+        return (
+          <ExperienceTab
+            experiences={experiences}
+            setExperiences={setExperiences}
+            onSave={handleSaveExperiences}
+            onDelete={handleDeleteExperience}
+            onUpdate={handleUpdateExperience}
+          />
+        );
       case 'education':
-        return <EducationTab education={education} setEducation={setEducation} />;
+        return (
+          <EducationTab
+            education={education}
+            setEducation={setEducation}
+            onSave={handleSaveFormations}
+            onDelete={handleDeleteFormation}
+            onUpdate={handleUpdateFormation}
+          />
+        );
     }
   };
 
@@ -1424,6 +1868,9 @@ const styles = StyleSheet.create({
     backgroundColor: C.white,
     maxHeight: 200,
     overflow: 'hidden',
+  },
+  dropdownScroll: {
+    maxHeight: 200,
   },
   dropdownItem: {
     paddingHorizontal: 16,
