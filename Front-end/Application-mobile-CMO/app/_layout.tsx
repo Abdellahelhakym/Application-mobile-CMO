@@ -1,6 +1,8 @@
-import { Stack, router, Href } from "expo-router";
-import { TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as NavigationBar from "expo-navigation-bar";
+import { Href, Stack, router } from "expo-router";
+import { useEffect } from "react";
+import { Platform, TouchableOpacity } from "react-native";
 
 function BackButton({ fallbackRoute }: { fallbackRoute: Href }) {
   return (
@@ -18,6 +20,13 @@ function BackButton({ fallbackRoute }: { fallbackRoute: Href }) {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      NavigationBar.setVisibilityAsync("hidden");
+      NavigationBar.setBehaviorAsync("overlay-swipe");
+    }
+  }, []);
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
