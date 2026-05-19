@@ -41,9 +41,7 @@ export default function Index() {
             source={require('./../img/logo.png')}
             style={styles.logo}
           />
-          <Text style={styles.subtitle}>
-            Centre Mobile des Offres
-          </Text>
+        
         </View>
 
         {/* Hero */}
