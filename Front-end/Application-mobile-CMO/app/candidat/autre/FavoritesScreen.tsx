@@ -50,7 +50,7 @@ export default function FavoritesScreen() {
         ? data
         : data?.data || data?.favoris || [];
 
-      console.log("favorites API:", list);
+    
 
       setFavorites(list);
     } catch (error) {

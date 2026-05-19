@@ -10,11 +10,14 @@ import {
   View,
 } from "react-native";
 
+import { PieChart } from "react-native-chart-kit";
+
 import {
-  getDashboardData, getSecteursActivite
+  getDashboardData,
+  getSecteursActivite,
 } from "@/app/candidat/services/DashboardScreen";
 
-import { getListFils } from '@/app/candidat/services/AttestationsScreen';
+import { getListFils } from "@/app/candidat/services/AttestationsScreen";
 
 type DashboardDataType = {
   user: {
@@ -49,8 +52,6 @@ type MissingDocument = {
   etats?: number;
 };
 
-
-
 const emptyDashboardData: DashboardDataType = {
   user: {
     nom: "",
@@ -71,7 +72,7 @@ const emptyDashboardData: DashboardDataType = {
 };
 
 function normalizeDashboardData(
-  data: Partial<DashboardDataType> | null | undefined
+  data: Partial<DashboardDataType> | null | undefined,
 ): DashboardDataType {
   const verificationLevel =
     data?.inscriptionStatus?.verification ?? data?.user?.verification ?? 0;
@@ -89,7 +90,7 @@ function normalizeDashboardData(
     ?.documentsManquants;
   const normalizedDocuments = Array.isArray(rawDocuments)
     ? rawDocuments.map((name) => ({ name }))
-    : data?.documents ?? emptyDashboardData.documents;
+    : (data?.documents ?? emptyDashboardData.documents);
 
   return {
     user: {
@@ -118,40 +119,42 @@ function normalizeDashboardData(
 }
 
 export default function DashboardScreen() {
-  const [dashboardData, setDashboardData] =
-    useState<DashboardDataType | null>(null);
-  const [secteursActivite, setSecteursActivite] = useState<SecteurActivite[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardDataType | null>(
+    null,
+  );
+  const [secteursActivite, setSecteursActivite] = useState<SecteurActivite[]>(
+    [],
+  );
   const [missingDocs, setMissingDocs] = useState<MissingDocument[]>([]);
 
-const loadDashboard = React.useCallback(async () => {
-  try {
-    const [data, secteurs, docs] = await Promise.all([
-      getDashboardData(),
-      getSecteursActivite(),
-      getListFils(),
-    ]);
+  const loadDashboard = React.useCallback(async () => {
+    try {
+      const [data, secteurs, docs] = await Promise.all([
+        getDashboardData(),
+        getSecteursActivite(),
+        getListFils(),
+      ]);
 
-    setDashboardData(normalizeDashboardData(data));
-    setSecteursActivite(Array.isArray(secteurs) ? secteurs : []);
-    const list = Array.isArray(docs)
-      ? docs
-      : Array.isArray(docs?.data)
-      ? docs.data
-      : [];
-    setMissingDocs(list as MissingDocument[]);
-  } catch (error) {
-    console.error("Error fetching dashboard:", error);
-    setDashboardData(emptyDashboardData);
-    setSecteursActivite([]);
-    setMissingDocs([]);
-  }
-}, []);
+      setDashboardData(normalizeDashboardData(data));
+      setSecteursActivite(Array.isArray(secteurs) ? secteurs : []);
+      const list = Array.isArray(docs)
+        ? docs
+        : Array.isArray(docs?.data)
+          ? docs.data
+          : [];
+      setMissingDocs(list as MissingDocument[]);
+    } catch (error) {
+      console.error("Error fetching dashboard:", error);
+      setDashboardData(emptyDashboardData);
+      setSecteursActivite([]);
+      setMissingDocs([]);
+    }
+  }, []);
 
-useEffect(() => {
-  loadDashboard();
-}, [loadDashboard]);
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
- 
   if (!dashboardData) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -160,20 +163,22 @@ useEffect(() => {
     );
   }
 
-  const total =
+  const candidatureTotal =
     dashboardData.candidatureStats.sent +
     dashboardData.candidatureStats.replied +
     dashboardData.candidatureStats.favorites;
 
-  const sentPercent =
-    total > 0
-      ? (dashboardData.candidatureStats.sent / total) * 100
-      : 0;
+  const secteurTotal = secteursActivite.reduce(
+    (sum, item) => sum + item.total_candidatures,
+    0,
+  );
+
+  const getPercent = (value: number, totalValue: number) =>
+    totalValue > 0 ? Math.round((value / totalValue) * 100) : 0;
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
-
         {/* WELCOME */}
         <View style={styles.card}>
           <View style={styles.row}>
@@ -186,7 +191,6 @@ useEffect(() => {
                 />
               </View>
             )}
-              
 
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>
@@ -202,13 +206,9 @@ useEffect(() => {
           </View>
         </View>
 
-       
-
         {/* INSCRIPTION STATUS */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>
-            État de l'inscription
-          </Text>
+          <Text style={styles.sectionTitle}>État de l inscription</Text>
 
           <View style={styles.grid}>
             {[
@@ -239,45 +239,107 @@ useEffect(() => {
 
         {/* CANDIDATURES */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>
-            Mes candidatures
-          </Text>
+          <Text style={styles.sectionTitle}>Mes candidatures</Text>
 
-          <View style={styles.row}>
+          <View style={styles.chartRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.item}>
-                ● {dashboardData.candidatureStats.sent} Envoyées
+              <Text style={[styles.item, { color: "#4f6edb" }]}>
+                ● {dashboardData.candidatureStats.sent} Envoyées ({getPercent(dashboardData.candidatureStats.sent, candidatureTotal)}%)
               </Text>
-              <Text style={styles.item}>
-                ● {dashboardData.candidatureStats.replied} Répondues
+
+              <Text style={[styles.item, { color: "#7cc7a5" }]}>
+                ● {dashboardData.candidatureStats.replied} Répondues ({getPercent(dashboardData.candidatureStats.replied, candidatureTotal)}%)
               </Text>
-              <Text style={styles.item}>
-                ● {dashboardData.candidatureStats.favorites} Favoris
+
+              <Text style={[styles.item, { color: "#f5b82e" }]}>
+                ● {dashboardData.candidatureStats.favorites} Favoris ({getPercent(dashboardData.candidatureStats.favorites, candidatureTotal)}%)
               </Text>
             </View>
 
-           
+            <PieChart
+              data={[
+                {
+                  name: "Envoyées",
+                  population: dashboardData.candidatureStats.sent,
+                  color: "#4f6edb",
+                  legendFontColor: "#1b2d5a",
+                  legendFontSize: 10,
+                },
+                {
+                  name: "Répondues",
+                  population: dashboardData.candidatureStats.replied,
+                  color: "#7cc7a5",
+                  legendFontColor: "#1b2d5a",
+                  legendFontSize: 10,
+                },
+                {
+                  name: "Favoris",
+                  population: dashboardData.candidatureStats.favorites,
+                  color: "#f5b82e",
+                  legendFontColor: "#1b2d5a",
+                  legendFontSize: 10,
+                },
+              ]}
+              width={100}
+              height={100}
+              accessor={"population"}
+              backgroundColor={"transparent"}
+              paddingLeft={"15"}
+              hasLegend={false}
+              chartConfig={{
+                color: () => `#000`,
+                labelColor: () => "#1b2d5a",
+              }}
+            />
           </View>
         </View>
 
         {/* SECTORS */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>
-            Mes secteurs d'activités
-          </Text>
+          <Text style={styles.sectionTitle}>Mes secteurs d'activités</Text>
 
-          {secteursActivite.map((s) => (
-            <Text key={s.id_categorie} style={styles.item}>
-              {s.total_candidatures} {s.categorie}
-            </Text>
-          ))}
+          <View style={styles.chartRow}>
+            <View style={{ flex: 1 }}>
+              {secteursActivite.map((s, index) => (
+                <Text
+                  key={s.id_categorie}
+                  style={[
+                    styles.item,
+                    {
+                      color: sectorColors[index % sectorColors.length],
+                    },
+                  ]}
+                >
+                  ● {s.total_candidatures} {s.categorie} ({getPercent(s.total_candidatures, secteurTotal)}%)
+                </Text>
+              ))}
+            </View>
+
+            <PieChart
+              data={secteursActivite.map((s, index) => ({
+                name: s.categorie,
+                population: s.total_candidatures,
+                color: sectorColors[index % sectorColors.length],
+                legendFontColor: "#1b2d5a",
+                legendFontSize: 10,
+              }))}
+              width={100}
+              height={100}
+              accessor={"population"}
+              backgroundColor={"transparent"}
+              paddingLeft={"15"}
+              hasLegend={false}
+              chartConfig={{
+                color: () => `#000`,
+                labelColor: () => "#1b2d5a",
+              }}
+            />
+          </View>
         </View>
 
         {/* DOCUMENTS */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>
-            Documents manquants
-          </Text>
+          <Text style={styles.sectionTitle}>Documents manquants</Text>
 
           {missingDocs.map((doc) => (
             <TouchableOpacity
@@ -300,12 +362,22 @@ useEffect(() => {
   );
 }
 
+const sectorColors = [
+  "#4f6edb",
+  "#7cc7a5",
+  "#f5b82e",
+  "#e74c3c",
+  "#9b59b6",
+  "#1abc9c",
+  "#e67e22",
+];
+
 /* STYLE */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#eef3ff",
-    marginBottom: 80, 
+    marginBottom: 80,
   },
   content: {
     padding: 15,
@@ -394,6 +466,11 @@ const styles = StyleSheet.create({
     padding: 5,
     backgroundColor: "#fff",
     borderRadius: 20,
+  },
+  chartRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   footer: {
     textAlign: "center",
