@@ -356,24 +356,59 @@ CVScreen.post('/updateInformations', (req, res) => {
         });
     }
 
-    db.query('UPDATE cmo_candidats SET civilite = ?, prenom = ?, nom = ?, email = ?, tel = ?, code_postal = ?, ville = ?, pays = ?, num_secur_social = ? WHERE token_id = ? and deleted = 0', [civilite, prenom, nom, email, tel, code_postal, ville, pays, num_secur_social, token_id], (err, results) => {
+    const updateSql = `
+        UPDATE cmo_candidats
+        SET civilite = ?, prenom = ?, nom = ?, email = ?, tel = ?, code_postal = ?, ville = ?, pays = ?, num_secur_social = ?
+        WHERE token_id = ?
+        AND deleted = 0
+    `;
+
+    const insertSql = `
+        INSERT INTO cmo_candidats
+        (token_id, civilite, prenom, nom, email, tel, code_postal, ville, pays, num_secur_social, deleted)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    `;
+
+    db.query(updateSql, [civilite, prenom, nom, email, tel, code_postal, ville, pays, num_secur_social, token_id], (err, results) => {
         if (err) {
             console.error(err);
             return res.status(500).json({
                 error: 'Internal server error'
             });
         }
-        const pseudo = prenom + ' ' + nom;
-        db.query('UPDATE users SET pseudo = ? WHERE token_id = ?', [pseudo, token_id], (err) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({
-                    error: 'Internal server error'
-                });
-            }
-        }); 
 
-        return res.json(results);
+        const finish = () => {
+            const pseudo = prenom + ' ' + nom;
+            db.query('UPDATE users SET pseudo = ? WHERE token_id = ?', [pseudo, token_id], (updateUserErr) => {
+                if (updateUserErr) {
+                    console.error(updateUserErr);
+                    return res.status(500).json({
+                        error: 'Internal server error'
+                    });
+                }
+
+                return res.json(results);
+            });
+        };
+
+        if (results.affectedRows > 0) {
+            return finish();
+        }
+
+        db.query(
+            insertSql,
+            [token_id, civilite, prenom, nom, email, tel, code_postal, ville, pays, num_secur_social],
+            (insertErr) => {
+                if (insertErr) {
+                    console.error(insertErr);
+                    return res.status(500).json({
+                        error: 'Internal server error'
+                    });
+                }
+
+                return finish();
+            }
+        );
     });
 
 });
@@ -381,7 +416,7 @@ CVScreen.post('/updateInformations', (req, res) => {
 CVScreen.post('/updateMobilite', (req, res) => {
 
     const { token_id, mobilite, niveau_etude, experience, contrat_prefere1, contrat_prefere2, disponibilite, date_disponibilite } = req.body;
-    console.log('Received CV updateMobilite request with token_id' , mobilite, niveau_etude, experience, contrat_prefere1, contrat_prefere2, disponibilite, date_disponibilite);
+    console.log('Received CV updateMobilite request with token_id');
    
 
     if (!token_id) {
@@ -390,36 +425,90 @@ CVScreen.post('/updateMobilite', (req, res) => {
         });
     }
 
-    db.query(
-        `
+    const updateMobiliteSql = `
         UPDATE mobilite_candidats SET id_region = ?
         WHERE token_id_cand = ?
         AND deleted = 0
-        `,
-        [mobilite, token_id],
-        (err) => {
-            if (err) {
-                console.error(err);
+    `;
+
+    const insertMobiliteSql = `
+        INSERT INTO mobilite_candidats (token_id_cand, id_region, deleted)
+        VALUES (?, ?, 0)
+    `;
+
+    const updateCmoSql = `
+        UPDATE cmo_candidats
+        SET niveau_etude = ?, experience = ?, contrat_prefere1 = ?, contrat_prefere2 = ?, disponibilite = ?, date_disponibilite = ?
+        WHERE token_id = ?
+        AND deleted = 0
+    `;
+
+    const insertCmoSql = `
+        INSERT INTO cmo_candidats
+        (token_id, niveau_etude, experience, contrat_prefere1, contrat_prefere2, disponibilite, date_disponibilite, deleted)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+    `;
+
+    db.query(updateMobiliteSql, [mobilite, token_id], (err, mobiliteResult) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({
+                error: 'Internal server error'
+            });
+        }
+
+        const upsertCmo = () => {
+            db.query(
+                updateCmoSql,
+                [niveau_etude, experience, contrat_prefere1, contrat_prefere2, disponibilite, date_disponibilite, token_id],
+                (cmoErr, cmoResult) => {
+                    if (cmoErr) {
+                        console.error(cmoErr);
+                        return res.status(500).json({
+                            error: 'Internal server error'
+                        });
+                    }
+
+                    if (cmoResult.affectedRows > 0) {
+                        return res.json({
+                            message: 'Mobilite and experience updated successfully'
+                        });
+                    }
+
+                    db.query(
+                        insertCmoSql,
+                        [token_id, niveau_etude, experience, contrat_prefere1, contrat_prefere2, disponibilite, date_disponibilite],
+                        (insertCmoErr) => {
+                            if (insertCmoErr) {
+                                console.error(insertCmoErr);
+                                return res.status(500).json({
+                                    error: 'Internal server error'
+                                });
+                            }
+
+                            return res.json({
+                                message: 'Mobilite and experience updated successfully'
+                            });
+                        }
+                    );
+                }
+            );
+        };
+
+        if (mobiliteResult.affectedRows > 0) {
+            return upsertCmo();
+        }
+
+        db.query(insertMobiliteSql, [token_id, mobilite], (insertErr) => {
+            if (insertErr) {
+                console.error(insertErr);
                 return res.status(500).json({
                     error: 'Internal server error'
                 });
             }
-        });
 
-    db.query(
-        `UPDATE cmo_candidats SET niveau_etude = ?, experience = ?, contrat_prefere1 = ?, contrat_prefere2 = ?, disponibilite = ?, date_disponibilite = ? WHERE token_id = ? AND deleted = 0`,
-        [niveau_etude, experience, contrat_prefere1, contrat_prefere2, disponibilite, date_disponibilite, token_id],
-        (err) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({
-                    error: 'Internal server error'
-                });
-            }
+            return upsertCmo();
         });
-
-    return res.json({
-        message: 'Mobilite and experience updated successfully'
     });
 });
 
@@ -433,19 +522,52 @@ CVScreen.post('/updatePermis', (req, res) => {
         });
     }
 
+    const updateSql = `
+        UPDATE permis SET perm_am = ?, perm_a1 = ?, perm_a2 = ?, perm_a = ?, perm_b1 = ?, perm_b = ?, perm_c1 = ?, perm_c = ?, perm_d1 = ?, perm_d = ?, perm_be = ?, perm_c1e = ?, perm_ce = ?, perm_d1e = ?, perm_de = ?, perm_cotier = ?, perm_fluvial = ?, perm_grandes_eaux = ?, perm_hauturier = ?
+        WHERE token_id_cand = ?
+   
+    `;
+
+    const insertSql = `
+        INSERT INTO permis (
+            token_id_cand, perm_am, perm_a1, perm_a2, perm_a, perm_b1, perm_b, perm_c1, perm_c, perm_d1, perm_d, perm_be, perm_c1e, perm_ce, perm_d1e, perm_de, perm_cotier, perm_fluvial, perm_grandes_eaux, perm_hauturier
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
     db.query(
-        `UPDATE permis SET perm_am = ?, perm_a1 = ?, perm_a2 = ?, perm_a = ?, perm_b1 = ?, perm_b = ?, perm_c1 = ?, perm_c = ?, perm_d1 = ?, perm_d = ?, perm_be = ?, perm_c1e = ?, perm_ce = ?, perm_d1e = ?, perm_de = ?, perm_cotier = ?, perm_fluvial = ?, perm_grandes_eaux = ?, perm_hauturier = ? WHERE token_id_cand = ? `,
+        updateSql,
         [perm_am, perm_a1, perm_a2, perm_a, perm_b1, perm_b, perm_c1, perm_c, perm_d1, perm_d, perm_be, perm_c1e, perm_ce, perm_d1e, perm_de, perm_cotier, perm_fluvial, perm_grandes_eaux, perm_hauturier, token_id],
-        (err) => {
+        (err, result) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json({
                     error: 'Internal server error'
                 });
             }
-            return res.json({
-                message: 'Permis updated successfully'
-            });
+
+            if (result.affectedRows > 0) {
+                return res.json({
+                    message: 'Permis updated successfully'
+                });
+            }
+
+            db.query(
+                insertSql,
+                [token_id, perm_am, perm_a1, perm_a2, perm_a, perm_b1, perm_b, perm_c1, perm_c, perm_d1, perm_d, perm_be, perm_c1e, perm_ce, perm_d1e, perm_de, perm_cotier, perm_fluvial, perm_grandes_eaux, perm_hauturier],
+                (insertErr) => {
+                    if (insertErr) {
+                        console.error(insertErr);
+                        return res.status(500).json({
+                            error: 'Internal server error'
+                        });
+                    }
+
+                    return res.json({
+                        message: 'Permis updated successfully'
+                    });
+                }
+            );
         }
     );
 
@@ -461,20 +583,52 @@ CVScreen.post('/updateLangues', (req, res) => {
         });
     }
 
+    const updateSql = `
+        UPDATE langues SET lang_fr = ?, lang_en = ?, lang_es = ?, lang_de = ?, lang_it = ?, lang_ch = ?, lang_po = ?, lang_da = ?, lang_ru = ?, lang_ar = ?, lang_ne = ?, lang_por = ?, lang_no = ?, lang_fi = ?
+        WHERE token_id_cand = ?
+        AND deleted = 0
+    `;
+
+    const insertSql = `
+        INSERT INTO langues (
+            token_id_cand, lang_fr, lang_en, lang_es, lang_de, lang_it, lang_ch, lang_po, lang_da, lang_ru, lang_ar, lang_ne, lang_por, lang_no, lang_fi, deleted
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    `;
 
     db.query(
-        `UPDATE langues SET lang_fr = ?, lang_en = ?, lang_es = ?, lang_de = ?, lang_it = ?, lang_ch = ?, lang_po = ?, lang_da = ?, lang_ru = ?, lang_ar = ?, lang_ne = ?, lang_por = ?, lang_no = ?, lang_fi = ? WHERE token_id_cand = ?`,
+        updateSql,
         [lang_fr, lang_en, lang_es, lang_de, lang_it, lang_ch, lang_po, lang_da, lang_ru, lang_ar, lang_ne, lang_por, lang_no, lang_fi, token_id],
-        (err) => {
+        (err, result) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json({
                     error: 'Internal server error'
                 });
             }
-            return res.json({
-                message: 'Langues updated successfully'
-            });
+
+            if (result.affectedRows > 0) {
+                return res.json({
+                    message: 'Langues updated successfully'
+                });
+            }
+
+            db.query(
+                insertSql,
+                [token_id, lang_fr, lang_en, lang_es, lang_de, lang_it, lang_ch, lang_po, lang_da, lang_ru, lang_ar, lang_ne, lang_por, lang_no, lang_fi],
+                (insertErr) => {
+                    if (insertErr) {
+                        console.error(insertErr);
+                        return res.status(500).json({
+                            error: 'Internal server error'
+                        });
+                    }
+
+                    return res.json({
+                        message: 'Langues updated successfully'
+                    });
+                }
+            );
         }
     );
 
@@ -918,7 +1072,7 @@ CVScreen.post(
 
                 cb(
                     null,
-                    path.join(__dirname, "../fils/img_user")
+                    path.join(__dirname, "fils/img_user")
                 );
             },
 
@@ -952,7 +1106,7 @@ CVScreen.post(
             }
 
             const nom_image = req.file.filename;
-            const imgDir = path.join(__dirname, "../fils/img_user");
+            const imgDir = path.join(__dirname, "fils/img_user");
 
             /*
             |--------------------------------------------------------------------------

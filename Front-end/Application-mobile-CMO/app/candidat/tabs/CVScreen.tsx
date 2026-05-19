@@ -19,6 +19,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -845,8 +846,8 @@ const ExperienceTab = ({
 }) => {
   const add = () =>
     setExperiences((p) => [
-      ...p,
       { id: Date.now(), position: '', company: '', city: '', country: '', startDate: '', endDate: '', description: '', isNew: true },
+      ...p,
     ]);
 
   const update = (id: number, key: keyof Experience, value: string) =>
@@ -933,8 +934,8 @@ const EducationTab = ({
 }) => {
   const add = () =>
     setEducation((p) => [
-      ...p,
       { id: Date.now(), school: '', degree: '', startMonth: '', startYear: '', endMonth: '', endYear: '', description: '', isNew: true },
+      ...p,
     ]);
 
   const update = (id: number, key: keyof Education, value: string) =>
@@ -1119,9 +1120,15 @@ const [langues, setLangues] = useState<string[]>([]);
 
         if (!info) return;
 
+        const rawPhoto = info.photo ?? '';
+
         setFormData((prev) => ({
           ...prev,
-          photo: info.photo ?? prev.photo,
+          photo: rawPhoto
+            ? (rawPhoto.startsWith('http') || rawPhoto.startsWith('file:')
+              ? rawPhoto
+              : url() + "files/img_user/" + rawPhoto)
+            : prev.photo,
           civility: info.civilite ?? prev.civility,
           firstName: info.prenom ?? prev.firstName,
           lastName: info.nom ?? prev.lastName,
@@ -1714,14 +1721,20 @@ const [langues, setLangues] = useState<string[]>([]);
       </View>
 
       {/* Content */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
       >
-        {renderTab()}
-      </ScrollView>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {renderTab()}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -1762,6 +1775,9 @@ const styles = StyleSheet.create({
     color: C.white,
   },
   scrollView: {
+    flex: 1,
+  },
+  keyboardAvoid: {
     flex: 1,
   },
   scrollContent: {

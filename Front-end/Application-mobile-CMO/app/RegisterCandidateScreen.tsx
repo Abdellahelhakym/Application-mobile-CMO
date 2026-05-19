@@ -1,19 +1,20 @@
-import React, { useState } from "react";
-import { signCandidat } from "./services/sign"
 import { router } from "expo-router";
+import React, { useState } from "react";
+import { signCandidat } from "./services/sign";
 
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
-import { Menu, Eye, EyeOff } from "lucide-react-native";
-import LoginScreen from "./loginEmp";
+import { Eye, EyeOff } from "lucide-react-native";
 
 export default function RegisterCandidateScreen() {
   const [showPassword, setShowPassword] = useState(false);
@@ -160,176 +161,190 @@ const [civilite, setCivilite] = useState("Monsieur");
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* TITLE */}
-      <View style={styles.titleBox}>
-        <Text style={styles.title}>Créer un compte</Text>
-        <Text style={styles.subtitle}>Bienvenue dans votre espace My CMO</Text>
-      </View>
-
-      {/* CARD */}
-      <View style={styles.card}>
-        
-
-        <Text style={styles.label}>Votre civilité *</Text>
-
-        <TouchableOpacity
-          style={styles.select}
-          onPress={() => setShowCivilite(!showCivilite)}
-        >
-          <Text>{civilite}</Text>
-        </TouchableOpacity>
-
-        {showCivilite && (
-          <View style={styles.dropdown}>
-            {["Monsieur", "Madame"].map((item) => (
-              <TouchableOpacity
-                key={item}
-                style={styles.option}
-                onPress={() => {
-                  setCivilite(item);
-                  setShowCivilite(false);
-                }}
-              >
-                <Text>{item}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {/* Prénom */}
-        <Text style={styles.label}>Prénom *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Le prénom"
-          placeholderTextColor="#7a8ab8"
-          value={formData.firstName}
-          onChangeText={(text) => handleChange("firstName", text)}
-        />
-
-        {/* Nom */}
-        <Text style={styles.label}>Nom *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Le nom"
-          placeholderTextColor="#7a8ab8"
-          value={formData.lastName}
-          onChangeText={(text) => handleChange("lastName", text)}
-        />
-
-        {/* Pays */}
-        <Text style={styles.label}>Pays</Text>
-        <TouchableOpacity
-          style={styles.select}
-          onPress={() => setShowCountry(!showCountry)}
-        >
-          <Text>{formData.country}</Text>
-        </TouchableOpacity>
-
-        {showCountry && (
-          <View style={styles.dropdown}>
-            {countryOptions.map((item) => (
-              <TouchableOpacity
-                key={item}
-                style={styles.option}
-                onPress={() => {
-                  handleChange("country", item);
-                  setShowCountry(false);
-                }}
-              >
-                <Text>{item}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {/* Email */}
-        <Text style={styles.label}>Email *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="***@email.com"
-          placeholderTextColor="#7a8ab8"
-          value={formData.email}
-          onChangeText={(text) => handleChange("email", text)}
-        />
-
-        {/* Phone */}
-        <Text style={styles.label}>Téléphone *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="0********"
-          placeholderTextColor="#7a8ab8"
-          value={formData.phone}
-          onChangeText={(text) => handleChange("phone", text)}
-        />
-
-        {/* Password */}
-        <Text style={styles.label}>Mot de passe *</Text>
-        <View style={styles.passwordBox}>
-          <TextInput
-            style={styles.passwordInput}
-            secureTextEntry={!showPassword}
-            placeholder="••••••••"
-            placeholderTextColor="#7a8ab8"
-            value={formData.password}
-            onChangeText={(text) => handleChange("password", text)}
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            {showPassword ? (
-              <EyeOff size={18} color="#5b6a8e" />
-            ) : (
-              <Eye size={18} color="#5b6a8e" />
-            )}
-          </TouchableOpacity>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* TITLE */}
+        <View style={styles.titleBox}>
+          <Text style={styles.title}>Créer un compte</Text>
+          <Text style={styles.subtitle}>Bienvenue dans votre espace My CMO</Text>
         </View>
 
-        <Text style={styles.hint}>
-          Le mot de passe doit contenir 8 caractères minimum
-        </Text>
+        {/* CARD */}
+        <View style={styles.card}>
+          
 
-        {/* Confirm */}
-        <Text style={styles.label}>Confirmer *</Text>
-        <View style={styles.passwordBox}>
-          <TextInput
-            style={styles.passwordInput}
-            secureTextEntry={!showConfirmPassword}
-            placeholder="••••••••"
-            placeholderTextColor="#7a8ab8"
-            value={formData.confirmPassword}
-            onChangeText={(text) => handleChange("confirmPassword", text)}
-          />
+          <Text style={styles.label}>Votre civilité *</Text>
+
           <TouchableOpacity
-            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            style={styles.select}
+            onPress={() => setShowCivilite(!showCivilite)}
           >
-            {showConfirmPassword ? (
-              <EyeOff size={18} color="#5b6a8e" />
-            ) : (
-              <Eye size={18} color="#5b6a8e" />
-            )}
+            <Text>{civilite}</Text>
+          </TouchableOpacity>
+
+          {showCivilite && (
+            <View style={styles.dropdown}>
+              {["Monsieur", "Madame"].map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={styles.option}
+                  onPress={() => {
+                    setCivilite(item);
+                    setShowCivilite(false);
+                  }}
+                >
+                  <Text>{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* Prénom */}
+          <Text style={styles.label}>Prénom *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Le prénom"
+            placeholderTextColor="#7a8ab8"
+            value={formData.firstName}
+            onChangeText={(text) => handleChange("firstName", text)}
+          />
+
+          {/* Nom */}
+          <Text style={styles.label}>Nom *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Le nom"
+            placeholderTextColor="#7a8ab8"
+            value={formData.lastName}
+            onChangeText={(text) => handleChange("lastName", text)}
+          />
+
+          {/* Pays */}
+          <Text style={styles.label}>Pays</Text>
+          <TouchableOpacity
+            style={styles.select}
+            onPress={() => setShowCountry(!showCountry)}
+          >
+            <Text>{formData.country}</Text>
+          </TouchableOpacity>
+
+          {showCountry && (
+            <View style={styles.dropdown}>
+              {countryOptions.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={styles.option}
+                  onPress={() => {
+                    handleChange("country", item);
+                    setShowCountry(false);
+                  }}
+                >
+                  <Text>{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* Email */}
+          <Text style={styles.label}>Email *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="***@email.com"
+            placeholderTextColor="#7a8ab8"
+            value={formData.email}
+            onChangeText={(text) => handleChange("email", text)}
+          />
+
+          {/* Phone */}
+          <Text style={styles.label}>Téléphone *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="0********"
+            placeholderTextColor="#7a8ab8"
+            value={formData.phone}
+            onChangeText={(text) => handleChange("phone", text)}
+          />
+
+          {/* Password */}
+          <Text style={styles.label}>Mot de passe *</Text>
+          <View style={styles.passwordBox}>
+            <TextInput
+              style={styles.passwordInput}
+              secureTextEntry={!showPassword}
+              placeholder="••••••••"
+              placeholderTextColor="#7a8ab8"
+              value={formData.password}
+              onChangeText={(text) => handleChange("password", text)}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              {showPassword ? (
+                <EyeOff size={18} color="#5b6a8e" />
+              ) : (
+                <Eye size={18} color="#5b6a8e" />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.hint}>
+            Le mot de passe doit contenir 8 caractères minimum
+          </Text>
+
+          {/* Confirm */}
+          <Text style={styles.label}>Confirmer *</Text>
+          <View style={styles.passwordBox}>
+            <TextInput
+              style={styles.passwordInput}
+              secureTextEntry={!showConfirmPassword}
+              placeholder="••••••••"
+              placeholderTextColor="#7a8ab8"
+              value={formData.confirmPassword}
+              onChangeText={(text) => handleChange("confirmPassword", text)}
+            />
+            <TouchableOpacity
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              {showConfirmPassword ? (
+                <EyeOff size={18} color="#5b6a8e" />
+              ) : (
+                <Eye size={18} color="#5b6a8e" />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Terms */}
+          <View style={styles.row}>
+            <Switch
+              value={formData.acceptTerms}
+              onValueChange={(value) => handleChange("acceptTerms", value)}
+            />
+            <Text style={styles.terms}>J'accepte les CGU et CGV</Text>
+          </View>
+
+          {/* Button */}
+          <TouchableOpacity style={styles.button} onPress={handleRegister}>
+            <Text style={styles.buttonText}>Valider</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Terms */}
-        <View style={styles.row}>
-          <Switch
-            value={formData.acceptTerms}
-            onValueChange={(value) => handleChange("acceptTerms", value)}
-          />
-          <Text style={styles.terms}>J'accepte les CGU et CGV</Text>
-        </View>
-
-        {/* Button */}
-        <TouchableOpacity style={styles.button} onPress={handleRegister}>
-          <Text style={styles.buttonText}>Valider</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f3f6ff",
+  
+  },
+  scrollContent: {
+    paddingBottom: 120,
   },
 
   titleBox: {

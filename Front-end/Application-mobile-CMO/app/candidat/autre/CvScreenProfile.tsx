@@ -9,6 +9,7 @@ import {
     View,
 } from "react-native";
 
+import { getListFils } from '@/app/candidat/services/AttestationsScreen';
 import {
     getExperiences,
     getFormations,
@@ -31,6 +32,7 @@ export default function ProfileScreen() {
   const [niveauEtude, setNiveauEtude] = useState("");
   const [experiences, setExperiences] = useState<any[]>([]);
   const [formations, setFormations] = useState<any[]>([]);
+  const [attestations, setAttestations] = useState<any[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -64,6 +66,9 @@ export default function ProfileScreen() {
 
       const form = await getFormations();
       setFormations(Array.isArray(form) ? form : form?.data ?? []);
+
+      const list = await getListFils();
+      setAttestations(Array.isArray(list) ? list : list?.data ?? []);
     } catch (error) {
       console.log("Erreur:", error);
     } finally {
@@ -192,7 +197,21 @@ export default function ProfileScreen() {
             <View style={styles.sectionBar} />
             <Text style={styles.sectionTitle}>Attestations</Text>
           </View>
-          <Text style={styles.emptyText}>Aucune attestation</Text>
+          {attestations.length === 0 ? (
+            <Text style={styles.emptyText}>Aucune attestation</Text>
+          ) : (
+            attestations.map((att, index) => (
+              <View key={index} style={styles.expCard}>
+                <View style={styles.expDot} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.expTitle}>{att.titre ?? att.titre2 ?? "Attestation"}</Text>
+                  {att.titre2 ? (
+                    <Text style={styles.expSub}>{att.titre2}</Text>
+                  ) : null}
+                </View>
+              </View>
+            ))
+          )}
         </View>
 
       </ScrollView>

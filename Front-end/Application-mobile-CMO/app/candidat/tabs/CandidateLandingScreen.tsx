@@ -64,7 +64,7 @@ export default function ApplicationsScreen() {
   async function handleAddToFavorites(id: number, titre: string) {
     try {
       const response = await addtoFavorites(id, titre);
-      console.log("Add to favorites response:", response);
+      
       const res = await isfavorite(id);
       const isFavorite = !!(
         res?.isFavorite ?? res?.favorite ?? res?.data?.isFavorite
@@ -101,7 +101,7 @@ export default function ApplicationsScreen() {
         ? payload.results
         : [];
 
-      console.log("Offres data:", list);
+      
 
       setApplications(list);
       if (list.length > 0) {
@@ -235,6 +235,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff1dc',
     paddingHorizontal: 10,
     paddingVertical: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderRadius: 20,
   },
 

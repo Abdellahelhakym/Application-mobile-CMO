@@ -8,7 +8,7 @@ const db = require('./db');
 
 
 //il doit changer le url pour le lien d'activation dans l'email selon son ip et port de son serveur backend
-const url = "http://192.168.1.64:3000/";
+const url = "http://192.168.0.100:3000/";
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -83,6 +83,20 @@ signUp.post('/candidat', async (req, res) => {
                     return res.status(409).json({
                         success: false,
                         message: 'User deja un compte'
+                    });
+                }
+
+                if (checkResults[0].deleted === 3) {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Vous ne pouvez pas creer un compte avec cet email car il a deja ete supprime'
+                    });
+                }
+
+                if (checkResults[0].deleted === 1) {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Support a desactiver ton compte veuillez contacter CMO'
                     });
                 }
             }
@@ -282,5 +296,70 @@ signUp.get('/verify-email', (req, res) => {
         });
     });
 });
+
+signUp.post('/DeleteAccountCandidat', (req, res) => {
+
+    const { token_id } = req.body;
+
+    console.log('!!!!!!  delete account candidat   !!!!!!'); // Log the request body for debugging
+
+    if (!token_id) {
+        return res.status(400).json({
+            success: false,
+            message: 'token_id is required'
+        });
+    }
+
+    // ================= DELETE USER =================
+
+    const deleteUserSql = `
+        UPDATE users
+        SET deleted = 3
+        WHERE token_id = ?
+    `;
+
+    db.query(deleteUserSql, [token_id], (err, result) => {
+
+        if (err) {
+            console.error(err);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error (users)'
+            });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // ================= DELETE CANDIDAT =================
+
+        const deleteCandidatSql = `
+            UPDATE cmo_candidats
+            SET deleted = 3
+            WHERE token_id = ?
+        `;
+
+        db.query(deleteCandidatSql, [token_id], (err2, result2) => {
+
+            if (err2) {
+                console.error(err2);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Internal server error (candidat)'
+                });
+            }
+
+            return res.json({
+                success: true,
+                message: 'Account deleted successfully'
+            });
+        });
+    });
+});
+
 
 module.exports = signUp;

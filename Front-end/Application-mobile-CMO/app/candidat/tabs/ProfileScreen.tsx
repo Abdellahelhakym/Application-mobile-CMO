@@ -1,4 +1,4 @@
-import { useFocusEffect } from '@react-navigation/native';
+import { CommonActions, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
@@ -26,13 +26,16 @@ import {
 
 
 import { getImage } from "@/app/candidat/services/CVScreen";
-import { getProfile } from "@/app/candidat/services/ProfileScreen";
+import { deleteAccount, getProfile } from "@/app/candidat/services/ProfileScreen";
+import { Feather } from '@expo/vector-icons';
+
 import url from "@/app/services/url";
 
 
 
 
 export default function ProfileScreen() {
+  const navigation = useNavigation();
   const [profileData, setProfileData] = useState({
     pseudo: '',
     email: '',
@@ -67,20 +70,26 @@ export default function ProfileScreen() {
 
 
   function handleLogout() {
-    router.replace('/loginCan');
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'index' }],
+      })
+    );
   }
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      '⚠️ Suppression compte',
+      ' Suppression compte',
       'Cette action est irréversible. Voulez-vous continuer ?',
       [
         { text: 'Annuler', style: 'cancel' },
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert('Compte supprimé');
+          onPress: async () => {
+            await deleteAccount();
+            router.replace('/loginCan');
           },
         },
       ]
@@ -170,12 +179,13 @@ export default function ProfileScreen() {
 
          <TouchableOpacity
           style={styles.btn}
-          onPress={() => router.push('https://conceptmaindoeuvre.com/nos-offres-emploi#')}
+          onPress={() =>
+            router.push('https://conceptmaindoeuvre.com/nos-offres-emploi#')
+          }
         >
-          <Settings size={20} color="#2b5bbb" />
+          <Feather name="briefcase" size={20} color="#2b5bbb" />
           <Text style={styles.btnText}> Offres d’emploi</Text>
         </TouchableOpacity>
-
 
 
       </View>

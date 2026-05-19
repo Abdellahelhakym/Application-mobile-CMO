@@ -1,17 +1,20 @@
-import React, { useState } from "react";
+import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { login } from "./services/login";
-import { setTokenId } from "./candidat/services/token_id";
+import React, { useState } from "react";
 import {
-  View,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  Image,
   TouchableOpacity,
-  StyleSheet,
-  Linking
+  View
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { setTokenId } from "./candidat/services/token_id";
+import { login } from "./services/login";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -46,77 +49,86 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.wrapper}>
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <Image
-            source={require("./../img/logoBlue.png")}
-            style={styles.logo}
-          />
-        </View>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.wrapper}>
+          {/* Logo */}
+          <View style={styles.logoContainer}>
+            <Image
+              source={require("./../img/logoBlue.png")}
+              style={styles.logo}
+            />
+          </View>
 
-        {/* Card */}
-        <View style={styles.card}>
-          {/* Email */}
-          <Text style={styles.label}>Identifiant</Text>
-          <TextInput
-            placeholder="Votre email"
-            placeholderTextColor="#7a8ab8"
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-          />
-
-          {/* Password */}
-          <Text style={styles.label}>Mot de passe</Text>
-          <View style={styles.passwordBox}>
+          {/* Card */}
+          <View style={styles.card}>
+            {/* Email */}
+            <Text style={styles.label}>Identifiant</Text>
             <TextInput
-              placeholder="Votre mot de passe"
+              placeholder="Votre email"
               placeholderTextColor="#7a8ab8"
-              style={styles.inputFlex}
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
             />
 
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Feather
-                name={showPassword ? "eye-off" : "eye"}
-                size={20}
-                color="#5b6a8e"
+            {/* Password */}
+            <Text style={styles.label}>Mot de passe</Text>
+            <View style={styles.passwordBox}>
+              <TextInput
+                placeholder="Votre mot de passe"
+                placeholderTextColor="#7a8ab8"
+                style={styles.inputFlex}
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
               />
-            </TouchableOpacity>
-          </View>
 
-          {/* Forgot */}
-          <TouchableOpacity
-          onPress={() =>
-            Linking.openURL(
-              "https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie"
-            )
-          }
-        >
-          <Text style={styles.forgot}>Mot de passe oublié ?</Text>
-        </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <Feather
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={20}
+                  color="#5b6a8e"
+                />
+              </TouchableOpacity>
+            </View>
 
-          {/* Buttons */}
-          <View style={styles.row}>
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin}>
-              <Text style={styles.primaryText}>Se connecter</Text>
-            </TouchableOpacity>
-
+            {/* Forgot */}
             <TouchableOpacity
-              style={styles.secondaryBtn}
-              onPress={() => router.push("/RegisterCandidateScreen")}
+              onPress={() =>
+                Linking.openURL(
+                  "https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie"
+                )
+              }
             >
-              <Text style={styles.secondaryText}>Créer un compte</Text>
+              <Text style={styles.forgot}>Mot de passe oublié ?</Text>
             </TouchableOpacity>
-          </View>
 
+            {/* Buttons */}
+            <View style={styles.row}>
+              <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin}>
+                <Text style={styles.primaryText}>Se connecter</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={() => router.push("/RegisterCandidateScreen")}
+              >
+                <Text style={styles.secondaryText}>Créer un compte</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -124,6 +136,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f3f6ff",
+  },
+
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
     padding: 20,
   },

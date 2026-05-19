@@ -47,4 +47,7 @@ async function signCandidat(candidat) {
   }
 }
 
+
+
+
 export { signCandidat };

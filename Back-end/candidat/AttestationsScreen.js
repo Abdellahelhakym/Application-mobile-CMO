@@ -9,7 +9,7 @@ const AttestationsScreen = express.Router();
 const upload = multer({
     storage: multer.diskStorage({
         destination: function (req, file, cb) {
-            cb(null, path.join(__dirname, "../fils/Document"));
+            cb(null, path.join(__dirname, "fils/Document"));
         },
         filename: function (req, file, cb) {
             const ext = (path.extname(file.originalname || "") || ".pdf").toLowerCase();
@@ -136,7 +136,7 @@ AttestationsScreen.post(
 
             destination: function (req, file, cb) {
 
-                const uploadPath = path.join(__dirname, "../fils/Document");
+                const uploadPath = path.join(__dirname, "fils/Document");
 
                 // create folder if not exists
                 if (!fs.existsSync(uploadPath)) {
@@ -197,7 +197,7 @@ AttestationsScreen.post(
             }
 
             const nom_fichier = req.file.filename;
-            const fichierDir = path.join(__dirname, "../fils/Document");
+            const fichierDir = path.join(__dirname, "fils/Document");
 
             // ================= GET TITRE =================
 
@@ -498,7 +498,7 @@ AttestationsScreen.post('/deleteAttestation', (req, res) => {
         });
     }
 
-    const fichierDir = path.join(__dirname, "../fils/Document");
+    const fichierDir = path.join(__dirname, "fils/Document");
 
     // 1️⃣ get titre
     const getTitreSql = `

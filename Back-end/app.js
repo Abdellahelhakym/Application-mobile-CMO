@@ -49,7 +49,7 @@ app.use('/candidat/attestations', attestations);
 
 app.use(
   '/files',
-  express.static(path.join(__dirname, 'fils'))
+  express.static(path.join(__dirname, 'candidat', 'fils'))
 );
 
 
