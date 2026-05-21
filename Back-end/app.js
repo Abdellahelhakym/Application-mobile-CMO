@@ -3,11 +3,11 @@ const app = express();
 const cors = require('cors');
 const db = require('./db'); // Importer la connexion à la base de données
 const path = require("path");
-
+require('dotenv').config();
 app.use(express.json());
 app.use(cors());
 
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // routes
 //login route
@@ -21,6 +21,11 @@ app.use('/signup', signupRoute);
 
 
 //--------------------candidat route----------------------------
+// Route d'accueil (pour l'URL .../cmo_app/)
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+});
+
 
 //dashboard route
 const dashboard = require('./candidat/DashboardScreen');
@@ -48,7 +53,7 @@ const attestations = require('./candidat/AttestationsScreen');
 app.use('/candidat/attestations', attestations);
 
 app.use(
-  '/files',
+  '/files',  
   express.static(path.join(__dirname, 'candidat', 'fils'))
 );
 
@@ -57,10 +62,10 @@ app.use(
 
 
 
-app.get('/', (req, res) => {
+app.get('/cmo_app/test', (req, res) => {
   res.send('Hello World!');
 });
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${port}`);
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });

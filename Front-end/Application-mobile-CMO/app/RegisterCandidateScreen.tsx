@@ -19,13 +19,21 @@ import { Eye, EyeOff } from "lucide-react-native";
 export default function RegisterCandidateScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
- 
 
-const [civilite, setCivilite] = useState("Monsieur");
+  const [civilite, setCivilite] = useState("Monsieur");
   const [showCivilite, setShowCivilite] = useState(false);
   const [showCountry, setShowCountry] = useState(false);
 
-
+  // ─── Erreurs inline pour chaque champ ────────────────────────────────────
+  const [errors, setErrors] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    password: "Le mot de passe doit contenir 8 caractères minimum",
+    confirmPassword: "",
+    acceptTerms: "",
+  });
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -38,142 +46,131 @@ const [civilite, setCivilite] = useState("Monsieur");
     acceptTerms: false,
   });
 
- const countryOptions = [
-  "Autriche",
-  "Belgique",
-  "Bulgarie",
-  "Croatie",
-  "Chypre",
-  "République tchèque",
-  "Danemark",
-  "Estonie",
-  "Finlande",
-  "France",
-  "Allemagne",
-  "Grèce",
-  "Hongrie",
-  "Irlande",
-  "Italie",
-  "Lettonie",
-  "Lituanie",
-  "Luxembourg",
-  "Malte",
-  "Pays-Bas",
-  "Pologne",
-  "Portugal",
-  "Roumanie",
-  "Slovaquie",
-  "Slovénie",
-  "Espagne",
-  "Suède",
-  "Maroc",
-  "Tunisie",
-  "Algerie"
+  const countryOptions = [
+    "Autriche", "Belgique", "Bulgarie", "Croatie", "Chypre",
+    "République tchèque", "Danemark", "Estonie", "Finlande", "France",
+    "Allemagne", "Grèce", "Hongrie", "Irlande", "Italie", "Lettonie",
+    "Lituanie", "Luxembourg", "Malte", "Pays-Bas", "Pologne", "Portugal",
+    "Roumanie", "Slovaquie", "Slovénie", "Espagne", "Suède",
+    "Maroc", "Tunisie", "Algerie",
+  ];
 
-];
+  const handleChange = (field: any, value: any) => {
+    setFormData({ ...formData, [field]: value });
+    // Efface l'erreur du champ dès que l'utilisateur retape
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+  };
 
-          const handleChange = (field: any, value: any) => {
-            setFormData({
-              ...formData,
-              [field]: value,
-            });
-          };
+  const isEmailValid = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 
-        async function handleRegister() {
-          if (!validateForm()) return;
+  const isPhoneValid = (phone: string) =>
+    /^0\d{9}$/.test(phone);
 
-          try {
-            const finalObject = {
-              civilite: civilite,
-              prenom: formData.firstName,
-              nom: formData.lastName,
-              pays: formData.country,
-              email: formData.email,
-              tel: formData.phone,
-              password: formData.password,
-         
-            };
-         
+  // Retourne true si tout est valide, false sinon
+  const validateForm = (): boolean => {
+    const newErrors = {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      password: "Le mot de passe doit contenir 8 caractères minimum",
+      confirmPassword: "",
+      acceptTerms: "",
+    };
+    let isValid = true;
 
-            const response = await signCandidat(finalObject);
-            console.log("Réponse du serveur :", response);
-
-            if (response.success) {
-              alert("Inscription réussie !");
-             
-              router.push("./loginCan");
-            } else {
-              alert(response.message || "Erreur lors de l'inscription");
-            }
-          } catch (error) {
-            console.error("Erreur lors de l'inscription :", error);
-            alert("Erreur serveur");
-          }
-        }
-
-  const validateForm = () => {
     if (!formData.firstName) {
-      alert("Le prénom est obligatoire");
-      return false;
+      newErrors.firstName = "Le prénom est obligatoire";
+      isValid = false;
     }
 
     if (!formData.lastName) {
-      alert("Le nom est obligatoire");
-      return false;
+      newErrors.lastName = "Le nom est obligatoire";
+      isValid = false;
     }
 
     if (!formData.email) {
-      alert("L'email est obligatoire");
-      return false;
+      newErrors.email = "L'email est obligatoire";
+      isValid = false;
+    } else if (!isEmailValid(formData.email)) {
+      newErrors.email = "Email invalide (ex: nom@domaine.fr)";
+      isValid = false;
     }
 
     if (!formData.phone) {
-      alert("Le téléphone est obligatoire");
-      return false;
+      newErrors.phone = "Le téléphone est obligatoire";
+      isValid = false;
+    } else if (!isPhoneValid(formData.phone)) {
+      newErrors.phone = "Numéro invalide (ex: 0612345678)";
+      isValid = false;
     }
 
+    // Mot de passe
     if (!formData.password) {
-      alert("Le mot de passe est obligatoire");
-      return false;
+      newErrors.password = "Le mot de passe est obligatoire";
+      isValid = false;
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Le mot de passe doit contenir 8 caractères minimum";
+      isValid = false;
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = "Le mot de passe doit contenir au moins une majuscule";
+      isValid = false;
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = "Le mot de passe doit contenir au moins une minuscule";
+      isValid = false;
+    } else if (!/[0-9]/.test(formData.password)) {
+      newErrors.password = "Le mot de passe doit contenir au moins un chiffre";
+      isValid = false;
+    } else {
+      newErrors.password = ""; // OK
     }
 
     if (!formData.confirmPassword) {
-      alert("Confirmation du mot de passe obligatoire");
-      return false;
-    }
-
-   if (formData.password.length < 8) {
-  alert("Mot de passe minimum 8 caractères");
-  return false;
-    }
-
-    if (!/[A-Z]/.test(formData.password)) {
-      alert("Le mot de passe doit contenir au moins une lettre majuscule");
-      return false;
-    }
-
-    if (!/[a-z]/.test(formData.password)) {
-      alert("Le mot de passe doit contenir au moins une lettre minuscule");
-      return false;
-    }
-
-    if (!/[0-9]/.test(formData.password)) {
-      alert("Le mot de passe doit contenir au moins un chiffre");
-      return false;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      alert("Les mots de passe ne correspondent pas");
-      return false;
+      newErrors.confirmPassword = "Veuillez confirmer votre mot de passe";
+      isValid = false;
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
+      isValid = false;
     }
 
     if (!formData.acceptTerms) {
-      alert("Veuillez accepter les conditions");
-      return false;
+      newErrors.acceptTerms = "Veuillez accepter les CGU et CGV";
+      isValid = false;
     }
 
-    return true;
+    setErrors(newErrors);
+    return isValid;
   };
+
+  async function handleRegister() {
+    if (!validateForm()) return;
+
+    try {
+      const finalObject = {
+        civilite,
+        prenom: formData.firstName,
+        nom: formData.lastName,
+        pays: formData.country,
+        email: formData.email,
+        tel: formData.phone,
+        password: formData.password,
+      };
+
+      const response = await signCandidat(finalObject);
+      console.log("Réponse du serveur :", response);
+
+      if (response.success) {
+        alert("Inscription réussie !");
+        router.push("./loginCan");
+      } else {
+        alert(response.message || "Erreur lors de l'inscription");
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'inscription :", error);
+      alert("Erreur serveur");
+    }
+  }
 
   return (
     <KeyboardAvoidingView
@@ -194,27 +191,22 @@ const [civilite, setCivilite] = useState("Monsieur");
 
         {/* CARD */}
         <View style={styles.card}>
-          
 
+          {/* Civilité */}
           <Text style={styles.label}>Votre civilité *</Text>
-
           <TouchableOpacity
             style={styles.select}
             onPress={() => setShowCivilite(!showCivilite)}
           >
             <Text>{civilite}</Text>
           </TouchableOpacity>
-
           {showCivilite && (
             <View style={styles.dropdown}>
               {["Monsieur", "Madame"].map((item) => (
                 <TouchableOpacity
                   key={item}
                   style={styles.option}
-                  onPress={() => {
-                    setCivilite(item);
-                    setShowCivilite(false);
-                  }}
+                  onPress={() => { setCivilite(item); setShowCivilite(false); }}
                 >
                   <Text>{item}</Text>
                 </TouchableOpacity>
@@ -225,22 +217,24 @@ const [civilite, setCivilite] = useState("Monsieur");
           {/* Prénom */}
           <Text style={styles.label}>Prénom *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, !!errors.firstName && styles.inputError]}
             placeholder="Le prénom"
             placeholderTextColor="#7a8ab8"
             value={formData.firstName}
             onChangeText={(text) => handleChange("firstName", text)}
           />
+          {!!errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
 
           {/* Nom */}
           <Text style={styles.label}>Nom *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, !!errors.lastName && styles.inputError]}
             placeholder="Le nom"
             placeholderTextColor="#7a8ab8"
             value={formData.lastName}
             onChangeText={(text) => handleChange("lastName", text)}
           />
+          {!!errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
 
           {/* Pays */}
           <Text style={styles.label}>Pays</Text>
@@ -250,17 +244,13 @@ const [civilite, setCivilite] = useState("Monsieur");
           >
             <Text>{formData.country}</Text>
           </TouchableOpacity>
-
           {showCountry && (
             <View style={styles.dropdown}>
               {countryOptions.map((item) => (
                 <TouchableOpacity
                   key={item}
                   style={styles.option}
-                  onPress={() => {
-                    handleChange("country", item);
-                    setShowCountry(false);
-                  }}
+                  onPress={() => { handleChange("country", item); setShowCountry(false); }}
                 >
                   <Text>{item}</Text>
                 </TouchableOpacity>
@@ -271,26 +261,31 @@ const [civilite, setCivilite] = useState("Monsieur");
           {/* Email */}
           <Text style={styles.label}>Email *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, !!errors.email && styles.inputError]}
             placeholder="***@email.com"
             placeholderTextColor="#7a8ab8"
             value={formData.email}
             onChangeText={(text) => handleChange("email", text)}
+            keyboardType="email-address"
+            autoCapitalize="none"
           />
+          {!!errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-          {/* Phone */}
+          {/* Téléphone */}
           <Text style={styles.label}>Téléphone *</Text>
           <TextInput
-            style={styles.input}
-            placeholder="0********"
+            style={[styles.input, !!errors.phone && styles.inputError]}
+            placeholder="0612345678"
             placeholderTextColor="#7a8ab8"
             value={formData.phone}
             onChangeText={(text) => handleChange("phone", text)}
+            keyboardType="phone-pad"
           />
+          {!!errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
 
-          {/* Password */}
+          {/* Mot de passe */}
           <Text style={styles.label}>Mot de passe *</Text>
-          <View style={styles.passwordBox}>
+          <View style={[styles.passwordBox, !!errors.password && errors.password !== "Le mot de passe doit contenir 8 caractères minimum" && styles.inputError]}>
             <TextInput
               style={styles.passwordInput}
               secureTextEntry={!showPassword}
@@ -300,21 +295,19 @@ const [civilite, setCivilite] = useState("Monsieur");
               onChangeText={(text) => handleChange("password", text)}
             />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              {showPassword ? (
-                <EyeOff size={18} color="#5b6a8e" />
-              ) : (
-                <Eye size={18} color="#5b6a8e" />
-              )}
+              {showPassword ? <EyeOff size={18} color="#5b6a8e" /> : <Eye size={18} color="#5b6a8e" />}
             </TouchableOpacity>
           </View>
-
-          <Text style={styles.hint}>
-            Le mot de passe doit contenir 8 caractères minimum
+          <Text style={[
+            styles.hint,
+            !!errors.password && errors.password !== "Le mot de passe doit contenir 8 caractères minimum" && styles.hintError
+          ]}>
+            {errors.password || "Le mot de passe doit contenir 8 caractères minimum"}
           </Text>
 
-          {/* Confirm */}
+          {/* Confirmer */}
           <Text style={styles.label}>Confirmer *</Text>
-          <View style={styles.passwordBox}>
+          <View style={[styles.passwordBox, !!errors.confirmPassword && styles.inputError]}>
             <TextInput
               style={styles.passwordInput}
               secureTextEntry={!showConfirmPassword}
@@ -323,16 +316,11 @@ const [civilite, setCivilite] = useState("Monsieur");
               value={formData.confirmPassword}
               onChangeText={(text) => handleChange("confirmPassword", text)}
             />
-            <TouchableOpacity
-              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-            >
-              {showConfirmPassword ? (
-                <EyeOff size={18} color="#5b6a8e" />
-              ) : (
-                <Eye size={18} color="#5b6a8e" />
-              )}
+            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+              {showConfirmPassword ? <EyeOff size={18} color="#5b6a8e" /> : <Eye size={18} color="#5b6a8e" />}
             </TouchableOpacity>
           </View>
+          {!!errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
 
           {/* Terms */}
           <View style={styles.row}>
@@ -342,54 +330,50 @@ const [civilite, setCivilite] = useState("Monsieur");
             />
             <Text style={styles.terms}>J'accepte les CGU et CGV</Text>
           </View>
+          {!!errors.acceptTerms && <Text style={styles.errorText}>{errors.acceptTerms}</Text>}
 
-          {/* Button */}
+          {/* Bouton */}
           <TouchableOpacity style={styles.button} onPress={handleRegister}>
             <Text style={styles.buttonText}>Valider</Text>
           </TouchableOpacity>
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f3f6ff",
-  
   },
   scrollContent: {
     paddingBottom: 120,
   },
-
   titleBox: {
     padding: 20,
   },
-
   title: {
     fontSize: 22,
     color: "#1f3872",
     fontWeight: "600",
   },
-
   subtitle: {
     color: "#3a4a74",
     marginTop: 5,
   },
-
   card: {
     backgroundColor: "#fff",
     margin: 15,
     padding: 15,
     borderRadius: 20,
   },
-
   label: {
     fontSize: 13,
     color: "#1f3872",
     marginTop: 10,
   },
-
   input: {
     borderWidth: 1,
     borderColor: "#2b5bbb",
@@ -398,7 +382,9 @@ const styles = StyleSheet.create({
     marginTop: 5,
     color: "#1f3872",
   },
-
+  inputError: {
+    borderColor: "#d9534f",
+  },
   select: {
     borderWidth: 1,
     borderColor: "#2b5bbb",
@@ -406,7 +392,6 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginTop: 5,
   },
-
   passwordBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -416,42 +401,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginTop: 5,
   },
-dropdown: {
-  borderWidth: 1,
-  borderColor: "#2b5bbb",
-  borderRadius: 15,
-  marginTop: 5,
-  backgroundColor: "#fff",
-},
-
-option: {
-  padding: 12,
-  borderBottomWidth: 1,
-  borderBottomColor: "#eee",
-},
+  dropdown: {
+    borderWidth: 1,
+    borderColor: "#2b5bbb",
+    borderRadius: 15,
+    marginTop: 5,
+    backgroundColor: "#fff",
+  },
+  option: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
   passwordInput: {
     flex: 1,
     padding: 10,
     color: "#1f3872",
   },
-
   hint: {
     fontSize: 11,
     color: "#5b6a8e",
     marginTop: 5,
   },
-
+  hintError: {
+    color: "#d9534f",
+    fontWeight: "500",
+  },
+  errorText: {
+    fontSize: 11,
+    color: "#d9534f",
+    marginTop: 4,
+    marginLeft: 12,
+    fontWeight: "500",
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 15,
   },
-
   terms: {
     marginLeft: 10,
     color: "#1f3872",
   },
-
   button: {
     backgroundColor: "#3f58a6",
     padding: 15,
@@ -459,7 +450,6 @@ option: {
     marginTop: 20,
     alignItems: "center",
   },
-
   buttonText: {
     color: "#fff",
     fontWeight: "600",

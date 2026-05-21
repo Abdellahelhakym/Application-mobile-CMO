@@ -21,31 +21,38 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  
+  // ─── Erreur inline email ──────────────────────────────────────────────────
+  const [emailError, setEmailError] = useState("");
+
+  const isEmailValid = (value: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
 
   const handleLogin = async () => {
+    // Validation email avant tout appel
+    if (!email) {
+      setEmailError("L'email est obligatoire");
+      return;
+    }
+    if (!isEmailValid(email)) {
+      setEmailError("Email invalide (ex: nom@domaine.fr)");
+      return;
+    }
+    setEmailError("");
+
     try {
-      
-       const loginObject = { email, password };
-
+      const loginObject = { email, password };
       const response = await login(loginObject);
-      
 
-      if(response.success) {
-
-          await setTokenId(response.token_id);
+      if (response.success) {
+        await setTokenId(response.token_id);
         router.push("/candidat/tabs/DashboardScreen");
-
       } else {
         alert("Email ou mot de passe incorrect");
       }
-
     } catch (error) {
       console.log(error);
       alert("Erreur serveur");
     }
-   
-   
   };
 
   return (
@@ -75,10 +82,16 @@ export default function LoginScreen() {
             <TextInput
               placeholder="Votre email"
               placeholderTextColor="#7a8ab8"
-              style={styles.input}
+              style={[styles.input, !!emailError && styles.inputError]}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                setEmailError(""); // efface l'erreur dès que l'utilisateur retape
+              }}
+              keyboardType="email-address"
+              autoCapitalize="none"
             />
+            {!!emailError && <Text style={styles.errorText}>{emailError}</Text>}
 
             {/* Password */}
             <Text style={styles.label}>Mot de passe</Text>
@@ -91,7 +104,6 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
               />
-
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 <Feather
                   name={showPassword ? "eye-off" : "eye"}
@@ -137,30 +149,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f3f6ff",
   },
-
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
     padding: 20,
   },
-
   wrapper: {
     maxWidth: 380,
     width: "100%",
     alignSelf: "center",
   },
-
   logoContainer: {
     alignItems: "center",
     marginBottom: 20,
   },
-
   logo: {
     width: 140,
     height: 60,
     resizeMode: "contain",
   },
-
   card: {
     backgroundColor: "#fff",
     borderRadius: 24,
@@ -168,13 +175,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e1e9fb",
   },
-
   label: {
     fontSize: 13,
     color: "#2b5bbb",
     marginBottom: 6,
   },
-
   input: {
     backgroundColor: "#fff",
     borderWidth: 1,
@@ -182,17 +187,25 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 14,
+    marginBottom: 4,
     color: "#000",
   },
-
+  inputError: {
+    borderColor: "#d9534f",
+  },
+  errorText: {
+    fontSize: 11,
+    color: "#d9534f",
+    marginBottom: 10,
+    marginLeft: 12,
+    fontWeight: "500",
+  },
   inputFlex: {
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
     color: "#000",
   },
-
   passwordBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -202,51 +215,17 @@ const styles = StyleSheet.create({
     paddingRight: 12,
     marginBottom: 14,
   },
-
-  captcha: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#e1e9fb",
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 12,
-  },
-
-  checkbox: {
-    width: 18,
-    height: 18,
-    borderWidth: 1,
-    borderColor: "#cfd9ee",
-    borderRadius: 3,
-    marginRight: 8,
-  },
-
-  captchaText: {
-    flex: 1,
-    fontSize: 12,
-    color: "#5b6a8e",
-  },
-
-  recaptcha: {
-    fontSize: 10,
-    color: "#7a8ab8",
-  },
-
   forgot: {
     textAlign: "right",
     color: "#4c6bd6",
     fontSize: 12,
     marginBottom: 10,
   },
-
   row: {
     flexDirection: "row",
     gap: 10,
     marginTop: 10,
   },
-
   primaryBtn: {
     flex: 1,
     backgroundColor: "#122F78",
@@ -254,12 +233,10 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: "center",
   },
-
   primaryText: {
     color: "#fff",
     fontWeight: "600",
   },
-
   secondaryBtn: {
     flex: 1,
     backgroundColor: "#e8efff",
@@ -267,12 +244,10 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: "center",
   },
-
   secondaryText: {
     color: "#122F78",
     fontWeight: "600",
   },
-
   backBtn: {
     marginTop: 12,
     borderWidth: 1,
@@ -281,7 +256,6 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: "center",
   },
-
   backText: {
     color: "#2b5bbb",
     fontWeight: "600",
