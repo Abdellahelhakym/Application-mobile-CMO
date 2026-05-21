@@ -142,8 +142,23 @@ const [civilite, setCivilite] = useState("Monsieur");
       return false;
     }
 
-    if (formData.password.length < 8) {
-      alert("Mot de passe minimum 8 caractères");
+   if (formData.password.length < 8) {
+  alert("Mot de passe minimum 8 caractères");
+  return false;
+    }
+
+    if (!/[A-Z]/.test(formData.password)) {
+      alert("Le mot de passe doit contenir au moins une lettre majuscule");
+      return false;
+    }
+
+    if (!/[a-z]/.test(formData.password)) {
+      alert("Le mot de passe doit contenir au moins une lettre minuscule");
+      return false;
+    }
+
+    if (!/[0-9]/.test(formData.password)) {
+      alert("Le mot de passe doit contenir au moins un chiffre");
       return false;
     }
 
