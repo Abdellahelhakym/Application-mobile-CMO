@@ -155,7 +155,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.btn}
-          onPress={() => Linking.openURL("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie")}
+          onPress={() => router.push('/candidat/autre/PasswordChange')}
         >
           <Lock size={20} color="#2b5bbb" />
           <Text style={styles.btnText}>Changer mot de passe</Text>

@@ -18,6 +18,11 @@ export default function CandidatLayout() {
         options={{ title: "CV", headerShown: true }}
       />
      
+      <Stack.Screen
+        name="autre/PasswordChange"
+        options={{ title: "Changer mot de passe", headerShown: true }}
+      />
+     
     </Stack>
   );
 }
