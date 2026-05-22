@@ -115,11 +115,7 @@ export default function LoginScreen() {
 
             {/* Forgot */}
             <TouchableOpacity
-              onPress={() =>
-                Linking.openURL(
-                  "https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie"
-                )
-              }
+              onPress={() => router.push("/ForgotPasswordScreen")}
             >
               <Text style={styles.forgot}>Mot de passe oublié ?</Text>
             </TouchableOpacity>

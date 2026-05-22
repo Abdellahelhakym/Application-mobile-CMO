@@ -52,6 +52,15 @@ export default function RootLayout() {
           headerLeft: () => <BackButton fallbackRoute="/loginEmp" />,
         }}
       />
+
+      <Stack.Screen
+        name="ForgotPasswordScreen"
+        options={{
+          headerShown: true,
+          title: "Mot de passe oublié",
+          headerLeft: () => <BackButton fallbackRoute="/loginCan" />,
+        }}
+      />
     </Stack>
   );
 }

@@ -66,6 +66,26 @@ passwordRouter.post('/candidat', async (req, res) => {
 
 });
 
+passwordRouter.post('/candidat/forget', async (req, res) => {
+    const { email } = req.body;
+
+
+    console.log('Received password reset request with body:', email);
+
+    const response = await fetch("http://192.168.1.19:3000/test", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ email })
+        });
+
+
+    res.json({
+        success: true,
+        message: 'Password reset request received'
+    });
+});
 
 
 module.exports = passwordRouter;
