@@ -19,6 +19,10 @@ app.use('/login', loginRoute);
 const signupRoute = require('./signup');
 app.use('/signup', signupRoute);
 
+//change password route
+const changePasswordRoute = require('./changePassword');
+app.use('/change-password', changePasswordRoute);
+
 
 //--------------------candidat route----------------------------
 // Route d'accueil (pour l'URL .../cmo_app/)

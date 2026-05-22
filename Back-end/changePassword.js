@@ -1,0 +1,71 @@
+const express = require('express');
+const bcrypt = require('bcrypt');
+const db = require('./db');
+const passwordRouter = express.Router();
+
+passwordRouter.get('/candidat', (req, res) => {
+  res.send('password change route');
+});
+
+passwordRouter.post('/candidat', async (req, res) => {
+    const { token_id , currentPassword, newPassword } = req.body;
+    console.log('Received password change request with body:');
+
+    if (!token_id || !currentPassword || !newPassword) {
+        return res.status(400).json({
+            success: false,
+            message: 'Token ID, mot de passe actuel et nouveau mot de passe sont obligatoires'
+        });
+    }
+
+    db.query(
+        'SELECT * FROM users WHERE token_id = ?',
+        [token_id],
+        async (err, results) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    message: 'Erreur serveur'
+                });
+            }
+            if (results.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Utilisateur non trouvé'
+                });
+            }
+            const user = results[0];
+
+            const isMatch = await bcrypt.compare(currentPassword, user.password);
+            if (!isMatch) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Mot de passe actuel incorrect'
+                });
+            }
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+            db.query(
+                'UPDATE users SET password = ? WHERE token_id = ?',
+                [hashedPassword, token_id],
+                (err, results) => {
+                    if (err) {
+                        return res.status(500).json({
+                            success: false,
+                            message: 'Erreur serveur'
+                        });
+                    }
+                    return res.status(200).json({
+                        success: true,
+                        message: 'Mot de passe mis à jour avec succès'
+                    });
+                }
+            );
+        }
+    );
+
+});
+
+
+
+module.exports = passwordRouter;

@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "",
+    "name": "CMO",
     "slug": "CMO",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "cmo",
@@ -12,11 +12,13 @@
       "supportsTablet": true
     },
     "android": {
-    "adaptiveIcon": {
-      "foregroundImage": "./assets/images/icon.png",
-      "backgroundColor": "#ffffff"
-    }
-  },
+      "versionCode": 2,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.abdellah112233.CMO"
+    },
     "web": {
       "output": "static",
       "favicon": "./assets/images/icon.png"
@@ -26,7 +28,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash.png",
+          "image": "./assets/images/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -38,9 +40,11 @@
       "expo-font",
       "@react-native-community/datetimepicker"
     ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "33c0754e-86e4-40b9-ba7c-060d4ab91442"
+      }
     }
   }
 }
