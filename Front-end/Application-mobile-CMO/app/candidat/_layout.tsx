@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-export default function EmployeurLayout() {
+export default function CandidatLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="tabs" options={{ headerShown: false }} />
@@ -17,8 +17,7 @@ export default function EmployeurLayout() {
         name="autre/CvScreenProfile"
         options={{ title: "CV", headerShown: true }}
       />
-      
-
+     
     </Stack>
   );
 }
