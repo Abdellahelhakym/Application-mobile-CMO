@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    FlatList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import { AlertCircle, Star } from "lucide-react-native";
@@ -12,8 +12,8 @@ import { AlertCircle, Star } from "lucide-react-native";
 import { getFavorites } from "@/app/candidat/services/FavoritesScreen";
 
 import {
-  addtoFavorites,
-  isfavorite
+    addtoFavorites,
+    isfavorite
 } from "@/app/candidat/services/CandidateLandingScreen";
 
 
@@ -165,7 +165,7 @@ export default function FavoritesScreen() {
         data={favorites}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
-        contentContainerStyle={{ padding: 15 }}
+        contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.empty}>
             <AlertCircle size={50} color="#aaa" />
@@ -185,6 +185,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#eef3ff",
+  },
+  listContent: {
+    padding: 15,
+    paddingBottom: 60,
   },
 
   card: {

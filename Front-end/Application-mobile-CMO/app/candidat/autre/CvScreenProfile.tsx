@@ -1,21 +1,21 @@
 import React, { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 import { getListFils } from '@/app/candidat/services/AttestationsScreen';
 import {
-    getExperiences,
-    getFormations,
-    getImage,
-    getInformations,
-    getMobiliteUser
+  getExperiences,
+  getFormations,
+  getImage,
+  getInformations,
+  getMobiliteUser
 } from "@/app/candidat/services/CVScreen";
 import url from "@/app/services/url";
 import { useFocusEffect } from "@react-navigation/native";
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   scroll: {
     padding: 16,
     gap: 14,
-    paddingBottom: 40,
+    paddingBottom: 80,
   },
 
   // Header card

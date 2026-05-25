@@ -298,6 +298,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 15,
     gap: 15,
+    paddingBottom: 60,
   },
 
   card: {

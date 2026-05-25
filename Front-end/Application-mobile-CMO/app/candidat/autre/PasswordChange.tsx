@@ -1,15 +1,15 @@
+import { Eye, EyeOff } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  View,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
+  View,
 } from "react-native";
-import { Eye, EyeOff } from "lucide-react-native";
 import { changePassword } from "../services/PasswordChange";
 type ValidationRule = {
   label: string;
@@ -249,6 +249,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
+    paddingBottom: 60,
   },
   card: {
     width: "100%",
