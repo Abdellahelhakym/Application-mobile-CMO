@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as NavigationBar from "expo-navigation-bar";
 import { Href, Stack, router } from "expo-router";
-import { useEffect } from "react";
-import { Platform, TouchableOpacity } from "react-native";
+import { useCallback, useEffect } from "react";
+import { AppState, Platform, TouchableOpacity } from "react-native";
 
 function BackButton({ fallbackRoute }: { fallbackRoute: Href }) {
   return (
@@ -20,12 +20,26 @@ function BackButton({ fallbackRoute }: { fallbackRoute: Href }) {
 }
 
 export default function RootLayout() {
+  const applyAndroidNavBar = useCallback(async () => {
+    await NavigationBar.setVisibilityAsync("hidden");
+    await NavigationBar.setBehaviorAsync("overlay-swipe");
+    await NavigationBar.setPositionAsync("absolute");
+    await NavigationBar.setBackgroundColorAsync("#00000000");
+  }, []);
+
   useEffect(() => {
     if (Platform.OS === "android") {
-      NavigationBar.setVisibilityAsync("hidden");
-      NavigationBar.setBehaviorAsync("overlay-swipe");
+      applyAndroidNavBar();
+
+      const subscription = AppState.addEventListener("change", (state) => {
+        if (state === "active") {
+          applyAndroidNavBar();
+        }
+      });
+
+      return () => subscription.remove();
     }
-  }, []);
+  }, [applyAndroidNavBar]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

@@ -2,7 +2,7 @@
   "expo": {
     "name": "CMO",
     "slug": "CMO",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "cmo",
@@ -40,6 +40,12 @@
       "expo-font",
       "@react-native-community/datetimepicker"
     ],
+    "updates": {
+  "url": "https://u.expo.dev/33c0754e-86e4-40b9-ba7c-060d4ab91442"
+},
+"runtimeVersion": {
+  "policy": "appVersion"
+},
     "extra": {
       "router": {},
       "eas": {
