@@ -2,19 +2,20 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import { PieChart } from "react-native-chart-kit";
 
 import {
-  getDashboardData,
-  getSecteursActivite,
+    getDashboardData,
+    getSecteursActivite,
 } from "@/app/candidat/services/DashboardScreen";
 
 import { getListFils } from "@/app/candidat/services/AttestationsScreen";
@@ -126,6 +127,7 @@ export default function DashboardScreen() {
     [],
   );
   const [missingDocs, setMissingDocs] = useState<MissingDocument[]>([]);
+  const [badgeLoading, setBadgeLoading] = useState(false);
 
   const loadDashboard = React.useCallback(async () => {
     try {
@@ -188,7 +190,15 @@ export default function DashboardScreen() {
                   source={require("@/img/badge_verifie.png")}
                   style={styles.badgeIcon}
                   resizeMode="contain"
+                  onLoadStart={() => setBadgeLoading(true)}
+                  onLoadEnd={() => setBadgeLoading(false)}
+                  onError={() => setBadgeLoading(false)}
                 />
+                {badgeLoading ? (
+                  <View style={styles.badgeLoading}>
+                    <ActivityIndicator size="small" color="#2b5bbb" />
+                  </View>
+                ) : null}
               </View>
             )}
 
@@ -400,10 +410,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
+    position: "relative",
   },
   badgeIcon: {
     width: 28,
     height: 28,
+  },
+  badgeLoading: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(238, 243, 255, 0.7)",
   },
   title: {
     fontSize: 16,

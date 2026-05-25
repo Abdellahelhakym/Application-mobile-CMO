@@ -1,10 +1,13 @@
-import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import { View, Text, Image, Platform, StyleSheet } from "react-native";
+import { Tabs } from "expo-router";
+import { Image, Platform, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
   
 
 export default function Layout() {
+  const insets = useSafeAreaInsets();
+  const navBarInset = Platform.OS === "android" && insets.bottom >= 24 ? insets.bottom : 0;
 
   
  
@@ -98,6 +101,7 @@ export default function Layout() {
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
           position: "absolute",
+          bottom: navBarInset,
         },
 
         tabBarLabelStyle: {

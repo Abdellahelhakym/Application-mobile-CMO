@@ -2,9 +2,9 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -20,6 +20,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // ─── Erreur inline email ──────────────────────────────────────────────────
   const [emailError, setEmailError] = useState("");
@@ -28,6 +29,10 @@ export default function LoginScreen() {
     /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
 
   const handleLogin = async () => {
+    if (isLoading) {
+      return;
+    }
+
     // Validation email avant tout appel
     if (!email) {
       setEmailError("L'email est obligatoire");
@@ -40,18 +45,21 @@ export default function LoginScreen() {
     setEmailError("");
 
     try {
+      setIsLoading(true);
       const loginObject = { email, password };
       const response = await login(loginObject);
 
       if (response.success) {
         await setTokenId(response.token_id);
-        router.push("/candidat/tabs/DashboardScreen");
+        router.replace("/candidat/tabs/DashboardScreen");
       } else {
         alert("Email ou mot de passe incorrect");
       }
     } catch (error) {
       console.log(error);
       alert("Erreur serveur");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -122,8 +130,16 @@ export default function LoginScreen() {
 
             {/* Buttons */}
             <View style={styles.row}>
-              <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin}>
-                <Text style={styles.primaryText}>Se connecter</Text>
+              <TouchableOpacity
+                style={[styles.primaryBtn, isLoading && styles.primaryBtnDisabled]}
+                onPress={handleLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.primaryText}>Se connecter</Text>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -228,6 +244,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 30,
     alignItems: "center",
+  },
+  primaryBtnDisabled: {
+    opacity: 0.7,
   },
   primaryText: {
     color: "#fff",

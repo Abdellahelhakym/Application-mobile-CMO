@@ -3,6 +3,7 @@ import * as NavigationBar from "expo-navigation-bar";
 import { Href, Stack, router } from "expo-router";
 import { useCallback, useEffect } from "react";
 import { AppState, Platform, TouchableOpacity } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function BackButton({ fallbackRoute }: { fallbackRoute: Href }) {
   return (
@@ -20,7 +21,18 @@ function BackButton({ fallbackRoute }: { fallbackRoute: Href }) {
 }
 
 export default function RootLayout() {
-  const applyAndroidNavBar = useCallback(async () => {
+  const insets = useSafeAreaInsets();
+  const isThreeButtonNav = Platform.OS === "android" && insets.bottom >= 24;
+
+  const applyAndroidNavBar = useCallback(async (useThreeButtonNav: boolean) => {
+    if (useThreeButtonNav) {
+      await NavigationBar.setVisibilityAsync("visible");
+      await NavigationBar.setBehaviorAsync("inset-swipe");
+      await NavigationBar.setPositionAsync("relative");
+      await NavigationBar.setBackgroundColorAsync("#ffffff");
+      return;
+    }
+
     await NavigationBar.setVisibilityAsync("hidden");
     await NavigationBar.setBehaviorAsync("overlay-swipe");
     await NavigationBar.setPositionAsync("absolute");
@@ -29,17 +41,17 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (Platform.OS === "android") {
-      applyAndroidNavBar();
+      applyAndroidNavBar(isThreeButtonNav);
 
       const subscription = AppState.addEventListener("change", (state) => {
         if (state === "active") {
-          applyAndroidNavBar();
+          applyAndroidNavBar(isThreeButtonNav);
         }
       });
 
       return () => subscription.remove();
     }
-  }, [applyAndroidNavBar]);
+  }, [applyAndroidNavBar, isThreeButtonNav]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

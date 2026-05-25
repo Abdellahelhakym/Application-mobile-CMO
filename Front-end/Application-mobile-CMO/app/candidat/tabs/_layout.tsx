@@ -1,9 +1,10 @@
-import { Tabs } from "expo-router";
-import { Feather } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
-import { View, Text, Image, Platform, StyleSheet } from "react-native";
 import { getDashboardData } from "@/app/candidat/services/DashboardScreen";
 import { getPsaudo } from "@/app/candidat/services/token_id";
+import { Feather } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Platform, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TITLES: Record<string, string> = {
   DashboardScreen: "Accueil",
@@ -15,6 +16,8 @@ const TITLES: Record<string, string> = {
 
 export default function Layout() {
   const [userName, setUserName] = useState("Utilisateur");
+  const insets = useSafeAreaInsets();
+  const navBarInset = Platform.OS === "android" && insets.bottom >= 24 ? insets.bottom : 0;
 
   useEffect(() => {
     let isMounted = true;
@@ -119,6 +122,7 @@ export default function Layout() {
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
           position: "absolute",
+          bottom: navBarInset,
         },
 
         tabBarActiveTintColor: "#2b5bbb",

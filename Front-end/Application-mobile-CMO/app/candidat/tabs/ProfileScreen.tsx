@@ -1,15 +1,15 @@
-import { CommonActions, useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
-  Linking,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 import {
@@ -43,6 +43,7 @@ export default function ProfileScreen() {
     pays: '',
   });
   const [photo, setPhoto] = useState('');
+  const [avatarLoading, setAvatarLoading] = useState(false);
 
   const getData = useCallback(async () => {
     try {
@@ -69,14 +70,25 @@ export default function ProfileScreen() {
   );
 
 
-  function handleLogout() {
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'index' }],
-      })
-    );
-  }
+ function handleLogout() {
+  Alert.alert(
+    'Déconnexion',
+    'Voulez-vous vraiment vous déconnecter ?',
+    [
+      {
+        text: 'Annuler',
+        style: 'cancel',
+      },
+      {
+        text: 'Déconnecter',
+        style: 'destructive',
+        onPress: () => {
+          router.replace('/loginCan');
+        },
+      },
+    ]
+  );
+}
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -107,7 +119,20 @@ export default function ProfileScreen() {
         <View style={styles.row}>
           <View style={styles.avatarBig}>
             {photo ? (
-              <Image source={{ uri: photo }} style={styles.avatarImage} />
+              <>
+                <Image
+                  source={{ uri: photo }}
+                  style={styles.avatarImage}
+                  onLoadStart={() => setAvatarLoading(true)}
+                  onLoadEnd={() => setAvatarLoading(false)}
+                  onError={() => setAvatarLoading(false)}
+                />
+                {avatarLoading ? (
+                  <View style={styles.avatarLoading}>
+                    <ActivityIndicator size="small" color="#2b5bbb" />
+                  </View>
+                ) : null}
+              </>
             ) : (
               <User size={40} color="#2b5bbb" />
             )}
@@ -250,10 +275,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    position: 'relative',
   },
   avatarImage: {
     width: '100%',
     height: '100%',
+  },
+  avatarLoading: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(238, 243, 255, 0.7)',
   },
 
   name: {

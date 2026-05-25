@@ -1,58 +1,59 @@
 import * as ImagePicker from 'expo-image-picker';
 import {
-  Briefcase,
-  Camera,
-  Car,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Globe,
-  GraduationCap,
-  MapPin,
-  Plus,
-  Save,
-  Trash2,
-  Upload,
-  User,
+    Briefcase,
+    Camera,
+    Car,
+    Check,
+    ChevronDown,
+    ChevronUp,
+    Globe,
+    GraduationCap,
+    MapPin,
+    Plus,
+    Save,
+    Trash2,
+    Upload,
+    User,
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 import {
-  addExperience,
-  addFormation,
-  deleteExperiences,
-  deleteFormation,
-  DeleteImage,
-  getExperiences,
-  getFormations,
-  getImage,
-  getInformations,
-  getLangues,
-  getMobiliteUser,
-  getPermis,
-  getSecteur, getSecteurUser,
-  getToutMobilite,
-  updateExperiences,
-  updateFormation,
-  updateImage,
-  updateInformations,
-  updateLangues,
-  updateMobilite,
-  updatePermis,
-  updateSecteur
+    addExperience,
+    addFormation,
+    deleteExperiences,
+    deleteFormation,
+    DeleteImage,
+    getExperiences,
+    getFormations,
+    getImage,
+    getInformations,
+    getLangues,
+    getMobiliteUser,
+    getPermis,
+    getSecteur, getSecteurUser,
+    getToutMobilite,
+    updateExperiences,
+    updateFormation,
+    updateImage,
+    updateInformations,
+    updateLangues,
+    updateMobilite,
+    updatePermis,
+    updateSecteur
 } from "@/app/candidat/services/CVScreen";
 import url from "@/app/services/url.js";
 
@@ -327,6 +328,7 @@ const IdentityTab = ({
   photoUpload: { uri: string; name: string; type: string } | null;
   setPhotoUpload: React.Dispatch<React.SetStateAction<{ uri: string; name: string; type: string } | null>>;
 }) => {
+  const [photoLoading, setPhotoLoading] = useState(false);
   const set = (key: string) => (v: string) =>
     setFormData((p: any) => ({ ...p, [key]: v }));
 
@@ -396,7 +398,22 @@ const IdentityTab = ({
         <View style={styles.photoContainer}>
           <View style={styles.photoBox}>
             {formData.photo
-              ? <Image source={{ uri: formData.photo }} style={styles.photoImage} />
+              ? (
+                <>
+                  <Image
+                    source={{ uri: formData.photo }}
+                    style={styles.photoImage}
+                    onLoadStart={() => setPhotoLoading(true)}
+                    onLoadEnd={() => setPhotoLoading(false)}
+                    onError={() => setPhotoLoading(false)}
+                  />
+                  {photoLoading ? (
+                    <View style={styles.photoLoading}>
+                      <ActivityIndicator size="small" color={C.blue} />
+                    </View>
+                  ) : null}
+                </>
+              )
               : <Camera size={28} color={C.blue} />
             }
           </View>
@@ -414,6 +431,7 @@ const IdentityTab = ({
               onPress={() => {
                 setFormData((p: any) => ({ ...p, photo: '' }));
                 setPhotoUpload(null);
+                setPhotoLoading(false);
                 DeleteImage();
               }}
             >
@@ -1875,10 +1893,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    position: 'relative',
   },
   photoImage: {
     width: '100%',
     height: '100%',
+  },
+  photoLoading: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(238, 243, 255, 0.7)',
   },
   photoHint: {
     fontSize: 13,
