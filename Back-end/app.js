@@ -61,6 +61,11 @@ app.use(
   express.static(path.join(__dirname, 'candidat', 'fils'))
 );
 
+//---------------------employeur route----------------------------
+
+const employerDashboard = require('./employeur/EmployerDashboard');
+app.use('/employeur/dashboard', employerDashboard);
+
 
 
 

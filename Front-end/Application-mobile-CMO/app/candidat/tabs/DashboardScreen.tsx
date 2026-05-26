@@ -204,7 +204,7 @@ export default function DashboardScreen() {
 
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>
-                Bonjour, {dashboardData.user.nom}
+                Bonjour M. {dashboardData.user.nom}
               </Text>
 
               <Text style={styles.subtitle}>

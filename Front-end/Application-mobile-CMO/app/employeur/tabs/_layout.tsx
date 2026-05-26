@@ -71,15 +71,7 @@ export default function Layout() {
                   {user.name}
                 </Text>
 
-                 <Image
-              source={{ uri: user.avatar }}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                backgroundColor: "#e7eeff",
-              }}
-            />
+                
     
           </View>
         ),

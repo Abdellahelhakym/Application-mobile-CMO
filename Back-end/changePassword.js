@@ -88,4 +88,9 @@ passwordRouter.post('/candidat/forget', async (req, res) => {
 });
 
 
+passwordRouter.get('/test', (req, res) => {
+    res.send('password change test nooooooooooooooooooow');
+});
+
+
 module.exports = passwordRouter;

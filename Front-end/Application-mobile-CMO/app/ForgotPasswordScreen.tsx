@@ -22,7 +22,7 @@ export default function ForgotPasswordScreen() {
     return emailRegex.test(text);
   };
 
- const handleSubmit = async () => {
+const handleSubmit = async () => {
   setSubmitted(true);
 
   if (!email) {
@@ -35,17 +35,19 @@ export default function ForgotPasswordScreen() {
   }
 
   try {
-    await forgotPassword(email);
+    const response = await forgotPassword(email);
 
-    alert(`Un email de réinitialisation a été envoyé à ${email}`);
+    alert(response.message);
 
     setEmail("");
     setSubmitted(false);
     router.back();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erreur lors de l'envoi de l'email.";
-    console.log(error);
-    alert(message);
+    if (error instanceof Error) {
+      alert(error.message);
+    } else {
+      alert("Une erreur est survenue");
+    }
   }
 };
 
@@ -151,7 +153,7 @@ const styles = StyleSheet.create({
 
   label: {
     fontSize: 13,
-    color: "#2b5bbb",
+    color: "#122F78",
     marginBottom: 8,
     fontWeight: "600",
   },
@@ -195,7 +197,7 @@ const styles = StyleSheet.create({
   },
 
   submitBtn: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#122F78",
     borderRadius: 30,
     paddingVertical: 14,
     alignItems: "center",

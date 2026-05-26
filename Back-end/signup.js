@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+
 const signUp = express.Router();
 const db = require('./db');
 
@@ -125,6 +125,9 @@ signUp.post('/candidat', async (req, res) => {
                                     },
                                     body: JSON.stringify({ token_app })
                                 });
+                                             if (!response.ok) {
+                                                console.error('Erreur API mobile:', response.status);
+                                            }
 
                     }catch(error){
                         console.error('Error during post-signup processing:', error);
