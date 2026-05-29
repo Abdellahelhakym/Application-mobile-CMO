@@ -17,7 +17,7 @@ CandidatureScreen.post('/', (req, res) => {
     try {
         const { token_id } = req.body;
 
-        console.log('Received candidature request with token_id:', token_id);
+        console.log('Received candidature request with token_id:');
 
         if (!token_id) {
             return res.status(400).json({

@@ -1,5 +1,5 @@
-import { getTokenId } from "./token_id";
 import url from "@/app/services/url.js";
+import { getTokenId } from "./token_id";
 
 export async function getInformations() {
     try {
@@ -185,7 +185,7 @@ export async function getFormations() {
 
 // update
 
-export async function updateInformations(civilite, prenom, nom, email, tel, code_postal, ville, pays, num_secur_social) {
+export async function updateInformations(civilite, prenom, nom, email, tel , tel2 , adresse , code_postal, ville, pays, num_secur_social) {
     try {
         const token_id = await getTokenId();
         const response = await fetch(url() + "candidat/cv/updateInformations", {
@@ -193,7 +193,7 @@ export async function updateInformations(civilite, prenom, nom, email, tel, code
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ token_id, civilite, prenom, nom, email, tel, code_postal, ville, pays, num_secur_social  }),
+            body: JSON.stringify({ token_id, civilite, prenom, nom, email, tel, tel2: tel2 ?? "", adresse , code_postal, ville, pays, num_secur_social  }),
             //
         });
         const data = await response.json();

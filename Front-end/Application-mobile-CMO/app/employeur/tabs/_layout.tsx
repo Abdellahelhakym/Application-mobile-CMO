@@ -1,20 +1,27 @@
 import { Feather } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { Tabs } from "expo-router";
-import { Image, Platform, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useState } from "react";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-  
+import { getPsaudo } from "@/app/employeur/services/token_id";
 
 export default function Layout() {
   const insets = useSafeAreaInsets();
   const navBarInset = Platform.OS === "android" && insets.bottom >= 24 ? insets.bottom : 0;
+  const [userName, setUserName] = useState("Utilisateur");
 
-  
- 
-  const user = {
-    name: "Abdellah El Hakym",
-    avatar: "https://i.pravatar.cc/100",
-  };
+  const refreshPseudo = useCallback(() => {
+    const pseudo = getPsaudo();
+    setUserName(pseudo || "Utilisateur");
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshPseudo();
+    }, [refreshPseudo])
+  );
 
 
 
@@ -68,7 +75,7 @@ export default function Layout() {
                     fontWeight: "500",
                   }}
                 >
-                  {user.name}
+                  {userName}
                 </Text>
 
                 

@@ -167,7 +167,7 @@ dashboard.post('/secteurs', (req, res) => {
 
     const { token_id } = req.body;
 
-    console.log('Received secteurs request with token_id:', token_id);
+    console.log('Received secteurs request with token_id:');
 
     if (!token_id) {
         return res.status(400).json({

@@ -18,7 +18,7 @@ CVScreen.post('/Informations', (req, res) => {
 
     console.log('Received CV Informations request with token_id');
 
-    db.query('SELECT photo , civilite , prenom , nom , email , tel , code_postal , ville , pays , num_secur_social FROM cmo_candidats WHERE token_id = ? and deleted = 0', [token_id], (err, results) => {
+    db.query('SELECT photo , civilite , prenom , nom , email , tel , tel2 , adresse , code_postal , ville , pays , num_secur_social FROM cmo_candidats WHERE token_id = ? and deleted = 0', [token_id], (err, results) => {
         if (err) {
             console.error(err);
             return res.status(500).json({
@@ -348,7 +348,7 @@ CVScreen.post('/formation', (req, res) => {
 
 //---------------------------------modification---------------------------------
 CVScreen.post('/updateInformations', (req, res) => {
-    const { token_id, civilite, prenom, nom, email, tel, code_postal, ville, pays, num_secur_social } = req.body;
+    const {   token_id,civilite, prenom, nom, email, tel , tel2 , adresse , code_postal, ville, pays, num_secur_social } = req.body;
     console.log('Received CV updateInformations request with token_id');
     if (!token_id) {
         return res.status(400).json({
@@ -358,18 +358,18 @@ CVScreen.post('/updateInformations', (req, res) => {
 
     const updateSql = `
         UPDATE cmo_candidats
-        SET civilite = ?, prenom = ?, nom = ?, email = ?, tel = ?, code_postal = ?, ville = ?, pays = ?, num_secur_social = ?
+        SET civilite = ?, prenom = ?, nom = ?, email = ?, tel = ?, tel2 = ?, adresse = ?, code_postal = ?, ville = ?, pays = ?, num_secur_social = ?
         WHERE token_id = ?
         AND deleted = 0
     `;
 
     const insertSql = `
         INSERT INTO cmo_candidats
-        (token_id, civilite, prenom, nom, email, tel, code_postal, ville, pays, num_secur_social, deleted)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        (token_id, civilite, prenom, nom, email, tel, tel2, adresse, code_postal, ville, pays, num_secur_social, deleted)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     `;
 
-    db.query(updateSql, [civilite, prenom, nom, email, tel, code_postal, ville, pays, num_secur_social, token_id], (err, results) => {
+    db.query(updateSql, [civilite, prenom, nom, email, tel, tel2, adresse, code_postal, ville, pays, num_secur_social, token_id], (err, results) => {
         if (err) {
             console.error(err);
             return res.status(500).json({
@@ -397,7 +397,7 @@ CVScreen.post('/updateInformations', (req, res) => {
 
         db.query(
             insertSql,
-            [token_id, civilite, prenom, nom, email, tel, code_postal, ville, pays, num_secur_social],
+            [token_id, civilite, prenom, nom, email, tel, tel2, adresse, code_postal, ville, pays, num_secur_social],
             (insertErr) => {
                 if (insertErr) {
                     console.error(insertErr);

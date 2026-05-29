@@ -14,7 +14,7 @@ import {
   View
 } from "react-native";
 import { setTokenId } from "./candidat/services/token_id";
-import { login } from "./services/login";
+import { loginCan } from "./services/login";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -47,13 +47,13 @@ export default function LoginScreen() {
     try {
       setIsLoading(true);
       const loginObject = { email, password };
-      const response = await login(loginObject);
+      const response = await loginCan(loginObject);
 
       if (response.success) {
         await setTokenId(response.token_id);
         router.replace("/candidat/tabs/DashboardScreen");
       } else {
-        alert("Email ou mot de passe incorrect");
+        alert(response.error || response.message || "Email ou mot de passe incorrect");
       }
     } catch (error) {
       console.log(error);
