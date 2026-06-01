@@ -1,71 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ScrollView
+  ScrollView,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { Phone, MessageSquare } from 'lucide-react-native';
+import { getEmployerInfo } from '@/app/employeur/services/EmployerInfoScreen';
 
 interface EmployerInfoScreenProps {
   onBack?: () => void;
 }
 
 export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) {
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     logo: '',
-    companyName: 'test',
-    firstName: 'abdellah',
-    lastName: 'el hakym',
-    siren: '123 456 789',
-    siret: '123 456 789 00012',
+    companyName: '',
+    firstName: '',
+    lastName: '',
+    siren: '',
+    siret: '',
     address: '',
-    postalCode: '0',
+    postalCode: '',
     city: '',
-    country: 'France'
+    country: ''
   });
+
+  // Appel de l'API au chargement du composant
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchEmployerData = async () => {
+      try {
+        const response = await getEmployerInfo();
+        
+        if (mounted && response) {
+          setFormData({
+            logo: response.photo || '',
+            companyName: response.raison_social || '',
+            firstName: response.prenom_responsable || '',
+            lastName: response.responsable || '', // 'responsable' correspond au nom dans ton objet API
+            siren: response.siren || '',
+            siret: response.siret || '',
+            address: response.adresse || '',
+            postalCode: response.code_postal ? String(response.code_postal) : '',
+            city: response.ville || '',
+            country: response.pays_origine || 'France'
+          });
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des infos de l'employeur :", error);
+        Alert.alert('Erreur', 'Impossible de récupérer vos informations.');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchEmployerData();
+    return () => { mounted = false; };
+  }, []);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleSubmit = () => {
+    console.log('Données soumises :', formData);
+    // Tu peux appeler ici ta fonction de mise à jour (ex: updateEmployerInfo)
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerLoader]}>
+        <ActivityIndicator size="large" color="#2b5bbb" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Card */}
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <View style={styles.logoBox}>
-              <Text style={styles.logoText}>Votre Logo</Text>
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <Text style={styles.company}>test</Text>
-              <Text style={styles.separator}>|</Text>
-            </View>
-
-            <View style={styles.badgePlan}>
-              <Text style={styles.badgePlanText}>
-                Pack DEVIS PERSONNALISE
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.outlineBtn}>
-              <Phone size={16} color="#2b5bbb" />
-              <Text style={styles.outlineText}>Contacter mon conseiller</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.outlineBtn}>
-              <MessageSquare size={16} color="#2b5bbb" />
-              <Text style={styles.outlineText}>Chat</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
+        
         {/* Form */}
         <View style={styles.card}>
           <Text style={styles.label}>
@@ -74,7 +94,7 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
 
           {/* Pas de input file en React Native */}
           <View style={styles.fakeInput}>
-            <Text>Sélectionner un fichier</Text>
+            <Text>{formData.logo ? 'Fichier sélectionné' : 'Sélectionner un fichier'}</Text>
           </View>
 
           <Text style={styles.label}>
@@ -104,42 +124,60 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
             style={styles.input}
           />
 
+          <Text style={styles.label}>Siren :</Text>
           <TextInput
             value={formData.siren}
             onChangeText={(v) => handleChange('siren', v)}
             style={styles.input}
             placeholder="Siren"
+            placeholderTextColor="#7a8ab8"
           />
 
+          <Text style={styles.label}>Siret :</Text>
           <TextInput
             value={formData.siret}
             onChangeText={(v) => handleChange('siret', v)}
             style={styles.input}
             placeholder="Siret"
+            placeholderTextColor="#7a8ab8"
           />
 
+          <Text style={styles.label}>Adresse :</Text>
           <TextInput
             value={formData.address}
             onChangeText={(v) => handleChange('address', v)}
-            style={styles.input}
+            style={[styles.input, styles.inputHighlight]}
             placeholder="Adresse"
+            placeholderTextColor="#7a8ab8"
           />
 
+          <Text style={styles.label}>Code postal :</Text>
           <TextInput
             value={formData.postalCode}
             onChangeText={(v) => handleChange('postalCode', v)}
             style={styles.input}
             placeholder="0"
+            placeholderTextColor="#7a8ab8"
+            keyboardType="numeric"
           />
 
+          <Text style={styles.label}>Ville :</Text>
           <TextInput
             value={formData.city}
             onChangeText={(v) => handleChange('city', v)}
-            style={styles.input}
+            style={[styles.input, styles.inputHighlight]}
             placeholder="Ville"
+            placeholderTextColor="#7a8ab8"
           />
         </View>
       </ScrollView>
+
+      {/* Bouton Ajouter les informations en bas */}
+      <View style={styles.bottomContainer}>
+        <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
+          <Text style={styles.submitBtnText}>Ajouter les informations</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -149,10 +187,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#eef3ff'
   },
+  centerLoader: {
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
   content: {
     padding: 16,
     gap: 16,
-    paddingBottom: 120
+    paddingBottom: 20
   },
   card: {
     backgroundColor: '#fff',
@@ -161,66 +203,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e1e9fb'
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10
-  },
-  logoBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
-    backgroundColor: '#f6f8ff',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  logoText: {
-    fontSize: 10,
-    color: '#2b5bbb'
-  },
-  company: {
-    fontSize: 16,
-    color: '#1b2d5a',
-    fontWeight: '600'
-  },
-  separator: {
-    fontSize: 12,
-    color: '#7a8ab8'
-  },
-  badgePlan: {
-    backgroundColor: '#2b5bbb',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20
-  },
-  badgePlanText: {
-    color: '#fff',
-    fontSize: 10
-  },
-  actions: {
-    marginTop: 12,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8
-  },
-  outlineBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#cfd9ee',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6
-  },
-  outlineText: {
-    color: '#2b5bbb',
-    fontSize: 12
-  },
   label: {
     fontSize: 14,
     color: '#1b2d5a',
-    marginTop: 10
+    marginTop: 12,
+    fontWeight: '500'
   },
   input: {
     borderWidth: 1,
@@ -228,13 +215,40 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    marginTop: 6
+    marginTop: 6,
+    color: '#1b2d5a',
+    backgroundColor: '#fff'
+  },
+  inputHighlight: {
+    borderColor: '#2b5bbb',
+    backgroundColor: '#f6f8ff',
+    color: '#2b5bbb',
+    fontWeight: '500'
   },
   fakeInput: {
     borderWidth: 1,
     borderColor: '#cfd9ee',
     borderRadius: 20,
     padding: 12,
-    marginTop: 6
+    marginTop: 6,
+    backgroundColor: '#fff'
+  },
+  bottomContainer: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderTopWidth: 1,
+    borderColor: '#e1e9fb'
+  },
+  submitBtn: {
+    backgroundColor: '#2b5bbb',
+    borderRadius: 20,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  submitBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600'
   }
 });

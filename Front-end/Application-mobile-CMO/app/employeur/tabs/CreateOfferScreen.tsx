@@ -13,18 +13,91 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import {getSecteur , getToutMobilite} from "@/app/candidat/services/CVScreen";
+import {createCommande } from '@/app/employeur/services/CreatOffesScreen';
+
+
+const SelectPicker = ({
+  value,
+  options,
+  onChange,
+  placeholder = 'Sélectionner',
+  error,
+}: {
+  value: string;
+  options: Array<{ label: string; value: string }>;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  error?: string;
+}) => {
+  const [open, setOpen] = useState(false);
+  const displayLabel = options.find(opt => opt.value === value)?.label || placeholder;
+  
+  return (
+    <View style={[styles.selectContainer, open && styles.selectContainerOpen]}>
+      <TouchableOpacity style={styles.selectBox} onPress={() => setOpen(!open)}>
+        <Text style={value ? styles.selectText : styles.selectPlaceholder}>
+          {displayLabel}
+        </Text>
+        {open
+          ? <Ionicons name="chevron-up" size={16} color="#6b7280" />
+          : <Ionicons name="chevron-down" size={16} color="#6b7280" />
+        }
+      </TouchableOpacity>
+      {open ? (
+        <View style={styles.dropdownList}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {options.map((opt) => (
+              <TouchableOpacity
+                key={opt.value || '__empty__'}
+                style={[
+                  styles.dropdownItem,
+                  opt.value === value ? styles.dropdownItemActiveBg : undefined,
+                ]}
+                onPress={() => { onChange(opt.value); setOpen(false); }}
+              >
+                <Text style={[styles.dropdownItemText, opt.value === value ? styles.dropdownItemActive : undefined]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </View>
+  );
+};
 
 export default function CreateOfferScreen() {
-  const [formData, setFormData] = useState({
+  const initialFormData = {
+    categoryId: '',
     category: '',
+    subcategoryId: '',
+    subcategory: '',
+    jobId: '',
+    jobTitle: '',
+    jobType: '',
+    startDate: '',
+    endDate: '',
     address: '',
     mobility: '',
     positions: '',
     salary: '',
-    description: ''
-  });
+    housing: '',
+    drivingLicense: '',
+    description: '',
+    comments: '',
+  };
 
-    const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [formData, setFormData] = useState(initialFormData);
+
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [sectorData, setSectorData] = useState<{ categories: any[]; subCategories: any[]; jobs: any[] }>({ categories: [], subCategories: [], jobs: [] });
+  const [mobilites, setMobilites] = useState<any[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+
   const handleChange = (name: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -32,9 +105,133 @@ export default function CreateOfferScreen() {
     }));
   };
 
-  const handleSubmit = () => {
-    Alert.alert('Succès', 'Offre soumise pour validation CMO');
+  const handleCategorySelect = (categoryId: string) => {
+    const category = sectorData.categories.find(c => String(c.id_categorie ?? c.id) === String(categoryId));
+    setFormData(prev => ({
+      ...prev,
+      categoryId: categoryId,
+      category: category?.titre ?? '',
+      subcategoryId: '',
+      subcategory: '',
+      jobId: '',
+      jobTitle: ''
+    }));
   };
+
+  const handleSubcategorySelect = (subcategoryId: string) => {
+    const subcategory = sectorData.subCategories.find(sc => String(sc.id_sous ?? sc.id) === String(subcategoryId));
+    setFormData(prev => ({
+      ...prev,
+      subcategoryId: subcategoryId,
+      subcategory: subcategory?.titre ?? '',
+      jobId: '',
+      jobTitle: ''
+    }));
+  };
+
+  const handleJobSelect = (jobId: string) => {
+    const job = sectorData.jobs.find(j => String(j.id_metier ?? j.id) === String(jobId));
+    setFormData(prev => ({
+      ...prev,
+      jobId: jobId,
+      jobTitle: job?.titre ?? ''
+    }));
+  };
+
+  const handleSubmit = async () => {
+    const requiredFields: Array<{ key: keyof typeof formData; label: string }> = [
+      { key: 'categoryId', label: 'Categorie' },
+      { key: 'subcategoryId', label: 'Sous-categorie' },
+      { key: 'jobId', label: 'Metier' },
+      { key: 'jobType', label: 'Type de contrat' },
+      { key: 'startDate', label: 'Date debut (MM/DD/YYYY)' },
+      { key: 'address', label: 'Adresse' },
+      { key: 'mobility', label: 'Mobilite' },
+      { key: 'positions', label: 'Nombre de poste' },
+      { key: 'salary', label: 'Salaire' },
+      { key: 'housing', label: 'Logement' },
+      { key: 'drivingLicense', label: 'Permis de conduire' },
+      { key: 'description', label: 'Description' },
+    ];
+
+    const nextErrors: Record<string, string> = {};
+    const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+    requiredFields.forEach((field) => {
+      if (!String(formData[field.key]).trim()) {
+        nextErrors[field.key] = `Le champ ${field.label} est obligatoire`;
+      }
+    });
+
+    if (formData.startDate && !dateRegex.test(formData.startDate)) {
+      nextErrors.startDate = 'Format date invalide: MM/DD/YYYY';
+    }
+
+    if (formData.endDate && !dateRegex.test(formData.endDate)) {
+      nextErrors.endDate = 'Format date invalide: MM/DD/YYYY';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    setErrors({});
+
+   
+    try {
+      const result = await createCommande({ ...formData });
+      const message = result?.message || 'Offre soumise pour validation CMO';
+      Alert.alert('Resultat', message);
+      setFormData(initialFormData);
+      setErrors({});
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Impossible de creer la commande';
+      Alert.alert('Erreur', message);
+      console.error(error);
+    }
+  };
+
+  const filteredSubCategories = sectorData.subCategories.filter(sc => String(sc.id_categorie) === String(formData.categoryId));
+  const filteredJobs = sectorData.jobs.filter(j => String(j.id_sous) === String(formData.subcategoryId));
+
+  // load secteurs for category/subcategory pickers
+  React.useEffect(() => {
+    let mounted = true;
+    const loadSecteurs = async () => {
+      try {
+        const data = await getSecteur();
+
+        if (!mounted) return;
+        setSectorData({
+          categories: data?.secteurs ?? [],
+          subCategories: data?.sousCategories ?? [],
+          jobs: data?.metiers ?? [],
+        });
+      } catch (error) {
+        console.error('loadSecteurs error', error);
+        if (mounted) setSectorData({ categories: [], subCategories: [], jobs: [] });
+      }
+    };
+    loadSecteurs();
+    return () => { mounted = false; };
+  }, []);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const loadMobilites = async () => {
+      try {
+        const data = await getToutMobilite();
+      
+        if (!mounted) return;
+        setMobilites(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('loadMobilites error', error);
+        if (mounted) setMobilites([]);
+      }
+    };
+    loadMobilites();
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <ScrollView
@@ -42,26 +239,7 @@ export default function CreateOfferScreen() {
       contentContainerStyle={styles.content}
     >
 
-      {/* CARD INFO */}
-      <View style={styles.card}>
-        <Text style={styles.subtitle}>test</Text>
 
-        <View style={styles.row}>
-          <TouchableOpacity style={styles.outlineBtn}>
-            <Ionicons name="call-outline" size={16} />
-            <Text style={styles.btnText}> Contacter</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.outlineBtn}>
-            <Ionicons name="chatbubble-outline" size={16} />
-            <Text style={styles.btnText}> Chat</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.notice}>
-          Passez vos commandes en toute simplicite !
-        </Text>
-      </View>
 
       {/* FORM */}
       <View style={styles.card}>
@@ -105,33 +283,96 @@ export default function CreateOfferScreen() {
                   </TouchableOpacity>
                 </View>
                 <Picker
-                  selectedValue={formData.category}
-                  onValueChange={(value) => handleChange('category', value)}
+                  selectedValue={formData.categoryId}
+                  onValueChange={(value) => handleCategorySelect(String(value))}
                   style={styles.picker}
                   itemStyle={styles.pickerItem}
                 >
                   <Picker.Item label="Categorie" value="" />
-                  <Picker.Item label="Agriculture" value="Agriculture" />
-                  <Picker.Item label="BTP" value="BTP" />
+                  {sectorData.categories.map((c) => (
+                    <Picker.Item key={c.id_categorie ?? c.id} label={c.titre} value={String(c.id_categorie ?? c.id)} />
+                  ))}
                 </Picker>
               </View>
             </Modal>
+            {errors.categoryId ? (
+              <Text style={styles.errorText}>{errors.categoryId}</Text>
+            ) : null}
           </View>
         ) : (
           <View style={styles.pickerWrapper}>
             <Picker
-              selectedValue={formData.category}
-              onValueChange={(value) => handleChange('category', value)}
+              selectedValue={formData.categoryId}
+              onValueChange={(value) => handleCategorySelect(String(value))}
               style={styles.picker}
               mode="dropdown"
               itemStyle={styles.pickerItem}
             >
               <Picker.Item label="Categorie" value="" />
-              <Picker.Item label="Agriculture" value="Agriculture" />
-              <Picker.Item label="BTP" value="BTP" />
+              {sectorData.categories.map((c) => (
+                <Picker.Item key={c.id_categorie ?? c.id} label={c.titre} value={String(c.id_categorie ?? c.id)} />
+              ))}
             </Picker>
+            {errors.categoryId ? (
+              <Text style={styles.errorText}>{errors.categoryId}</Text>
+            ) : null}
           </View>
         )}
+
+        {/* Additional form fields */}
+        {/* Subcategory - dropdown */}
+        <SelectPicker
+          value={formData.subcategoryId}
+          options={[{ label: 'Sous-categorie', value: '' }, ...filteredSubCategories.map(sc => ({ label: sc.titre, value: String(sc.id_sous ?? sc.id) }))]}
+          onChange={(v) => handleSubcategorySelect(v)}
+          placeholder="Sous-categorie"
+          error={errors.subcategoryId}
+        />
+
+        {/* Job/Metier - dropdown */}
+        <SelectPicker
+          value={formData.jobId}
+          options={[{ label: 'Metier / Intitule du poste', value: '' }, ...filteredJobs.map(j => ({ label: j.titre, value: String(j.id_metier ?? j.id) }))]}
+          onChange={(v) => handleJobSelect(v)}
+          placeholder="Metier / Intitule du poste"
+          error={errors.jobId}
+        />
+
+        {/* Job type picker - dropdown */}
+        <SelectPicker
+          value={formData.jobType}
+          options={[
+            { label: 'Type de contrat', value: '' },
+            { label: 'CDI', value: 'CDI' },
+            { label: 'CDD', value: 'CDD' },
+            { label: 'Intérim', value: 'Interim' },
+          ]}
+          onChange={(v) => handleChange('jobType', v)}
+          placeholder="Type de contrat"
+          error={errors.jobType}
+        />
+
+        <TextInput
+          style={styles.input}
+          placeholder="Date debut (MM/DD/YYYY)"
+          placeholderTextColor="#7a8ab8"
+          value={formData.startDate}
+          onChangeText={(v) => handleChange('startDate', v)}
+        />
+        {errors.startDate ? (
+          <Text style={styles.errorText}>{errors.startDate}</Text>
+        ) : null}
+
+        <TextInput
+          style={styles.input}
+          placeholder="Date fin (MM/DD/YYYY)"
+          placeholderTextColor="#7a8ab8"
+          value={formData.endDate}
+          onChangeText={(v) => handleChange('endDate', v)}
+        />
+        {errors.endDate ? (
+          <Text style={styles.errorText}>{errors.endDate}</Text>
+        ) : null}
 
         <TextInput
           style={styles.input}
@@ -140,13 +381,23 @@ export default function CreateOfferScreen() {
           value={formData.address}
           onChangeText={(v) => handleChange('address', v)}
         />
+        {errors.address ? (
+          <Text style={styles.errorText}>{errors.address}</Text>
+        ) : null}
 
-        <TextInput
-          style={styles.input}
-          placeholder="Mobilite"
-          placeholderTextColor="#7a8ab8"
+        {/* Mobility picker - dropdown */}
+        <SelectPicker
           value={formData.mobility}
-          onChangeText={(v) => handleChange('mobility', v)}
+          options={[
+            { label: 'Mobilité', value: '' },
+            ...mobilites.map((item) => ({
+              label: item.titre,
+              value: String(item.id),
+            })),
+          ]}
+          onChange={(v) => handleChange('mobility', v)}
+          placeholder="Mobilité"
+          error={errors.mobility}
         />
 
         <TextInput
@@ -157,6 +408,9 @@ export default function CreateOfferScreen() {
           onChangeText={(v) => handleChange('positions', v)}
           keyboardType="numeric"
         />
+        {errors.positions ? (
+          <Text style={styles.errorText}>{errors.positions}</Text>
+        ) : null}
 
         <TextInput
           style={styles.input}
@@ -165,6 +419,35 @@ export default function CreateOfferScreen() {
           value={formData.salary}
           onChangeText={(v) => handleChange('salary', v)}
           keyboardType="numeric"
+        />
+        {errors.salary ? (
+          <Text style={styles.errorText}>{errors.salary}</Text>
+        ) : null}
+
+        {/* Housing picker - dropdown */}
+        <SelectPicker
+          value={formData.housing}
+          options={[
+            { label: 'Logement', value: '' },
+            { label: 'Oui', value: 'oui' },
+            { label: 'Non', value: 'non' },
+          ]}
+          onChange={(v) => handleChange('housing', v)}
+          placeholder="Logement"
+          error={errors.housing}
+        />
+
+        {/* Driving license picker - dropdown */}
+        <SelectPicker
+          value={formData.drivingLicense}
+          options={[
+            { label: 'Permis de conduire', value: '' },
+            { label: 'Oui', value: 'oui' },
+            { label: 'Non', value: 'non' },
+          ]}
+          onChange={(v) => handleChange('drivingLicense', v)}
+          placeholder="Permis de conduire"
+          error={errors.drivingLicense}
         />
 
         <TextInput
@@ -175,21 +458,43 @@ export default function CreateOfferScreen() {
           value={formData.description}
           onChangeText={(v) => handleChange('description', v)}
         />
+        {errors.description ? (
+          <Text style={styles.errorText}>{errors.description}</Text>
+        ) : null}
+
+        <TextInput
+          style={styles.input}
+          placeholder="Commentaires (optionnel)"
+          placeholderTextColor="#7a8ab8"
+          value={formData.comments}
+          onChangeText={(v) => handleChange('comments', v)}
+        />
 
         <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
           <Text style={styles.submitText}>Créer la commande</Text>
         </TouchableOpacity>
       </View>
 
+
+
       {/* RECAP */}
       <View style={styles.card}>
         <Text style={styles.subtitle}>Recapitulatif</Text>
 
         <Text>Categorie : {formData.category}</Text>
+        <Text>Sous-Categorie : {formData.subcategory}</Text>
+        <Text>Metier : {formData.jobTitle}</Text>
+        <Text>Contrat : {formData.jobType}</Text>
+        <Text>Date debut : {formData.startDate}</Text>
+        <Text>Date fin : {formData.endDate}</Text>
         <Text>Adresse : {formData.address}</Text>
         <Text>Mobilite : {formData.mobility}</Text>
         <Text>Postes : {formData.positions}</Text>
         <Text>Salaire : {formData.salary}</Text>
+        <Text>Logement : {formData.housing}</Text>
+        <Text>Permis : {formData.drivingLicense}</Text>
+        <Text>Description : {formData.description}</Text>
+        <Text>Commentaires : {formData.comments}</Text>
       </View>
 
     </ScrollView>
@@ -244,21 +549,141 @@ const styles = StyleSheet.create({
     borderRadius: 10
   },
 
+  pickerTrigger: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 16,
+    marginTop: 10,
+    backgroundColor: '#f6f8ff',
+    minHeight: 56,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+
+  pickerTriggerText: {
+    color: '#1b2d5a'
+  },
+
+  pickerPlaceholder: {
+    color: '#9ca3af'
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.2)'
+  },
+
+  modalSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 20
+  },
+
+  modalHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: 'flex-end',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e7edf7'
+  },
+
+  modalDone: {
+    color: '#2b5bbb',
+    fontWeight: '600'
+  },
+
   pickerWrapper: {
     borderWidth: 1,
-    borderColor: '#cfd9ee',
-    borderRadius: 20,
+    borderColor: '#d1d5db',
+    borderRadius: 16,
     marginTop: 10,
     overflow: 'hidden',
-    backgroundColor: '#fff',
+    backgroundColor: '#f6f8ff',
     height: Platform.OS === 'android' ? 56 : 48,
     justifyContent: 'center'
+  },
+
+  selectContainer: {
+    position: 'relative',
+    zIndex: 1,
+  },
+
+  selectContainerOpen: {
+    zIndex: 10,
+  },
+
+  selectBox: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 16,
+    marginTop: 10,
+    paddingHorizontal: 16,
+    height: 56,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f6f8ff',
+  },
+
+  selectText: {
+    fontSize: 14,
+    color: '#1b2d5a',
+    flex: 1,
+  },
+
+  selectPlaceholder: {
+    fontSize: 14,
+    color: '#9ca3af',
+    flex: 1,
+  },
+
+  dropdownList: {
+    position: 'absolute',
+    top: 56,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    maxHeight: 200,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+
+  dropdownItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+
+  dropdownItemActiveBg: {
+    backgroundColor: '#eef3ff',
+  },
+
+  dropdownItemActive: {
+    color: '#2b5bbb',
+    fontWeight: '600',
   },
 
   picker: {
     height: Platform.OS === 'ios' ? 216 : 56,
     width: '100%',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     color: '#1b2d5a'
   },
 
@@ -299,49 +724,12 @@ const styles = StyleSheet.create({
     color: '#fff'
   },
 
-  pickerTrigger: {
-    borderWidth: 1,
-    borderColor: '#cfd9ee',
-    borderRadius: 20,
-    marginTop: 10,
-    backgroundColor: '#fff',
-    height: 48,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
+  errorText: {
+    marginTop: 6,
+    marginLeft: 6,
+    fontSize: 12,
+    color: '#dc2626',
   },
 
-  pickerTriggerText: {
-    color: '#1b2d5a'
-  },
 
-  pickerPlaceholder: {
-    color: '#7a8ab8'
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.2)'
-  },
-
-  modalSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingBottom: 20
-  },
-
-  modalHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    alignItems: 'flex-end',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e7edf7'
-  },
-
-  modalDone: {
-    color: '#2b5bbb',
-    fontWeight: '600'
-  },
 });

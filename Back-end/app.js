@@ -66,6 +66,18 @@ app.use(
 const employerDashboard = require('./employeur/EmployerDashboard');
 app.use('/employeur/dashboard', employerDashboard);
 
+const myOffers = require('./employeur/MyOffers');
+app.use('/employeur/my-offers', myOffers);
+
+const createOffer = require('./employeur/CreateOffer');
+app.use('/employeur/create-offer', createOffer);
+
+const CVDatabase = require('./employeur/CVDatabase');
+app.use('/employeur/cv-database', CVDatabase);
+
+const EmployerInfo = require('./employeur/EmployerInfo');
+app.use('/employeur/profile', EmployerInfo);
+
 
 
 

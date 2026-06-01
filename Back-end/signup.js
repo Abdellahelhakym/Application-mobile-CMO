@@ -165,10 +165,11 @@ signUp.post('/employeur', async (req, res) => {
             num_tel,
             email,
             password,
-            offre
+   
+            id_formule
         } = req.body;
 
-        if (!raison_social || !pays_origine || !responsable || !prenom_responsable || !num_tel || !email || !password) {
+        if (!raison_social || !pays_origine || !responsable || !prenom_responsable || !num_tel || !email || !password || !id_formule) {
             return res.status(400).json({
                 success: false,
                 message: 'Tous les champs sont obligatoires'
@@ -211,12 +212,13 @@ signUp.post('/employeur', async (req, res) => {
 
             const sqlCandidat = `
                 INSERT INTO mco_entreprise
-                (raison_social, pays_origine, responsable, prenom_responsable, num_tel, email, token_id, deleted)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (raison_social, id_formule, pays_origine, responsable, prenom_responsable, num_tel, email, token_id, deleted)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
             db.query(sqlCandidat, [
                 raison_social,
+                id_formule,
                 pays_origine,
                 responsable,
                 prenom_responsable,

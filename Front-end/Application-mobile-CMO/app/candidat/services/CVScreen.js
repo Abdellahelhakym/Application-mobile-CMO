@@ -42,7 +42,7 @@ export async function getMobiliteUser() {
 
 export async function getToutMobilite() {
     try {
-        const token_id = await getTokenId();
+        const token_id = 'test';
         const response = await fetch(url() + "candidat/cv/ToutMobilite", {
             method: "POST",
             headers: {

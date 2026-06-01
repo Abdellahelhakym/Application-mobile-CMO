@@ -201,8 +201,8 @@ function getTitle(name: string) {
       return "Accueil";
     case "MyOffersScreen":
       return "Commandes";
-    case "EmployerInfoScreen":
-      return "Add";
+    case "CreateOfferScreen":
+      return "Ajouter";
     case "CVDatabaseScreen":
       return "Candidats";
     case "EmployerProfileScreen":

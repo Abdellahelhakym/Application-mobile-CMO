@@ -136,6 +136,13 @@ const CreateAccountScreen: React.FC = () => {
     "DEVIS PERSONNALISE": 3,
   };
 
+  const formuleIdByName: Record<string, number> = {
+    "START RECRUT": 1,
+    "PRO RECRUT": 2,
+    "FULL RECRUT": 3,
+    "DEVIS PERSONNALISE": 4,
+  };
+
   const countryOptions = ["France", "Belgique", "Espagne", "Portugal", "Italie"];
 
   const handleSubmit = async () => {
@@ -158,6 +165,7 @@ const CreateAccountScreen: React.FC = () => {
       email,
       password,
       offre: offerCodeByName[selectedOffer],
+      id_formule: formuleIdByName[selectedOffer],
     };
 
     try {
