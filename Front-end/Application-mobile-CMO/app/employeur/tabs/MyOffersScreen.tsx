@@ -30,37 +30,7 @@ export default function MyOffersScreen() {
         showsVerticalScrollIndicator={false}
       >
 
-        {/* CARD INFO */}
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <View style={styles.logo}>
-              <Text style={{ fontSize: 10, color: '#2b5bbb' }}>Logo</Text>
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <Text style={styles.company}>test</Text>
-              <Text style={styles.sub}>Pack DEVIS PERSONNALISE</Text>
-            </View>
-          </View>
-
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.btnOutline}>
-              <Phone size={16} color="#2b5bbb" />
-              <Text style={styles.btnText}>Conseiller</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.btnOutline}>
-              <MessageSquare size={16} color="#2b5bbb" />
-              <Text style={styles.btnText}>Chat</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              Bienvenue sur votre page Commandes & Devis...
-            </Text>
-          </View>
-        </View>
+   
 
         {/* TABS */}
         <View style={styles.tabs}>

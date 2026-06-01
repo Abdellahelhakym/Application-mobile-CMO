@@ -21,22 +21,6 @@ export default function CVDatabaseScreen() {
       contentContainerStyle={styles.content}
     >
 
-      {/* CARD TOP */}
-      <View style={styles.card}>
-        <Text style={styles.subtitle}>test</Text>
-
-        <View style={styles.row}>
-          <TouchableOpacity style={styles.outlineBtn}>
-            <Ionicons name="call-outline" size={16} />
-            <Text style={styles.btnText}> Contacter</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.outlineBtn}>
-            <Ionicons name="chatbubble-outline" size={16} />
-            <Text style={styles.btnText}> Chat</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
 
       {/* FILTER BUTTON */}
       <View style={styles.center}>
