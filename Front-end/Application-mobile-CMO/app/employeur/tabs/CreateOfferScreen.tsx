@@ -13,8 +13,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import {getSecteur , getToutMobilite} from "@/app/candidat/services/CVScreen";
-import {createCommande } from '@/app/employeur/services/CreatOffesScreen';
+import { getSecteur, getToutMobilite } from "@/app/candidat/services/CVScreen";
+import { createCommande } from '@/app/employeur/services/CreatOffesScreen';
 
 
 const SelectPicker = ({
@@ -69,6 +69,82 @@ const SelectPicker = ({
   );
 };
 
+// --- NOUVEAU COMPOSANT : SelectPicker pour choix multiples (Permis) ---
+const MultiSelectPicker = ({
+  value,
+  options,
+  onChange,
+  placeholder = 'Sélectionner',
+  error,
+}: {
+  value: string; // Stocké sous forme de string séparée par des virgules ex: "A1,B1,BE"
+  options: Array<{ label: string; value: string }>;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  error?: string;
+}) => {
+  const [open, setOpen] = useState(false);
+
+  // Convertit la chaîne "A1,B1,BE" en tableau ["A1", "B1", "BE"] pour la gestion interne
+  const selectedValues = value ? value.split(',') : [];
+
+  const handleSelect = (itemValue: string) => {
+    let nextValues: string[];
+    if (selectedValues.includes(itemValue)) {
+      // Si déjà sélectionné, on l'enlève
+      nextValues = selectedValues.filter(v => v !== itemValue);
+    } else {
+      // Sinon, on l'ajoute
+      nextValues = [...selectedValues, itemValue];
+    }
+    // Renvoie la chaîne finale formatée "A1,B1,BE"
+    onChange(nextValues.join(','));
+  };
+
+  return (
+    <View style={[styles.selectContainer, open && styles.selectContainerOpen]}>
+      <TouchableOpacity style={styles.selectBox} onPress={() => setOpen(!open)}>
+        <Text style={value ? styles.selectText : styles.selectPlaceholder} numberOfLines={1}>
+          {value ? `Permis : ${value}` : placeholder}
+        </Text>
+        {open
+          ? <Ionicons name="chevron-up" size={16} color="#6b7280" />
+          : <Ionicons name="chevron-down" size={16} color="#6b7280" />
+        }
+      </TouchableOpacity>
+      
+      {open ? (
+        <View style={styles.dropdownList}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {options.map((opt) => {
+              const isSelected = selectedValues.includes(opt.value);
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.dropdownItem,
+                    isSelected ? styles.dropdownItemActiveBg : undefined,
+                    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }
+                  ]}
+                  onPress={() => handleSelect(opt.value)}
+                >
+                  <Text style={[styles.dropdownItemText, isSelected ? styles.dropdownItemActive : undefined]}>
+                    {opt.label}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark" size={18} color="#2b5bbb" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </View>
+  );
+};
+
 export default function CreateOfferScreen() {
   const initialFormData = {
     categoryId: '',
@@ -85,18 +161,34 @@ export default function CreateOfferScreen() {
     positions: '',
     salary: '',
     housing: '',
-    drivingLicense: '',
+    drivingLicense: '', // contiendra la string "A1,B1,BE"
     description: '',
     comments: '',
   };
 
   const [formData, setFormData] = useState(initialFormData);
-
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [sectorData, setSectorData] = useState<{ categories: any[]; subCategories: any[]; jobs: any[] }>({ categories: [], subCategories: [], jobs: [] });
   const [mobilites, setMobilites] = useState<any[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Liste des permis disponibles
+  const drivingLicenseOptions = [
+    { label: 'AM', value: 'AM' },
+    { label: 'A1', value: 'A1' },
+    { label: 'A2', value: 'A2' },
+    { label: 'A', value: 'A' },
+    { label: 'B1', value: 'B1' },
+    { label: 'B', value: 'B' },
+    { label: 'C1', value: 'C1' },
+    { label: 'C', value: 'C' },
+    { label: 'D1', value: 'D1' },
+    { label: 'BE', value: 'BE' },
+    { label: 'C1E', value: 'C1E' },
+    { label: 'CE', value: 'CE' },
+    { label: 'D1E', value: 'D1E' },
+    { label: 'DE', value: 'DE' },
+  ];
 
   const handleChange = (name: string, value: string) => {
     setFormData(prev => ({
@@ -177,7 +269,6 @@ export default function CreateOfferScreen() {
 
     setErrors({});
 
-   
     try {
       const result = await createCommande({ ...formData });
       const message = result?.message || 'Offre soumise pour validation CMO';
@@ -194,13 +285,11 @@ export default function CreateOfferScreen() {
   const filteredSubCategories = sectorData.subCategories.filter(sc => String(sc.id_categorie) === String(formData.categoryId));
   const filteredJobs = sectorData.jobs.filter(j => String(j.id_sous) === String(formData.subcategoryId));
 
-  // load secteurs for category/subcategory pickers
   React.useEffect(() => {
     let mounted = true;
     const loadSecteurs = async () => {
       try {
         const data = await getSecteur();
-
         if (!mounted) return;
         setSectorData({
           categories: data?.secteurs ?? [],
@@ -221,7 +310,6 @@ export default function CreateOfferScreen() {
     const loadMobilites = async () => {
       try {
         const data = await getToutMobilite();
-      
         if (!mounted) return;
         setMobilites(Array.isArray(data) ? data : []);
       } catch (error) {
@@ -234,34 +322,16 @@ export default function CreateOfferScreen() {
   }, []);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-    >
-
-
-
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* FORM */}
       <View style={styles.card}>
         {Platform.OS === 'ios' ? (
           <View>
-            <TouchableOpacity
-              style={styles.pickerTrigger}
-              onPress={() => setShowCategoryPicker(true)}
-            >
-              <Text
-                style={[
-                  styles.pickerTriggerText,
-                  !formData.category && styles.pickerPlaceholder
-                ]}
-              >
+            <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowCategoryPicker(true)}>
+              <Text style={[styles.pickerTriggerText, !formData.category && styles.pickerPlaceholder]}>
                 {formData.category || 'Categorie'}
               </Text>
-              <Ionicons
-                name="chevron-down"
-                size={18}
-                color="#7a8ab8"
-              />
+              <Ionicons name="chevron-down" size={18} color="#7a8ab8" />
             </TouchableOpacity>
 
             <Modal
@@ -270,15 +340,10 @@ export default function CreateOfferScreen() {
               animationType="slide"
               onRequestClose={() => setShowCategoryPicker(false)}
             >
-              <Pressable
-                style={styles.modalOverlay}
-                onPress={() => setShowCategoryPicker(false)}
-              />
+              <Pressable style={styles.modalOverlay} onPress={() => setShowCategoryPicker(false)} />
               <View style={styles.modalSheet}>
                 <View style={styles.modalHeader}>
-                  <TouchableOpacity
-                    onPress={() => setShowCategoryPicker(false)}
-                  >
+                  <TouchableOpacity onPress={() => setShowCategoryPicker(false)}>
                     <Text style={styles.modalDone}>Terminer</Text>
                   </TouchableOpacity>
                 </View>
@@ -295,9 +360,7 @@ export default function CreateOfferScreen() {
                 </Picker>
               </View>
             </Modal>
-            {errors.categoryId ? (
-              <Text style={styles.errorText}>{errors.categoryId}</Text>
-            ) : null}
+            {errors.categoryId ? <Text style={styles.errorText}>{errors.categoryId}</Text> : null}
           </View>
         ) : (
           <View style={styles.pickerWrapper}>
@@ -313,14 +376,10 @@ export default function CreateOfferScreen() {
                 <Picker.Item key={c.id_categorie ?? c.id} label={c.titre} value={String(c.id_categorie ?? c.id)} />
               ))}
             </Picker>
-            {errors.categoryId ? (
-              <Text style={styles.errorText}>{errors.categoryId}</Text>
-            ) : null}
+            {errors.categoryId ? <Text style={styles.errorText}>{errors.categoryId}</Text> : null}
           </View>
         )}
 
-        {/* Additional form fields */}
-        {/* Subcategory - dropdown */}
         <SelectPicker
           value={formData.subcategoryId}
           options={[{ label: 'Sous-categorie', value: '' }, ...filteredSubCategories.map(sc => ({ label: sc.titre, value: String(sc.id_sous ?? sc.id) }))]}
@@ -329,7 +388,6 @@ export default function CreateOfferScreen() {
           error={errors.subcategoryId}
         />
 
-        {/* Job/Metier - dropdown */}
         <SelectPicker
           value={formData.jobId}
           options={[{ label: 'Metier / Intitule du poste', value: '' }, ...filteredJobs.map(j => ({ label: j.titre, value: String(j.id_metier ?? j.id) }))]}
@@ -338,7 +396,6 @@ export default function CreateOfferScreen() {
           error={errors.jobId}
         />
 
-        {/* Job type picker - dropdown */}
         <SelectPicker
           value={formData.jobType}
           options={[
@@ -359,9 +416,7 @@ export default function CreateOfferScreen() {
           value={formData.startDate}
           onChangeText={(v) => handleChange('startDate', v)}
         />
-        {errors.startDate ? (
-          <Text style={styles.errorText}>{errors.startDate}</Text>
-        ) : null}
+        {errors.startDate ? <Text style={styles.errorText}>{errors.startDate}</Text> : null}
 
         <TextInput
           style={styles.input}
@@ -370,9 +425,7 @@ export default function CreateOfferScreen() {
           value={formData.endDate}
           onChangeText={(v) => handleChange('endDate', v)}
         />
-        {errors.endDate ? (
-          <Text style={styles.errorText}>{errors.endDate}</Text>
-        ) : null}
+        {errors.endDate ? <Text style={styles.errorText}>{errors.endDate}</Text> : null}
 
         <TextInput
           style={styles.input}
@@ -381,24 +434,19 @@ export default function CreateOfferScreen() {
           value={formData.address}
           onChangeText={(v) => handleChange('address', v)}
         />
-        {errors.address ? (
-          <Text style={styles.errorText}>{errors.address}</Text>
-        ) : null}
+        {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
 
-        {/* Mobility picker - dropdown */}
-        <SelectPicker
-          value={formData.mobility}
-          options={[
-            { label: 'Mobilité', value: '' },
-            ...mobilites.map((item) => ({
-              label: item.titre,
-              value: String(item.id),
-            })),
-          ]}
-          onChange={(v) => handleChange('mobility', v)}
-          placeholder="Mobilité"
-          error={errors.mobility}
-        />
+     {/* Mobility picker - dropdown */}
+      <SelectPicker
+        value={formData.mobility}
+        options={[
+          { label: 'Mobilité', value: '' },
+          ...mobilites.map((item) => ({ label: item.titre, value: String(item.id) })),
+        ]}
+        onChange={(v) => handleChange('mobility', v)}
+        placeholder="Mobilité"
+        error={errors.mobility}
+      />
 
         <TextInput
           style={styles.input}
@@ -408,9 +456,7 @@ export default function CreateOfferScreen() {
           onChangeText={(v) => handleChange('positions', v)}
           keyboardType="numeric"
         />
-        {errors.positions ? (
-          <Text style={styles.errorText}>{errors.positions}</Text>
-        ) : null}
+        {errors.positions ? <Text style={styles.errorText}>{errors.positions}</Text> : null}
 
         <TextInput
           style={styles.input}
@@ -420,11 +466,8 @@ export default function CreateOfferScreen() {
           onChangeText={(v) => handleChange('salary', v)}
           keyboardType="numeric"
         />
-        {errors.salary ? (
-          <Text style={styles.errorText}>{errors.salary}</Text>
-        ) : null}
+        {errors.salary ? <Text style={styles.errorText}>{errors.salary}</Text> : null}
 
-        {/* Housing picker - dropdown */}
         <SelectPicker
           value={formData.housing}
           options={[
@@ -437,16 +480,12 @@ export default function CreateOfferScreen() {
           error={errors.housing}
         />
 
-        {/* Driving license picker - dropdown */}
-        <SelectPicker
+        {/* MODIFICATION ICI : Remplacement du SelectPicker par MultiSelectPicker pour le permis de conduire */}
+        <MultiSelectPicker
           value={formData.drivingLicense}
-          options={[
-            { label: 'Permis de conduire', value: '' },
-            { label: 'Oui', value: 'oui' },
-            { label: 'Non', value: 'non' },
-          ]}
+          options={drivingLicenseOptions}
           onChange={(v) => handleChange('drivingLicense', v)}
-          placeholder="Permis de conduire"
+          placeholder="permis"
           error={errors.drivingLicense}
         />
 
@@ -458,9 +497,7 @@ export default function CreateOfferScreen() {
           value={formData.description}
           onChangeText={(v) => handleChange('description', v)}
         />
-        {errors.description ? (
-          <Text style={styles.errorText}>{errors.description}</Text>
-        ) : null}
+        {errors.description ? <Text style={styles.errorText}>{errors.description}</Text> : null}
 
         <TextInput
           style={styles.input}
@@ -475,12 +512,9 @@ export default function CreateOfferScreen() {
         </TouchableOpacity>
       </View>
 
-
-
       {/* RECAP */}
       <View style={styles.card}>
         <Text style={styles.subtitle}>Recapitulatif</Text>
-
         <Text>Categorie : {formData.category}</Text>
         <Text>Sous-Categorie : {formData.subcategory}</Text>
         <Text>Metier : {formData.jobTitle}</Text>
@@ -496,240 +530,42 @@ export default function CreateOfferScreen() {
         <Text>Description : {formData.description}</Text>
         <Text>Commentaires : {formData.comments}</Text>
       </View>
-
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#eef3ff'
-  },
-
-  content: {
-    paddingBottom: 120
-  },
-
-  card: {
-    backgroundColor: '#fff',
-    margin: 10,
-    padding: 15,
-    borderRadius: 20
-  },
-
-  subtitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1b2d5a'
-  },
-
-  row: {
-    flexDirection: 'row',
-    marginTop: 10
-  },
-
-  outlineBtn: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: '#cfd9ee',
-    padding: 8,
-    borderRadius: 20,
-    marginRight: 10
-  },
-
-  btnText: {
-    marginLeft: 5
-  },
-
-  notice: {
-    marginTop: 10,
-    backgroundColor: '#fff1dc',
-    padding: 10,
-    borderRadius: 10
-  },
-
-  pickerTrigger: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 16,
-    marginTop: 10,
-    backgroundColor: '#f6f8ff',
-    minHeight: 56,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-
-  pickerTriggerText: {
-    color: '#1b2d5a'
-  },
-
-  pickerPlaceholder: {
-    color: '#9ca3af'
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.2)'
-  },
-
-  modalSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingBottom: 20
-  },
-
-  modalHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    alignItems: 'flex-end',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e7edf7'
-  },
-
-  modalDone: {
-    color: '#2b5bbb',
-    fontWeight: '600'
-  },
-
-  pickerWrapper: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 16,
-    marginTop: 10,
-    overflow: 'hidden',
-    backgroundColor: '#f6f8ff',
-    height: Platform.OS === 'android' ? 56 : 48,
-    justifyContent: 'center'
-  },
-
-  selectContainer: {
-    position: 'relative',
-    zIndex: 1,
-  },
-
-  selectContainerOpen: {
-    zIndex: 10,
-  },
-
-  selectBox: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 16,
-    marginTop: 10,
-    paddingHorizontal: 16,
-    height: 56,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#f6f8ff',
-  },
-
-  selectText: {
-    fontSize: 14,
-    color: '#1b2d5a',
-    flex: 1,
-  },
-
-  selectPlaceholder: {
-    fontSize: 14,
-    color: '#9ca3af',
-    flex: 1,
-  },
-
-  dropdownList: {
-    position: 'absolute',
-    top: 56,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    maxHeight: 200,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-
-  dropdownItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-
-  dropdownItemText: {
-    fontSize: 14,
-    color: '#374151',
-  },
-
-  dropdownItemActiveBg: {
-    backgroundColor: '#eef3ff',
-  },
-
-  dropdownItemActive: {
-    color: '#2b5bbb',
-    fontWeight: '600',
-  },
-
-  picker: {
-    height: Platform.OS === 'ios' ? 216 : 56,
-    width: '100%',
-    paddingHorizontal: 16,
-    color: '#1b2d5a'
-  },
-
-  pickerItem: {
-    color: '#1b2d5a',
-    fontSize: 16
-  },
-
-  input: {
-    borderWidth: 1,
-    borderColor: '#cfd9ee',
-    padding: 12,
-    borderRadius: 20,
-    marginTop: 10,
-    color: '#1b2d5a'
-  },
-
-  textarea: {
-    borderWidth: 1,
-    borderColor: '#cfd9ee',
-    padding: 12,
-    borderRadius: 20,
-    marginTop: 10,
-    height: 100,
-    textAlignVertical: 'top',
-    color: '#1b2d5a'
-  },
-
-  submitBtn: {
-    backgroundColor: '#3a4f8f',
-    padding: 12,
-    borderRadius: 20,
-    alignItems: 'center',
-    marginTop: 15
-  },
-
-  submitText: {
-    color: '#fff'
-  },
-
-  errorText: {
-    marginTop: 6,
-    marginLeft: 6,
-    fontSize: 12,
-    color: '#dc2626',
-  },
-
-
+  container: { flex: 1, backgroundColor: '#eef3ff' },
+  content: { paddingBottom: 120 },
+  card: { backgroundColor: '#fff', margin: 10, padding: 15, borderRadius: 20 },
+  subtitle: { fontSize: 16, fontWeight: 'bold', color: '#1b2d5a' },
+  row: { flexDirection: 'row', marginTop: 10 },
+  outlineBtn: { flexDirection: 'row', borderWidth: 1, borderColor: '#cfd9ee', padding: 8, borderRadius: 20, marginRight: 10 },
+  btnText: { marginLeft: 5 },
+  notice: { marginTop: 10, backgroundColor: '#fff1dc', padding: 10, borderRadius: 10 },
+  pickerTrigger: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 16, marginTop: 10, backgroundColor: '#f6f8ff', minHeight: 56, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pickerTriggerText: { color: '#1b2d5a' },
+  pickerPlaceholder: { color: '#9ca3af' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' },
+  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: 20 },
+  modalHeader: { paddingHorizontal: 16, paddingVertical: 12, alignItems: 'flex-end', borderBottomWidth: 1, borderBottomColor: '#e7edf7' },
+  modalDone: { color: '#2b5bbb', fontWeight: '600' },
+  pickerWrapper: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 16, marginTop: 10, overflow: 'hidden', backgroundColor: '#f6f8ff', height: Platform.OS === 'android' ? 56 : 48, justifyContent: 'center' },
+  selectContainer: { position: 'relative', zIndex: 1 },
+  selectContainerOpen: { zIndex: 10 },
+  selectBox: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 16, marginTop: 10, paddingHorizontal: 16, height: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f6f8ff' },
+  selectText: { fontSize: 14, color: '#1b2d5a', flex: 1 },
+  selectPlaceholder: { fontSize: 14, color: '#9ca3af', flex: 1 },
+  dropdownList: { position: 'absolute', top: 56, left: 0, right: 0, zIndex: 20, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, backgroundColor: '#fff', maxHeight: 200, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  dropdownItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
+  dropdownItemText: { fontSize: 14, color: '#374151' },
+  dropdownItemActiveBg: { backgroundColor: '#eef3ff' },
+  dropdownItemActive: { color: '#2b5bbb', fontWeight: '600' },
+  picker: { height: Platform.OS === 'ios' ? 216 : 56, width: '100%', paddingHorizontal: 16, color: '#1b2d5a' },
+  pickerItem: { color: '#1b2d5a', fontSize: 16 },
+  input: { borderWidth: 1, borderColor: '#cfd9ee', padding: 12, borderRadius: 20, marginTop: 10, color: '#1b2d5a' },
+  textarea: { borderWidth: 1, borderColor: '#cfd9ee', padding: 12, borderRadius: 20, marginTop: 10, height: 100, textAlignVertical: 'top', color: '#1b2d5a' },
+  submitBtn: { backgroundColor: '#3a4f8f', padding: 12, borderRadius: 20, alignItems: 'center', marginTop: 15 },
+  submitText: { color: '#fff' },
+  errorText: { marginTop: 6, marginLeft: 6, fontSize: 12, color: '#dc2626' },
 });

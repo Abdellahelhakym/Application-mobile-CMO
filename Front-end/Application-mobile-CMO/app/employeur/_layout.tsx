@@ -16,6 +16,15 @@ export default function EmployeurLayout() {
         name="autre/SubscriptionScreen"
         options={{ title: "Abonnement", headerShown: true }}
       />
+      <Stack.Screen
+        name="autre/EmployeurCandidatures"
+        options={{ title: "Candidatures", headerShown: true }}
+      />
+      <Stack.Screen
+        name="autre/PasswordChange"
+        options={{ title: "Changer le mot de passe", headerShown: true }}
+      />
+
     </Stack>
   );
 }

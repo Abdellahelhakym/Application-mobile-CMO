@@ -10,7 +10,7 @@ import {
   Alert
 } from 'react-native';
 import { Phone, MessageSquare } from 'lucide-react-native';
-import { getEmployerInfo } from '@/app/employeur/services/EmployerInfoScreen';
+import { getEmployerInfo, updateEmployerInfo } from '@/app/employeur/services/EmployerInfoScreen';
 
 interface EmployerInfoScreenProps {
   onBack?: () => void;
@@ -18,40 +18,17 @@ interface EmployerInfoScreenProps {
 
 export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) {
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({
-    logo: '',
-    companyName: '',
-    firstName: '',
-    lastName: '',
-    siren: '',
-    siret: '',
-    address: '',
-    postalCode: '',
-    city: '',
-    country: ''
-  });
+  const [formData, setFormData] = useState<any>(null);
 
-  // Appel de l'API au chargement du composant
   useEffect(() => {
     let mounted = true;
 
     const fetchEmployerData = async () => {
       try {
         const response = await getEmployerInfo();
-        
+
         if (mounted && response) {
-          setFormData({
-            logo: response.photo || '',
-            companyName: response.raison_social || '',
-            firstName: response.prenom_responsable || '',
-            lastName: response.responsable || '', // 'responsable' correspond au nom dans ton objet API
-            siren: response.siren || '',
-            siret: response.siret || '',
-            address: response.adresse || '',
-            postalCode: response.code_postal ? String(response.code_postal) : '',
-            city: response.ville || '',
-            country: response.pays_origine || 'France'
-          });
+          setFormData(response);
         }
       } catch (error) {
         console.error("Erreur lors du chargement des infos de l'employeur :", error);
@@ -66,12 +43,26 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
   }, []);
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
-    console.log('Données soumises :', formData);
-    // Tu peux appeler ici ta fonction de mise à jour (ex: updateEmployerInfo)
+  const handleSubmit = async () => {
+    if (!formData) return;
+
+    setLoading(true);
+    try {
+      const result = await updateEmployerInfo(formData);
+      if (result?.success || result?.status === 'success') {
+        Alert.alert('Succès', 'Vos informations ont bien été modifiées.');
+      } else {
+        Alert.alert('Erreur', result?.message || 'Impossible de modifier vos informations.');
+      }
+    } catch (error) {
+      console.error('Erreur de mise à jour :', error);
+      Alert.alert('Erreur', 'Impossible de modifier vos informations.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -81,6 +72,7 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
       </View>
     );
   }
+  
 
   return (
     <View style={styles.container}>
@@ -101,8 +93,8 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
             Raison social : <Text style={{ color: 'red' }}>(*)</Text>
           </Text>
           <TextInput
-            value={formData.companyName}
-            onChangeText={(v) => handleChange('companyName', v)}
+            value={formData?.raison_social || ''}
+            onChangeText={(v) => handleChange('raison_social', v)}
             style={styles.input}
           />
 
@@ -110,8 +102,8 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
             Prenom du responsable : <Text style={{ color: 'red' }}>(*)</Text>
           </Text>
           <TextInput
-            value={formData.firstName}
-            onChangeText={(v) => handleChange('firstName', v)}
+            value={formData?.prenom_responsable || ''}
+            onChangeText={(v) => handleChange('prenom_responsable', v)}
             style={styles.input}
           />
 
@@ -119,14 +111,14 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
             Nom du responsable : <Text style={{ color: 'red' }}>(*)</Text>
           </Text>
           <TextInput
-            value={formData.lastName}
-            onChangeText={(v) => handleChange('lastName', v)}
+            value={formData?.responsable || ''}
+            onChangeText={(v) => handleChange('responsable', v)}
             style={styles.input}
           />
 
           <Text style={styles.label}>Siren :</Text>
           <TextInput
-            value={formData.siren}
+            value={formData?.siren || ''}
             onChangeText={(v) => handleChange('siren', v)}
             style={styles.input}
             placeholder="Siren"
@@ -135,17 +127,57 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
 
           <Text style={styles.label}>Siret :</Text>
           <TextInput
-            value={formData.siret}
+            value={formData?.siret || ''}
             onChangeText={(v) => handleChange('siret', v)}
             style={styles.input}
             placeholder="Siret"
             placeholderTextColor="#7a8ab8"
           />
 
-          <Text style={styles.label}>Adresse :</Text>
+          <Text style={styles.label}>N° de téléphone 1 : <Text style={{ color: 'red' }}>(*)</Text></Text>
           <TextInput
-            value={formData.address}
-            onChangeText={(v) => handleChange('address', v)}
+            value={formData?.num_tel || ''}
+            onChangeText={(v) => handleChange('num_tel', v)}
+            style={styles.input}
+            placeholder="Téléphone 1"
+            placeholderTextColor="#7a8ab8"
+            keyboardType="phone-pad"
+          />
+
+          <Text style={styles.label}>N° de téléphone 2 :</Text>
+          <TextInput
+            value={formData?.num_tel2 || ''}
+            onChangeText={(v) => handleChange('num_tel2', v)}
+            style={styles.input}
+            placeholder="Téléphone 2"
+            placeholderTextColor="#7a8ab8"
+            keyboardType="phone-pad"
+          />
+
+          <Text style={styles.label}>Adresse email 1 : <Text style={{ color: 'red' }}>(*)</Text></Text>
+          <TextInput
+            value={formData?.email || ''}
+            onChangeText={(v) => handleChange('email', v)}
+            style={styles.input}
+            placeholder="Email 1"
+            placeholderTextColor="#7a8ab8"
+            keyboardType="email-address"
+          />
+
+          <Text style={styles.label}>Adresse email 2 :</Text>
+          <TextInput
+            value={formData?.email2 || ''}
+            onChangeText={(v) => handleChange('email2', v)}
+            style={styles.input}
+            placeholder="Email 2"
+            placeholderTextColor="#7a8ab8"
+            keyboardType="email-address"
+          />
+
+          <Text style={styles.label}>Adresse Postale:</Text>
+          <TextInput
+            value={formData?.adresse || ''}
+            onChangeText={(v) => handleChange('adresse', v)}
             style={[styles.input, styles.inputHighlight]}
             placeholder="Adresse"
             placeholderTextColor="#7a8ab8"
@@ -153,20 +185,29 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
 
           <Text style={styles.label}>Code postal :</Text>
           <TextInput
-            value={formData.postalCode}
-            onChangeText={(v) => handleChange('postalCode', v)}
+            value={formData?.code_postal ? String(formData.code_postal) : ''}
+            onChangeText={(v) => handleChange('code_postal', v)}
             style={styles.input}
-            placeholder="0"
+            placeholder="10000"
             placeholderTextColor="#7a8ab8"
             keyboardType="numeric"
           />
 
           <Text style={styles.label}>Ville :</Text>
           <TextInput
-            value={formData.city}
-            onChangeText={(v) => handleChange('city', v)}
+            value={formData?.ville || ''}
+            onChangeText={(v) => handleChange('ville', v)}
             style={[styles.input, styles.inputHighlight]}
             placeholder="Ville"
+            placeholderTextColor="#7a8ab8"
+          />
+
+          <Text style={styles.label}>Pays :</Text>
+          <TextInput
+            value={formData?.pays_origine || ''}
+            onChangeText={(v) => handleChange('pays_origine', v)}
+            style={styles.input}
+            placeholder="France"
             placeholderTextColor="#7a8ab8"
           />
         </View>
@@ -175,7 +216,7 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
       {/* Bouton Ajouter les informations en bas */}
       <View style={styles.bottomContainer}>
         <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
-          <Text style={styles.submitBtnText}>Ajouter les informations</Text>
+          <Text style={styles.submitBtnText}>Modifier les informations</Text>
         </TouchableOpacity>
       </View>
     </View>

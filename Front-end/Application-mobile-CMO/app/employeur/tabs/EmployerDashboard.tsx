@@ -164,7 +164,7 @@ export default function EmployerDashboard() {
   const recruitmentPhases = [
     {
       id: 1,
-      title: 'PHASE 1 : Creation de l\'offre',
+      title: 'PHASE 1 : Traitement de la commande',
       icon: Search,
       stats: [
         { label: 'Nouvelle commande', value: phase1Stats.nouvelleCommande, color: '#e8f0ff', text: '#1e3c76' },

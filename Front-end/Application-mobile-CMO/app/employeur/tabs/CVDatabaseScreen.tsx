@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -119,29 +120,38 @@ export default function CVDatabaseScreen() {
     (item) => String(item.id_sous) === String(selectedSubCategory)
   );
 
-  const filteredCandidats = candidats.filter((cand) => {
-    const secteurs = Array.isArray(cand?.secteur_activite) ? cand.secteur_activite : [];
+  // FILTRAGE + TRI PAR ORDRE ID
+// FILTRAGE + TRI PAR ID DÉCROISSANT (Le max ID en premier)
+  const filteredCandidats = candidats
+    .filter((cand) => {
+      const secteurs = Array.isArray(cand?.secteur_activite) ? cand.secteur_activite : [];
 
-    // Secteur filter
-    if (selectedCategory || selectedSubCategory || selectedMetier) {
-      const matchSecteur = secteurs.some((s: any) => {
-        const matchCategory = selectedCategory ? String(s.id_categorie) === String(selectedCategory) : true;
-        const matchSub = selectedSubCategory ? String(s.id_sous) === String(selectedSubCategory) : true;
-        const matchMetier = selectedMetier ? String(s.id_metier) === String(selectedMetier) : true;
-        return matchCategory && matchSub && matchMetier;
-      });
-      if (!matchSecteur) return false;
-    }
+      // Secteur filter
+      if (selectedCategory || selectedSubCategory || selectedMetier) {
+        const matchSecteur = secteurs.some((s: any) => {
+          const matchCategory = selectedCategory ? String(s.id_categorie) === String(selectedCategory) : true;
+          const matchSub = selectedSubCategory ? String(s.id_sous) === String(selectedSubCategory) : true;
+          const matchMetier = selectedMetier ? String(s.id_metier) === String(selectedMetier) : true;
+          return matchCategory && matchSub && matchMetier;
+        });
+        if (!matchSecteur) return false;
+      }
 
-    // Pays filter (based on mobilite region — simple contains check)
-    if (selectedPays) {
-      const regions = cand?.mobilite?.map((m: any) => m.region || '') ?? [];
-      const matchPays = regions.some((r: string) => r.toLowerCase().includes(selectedPays.toLowerCase()));
-      if (!matchPays) return false;
-    }
+      // Pays filter
+      if (selectedPays) {
+        const regions = cand?.mobilite?.map((m: any) => m.region || '') ?? [];
+        const matchPays = regions.some((r: string) => r.toLowerCase().includes(selectedPays.toLowerCase()));
+        if (!matchPays) return false;
+      }
 
-    return true;
-  });
+      return true;
+    })
+    // Correction ici : standardisation des arguments (a, b) et soustraction (idB - idA)
+    .sort((a, b) => {
+      const idA = a.id || a.id_candidat || 0;
+      const idB = b.id || b.id_candidat || 0;
+      return Number(idB) - Number(idA); 
+    });
 
   const activeFilterCount = [
     selectedCategory,
@@ -199,7 +209,7 @@ export default function CVDatabaseScreen() {
           <Text style={styles.emptyText}>Aucun candidat trouvé</Text>
         ) : (
           filteredCandidats.map((profile, index) => (
-            <View key={profile.token_id || index} style={styles.card}>
+            <View key={profile.token_id || profile.id || index} style={styles.card}>
               <View style={styles.row}>
                 <View style={styles.avatarLarge}>
                   <Ionicons name="person-outline" size={30} color="#2b5bbb" />
@@ -500,7 +510,7 @@ export default function CVDatabaseScreen() {
         </View>
       </Modal>
 
-      {/* ──────────────── CV MODAL (CENTRÉ ET CORRESPONDANT À LA TAILLE DU MOBILE) ──────────────── */}
+      {/* ──────────────── CV MODAL ──────────────── */}
       <Modal
         visible={cvVisible}
         transparent
@@ -601,7 +611,6 @@ const styles = StyleSheet.create({
   cvBtn: { flexDirection: 'row', backgroundColor: '#2b5bbb', padding: 8, borderRadius: 20, alignItems: 'center' },
   cvText: { color: '#fff', fontSize: 13 },
 
-  // ── Filter Modal Styling ──
   filterBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   filterCard: { backgroundColor: '#fdf8f2', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '90%' },
   filterHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
@@ -631,16 +640,15 @@ const styles = StyleSheet.create({
   filterApply: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#2b5bbb', alignItems: 'center' },
   filterApplyText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 
-  // ── CV Modal Styling (Corrigé pour centrer et prendre la taille écran) ──
   cvModalBackdrop: { 
     flex: 1, 
     backgroundColor: 'rgba(0,0,0,0.5)', 
-    justifyContent: 'center',  // Centre verticalement
-    alignItems: 'center',      // Centre horizontalement
+    justifyContent: 'center', 
+    alignItems: 'center', 
   },
   modalCard: { 
-    width: width * 0.9,         // Occupe 90% de la largeur totale de l'écran du mobile
-    maxHeight: '80%',           // Hauteur maximale raisonnable pour scroller proprement dedans
+    width: width * 0.9, 
+    maxHeight: '80%', 
     backgroundColor: '#fff', 
     borderRadius: 20, 
     padding: 20,
@@ -657,6 +665,7 @@ const styles = StyleSheet.create({
   blockItem: { marginTop: 8, paddingLeft: 6, borderLeftWidth: 2, borderLeftColor: '#e7eeff' },
   blockTitle: { fontSize: 13, fontWeight: '700', color: '#1b2d5a', marginBottom: 2 },
   attestationRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
+  gridBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   etatBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   etatOk: { backgroundColor: '#d4f4e2' },
   etatPending: { backgroundColor: '#fff1dc' },
@@ -664,3 +673,4 @@ const styles = StyleSheet.create({
   modalClose: { marginTop: 16, paddingVertical: 12, borderRadius: 12, backgroundColor: '#2b5bbb', alignItems: 'center' },
   modalCloseText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 });
+

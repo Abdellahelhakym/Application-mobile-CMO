@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { router } from "expo-router";
 import {
   View,
@@ -21,8 +21,43 @@ import {
   LogOut,
   Trash2,
 } from "lucide-react-native";
+import { getEmployerInfo } from "@/app/employeur/services/EmployerInfoScreen";
+
+
 
 export default function EmployerProfileScreen() {
+
+
+  const [employerInfo, setEmployerInfo] = useState({
+  companyName: "",
+  city: "",
+  email: "",
+  phone: "",
+  firstName: "",
+  lastName: "",
+});
+
+useEffect(() => {
+  const loadEmployerInfo = async () => {
+    try {
+      const response = await getEmployerInfo();
+
+      setEmployerInfo({
+        companyName: response.raison_social || "",
+        city: response.ville || "",
+        email: response.email || "",
+        phone: response.num_tel || "",
+        firstName: response.prenom_responsable || "",
+        lastName: response.responsable || "",
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  loadEmployerInfo();
+}, []);
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -34,10 +69,9 @@ export default function EmployerProfileScreen() {
               <Building2 size={40} color="#2b5bbb" />
             </View>
 
-            <View>
-              <Text style={styles.company}>SOUF Tech Solutions</Text>
-              <Text style={styles.plan}>Plan PRO RECRUT</Text>
-            </View>
+            <Text style={styles.company}>
+  {employerInfo.companyName}
+</Text>
           </View>
         </View>
 
@@ -45,17 +79,17 @@ export default function EmployerProfileScreen() {
         <View style={styles.card}>
           <View style={styles.infoRow}>
             <Mail size={20} color="#2b5bbb" />
-            <Text style={styles.value}>contact@souftech.com</Text>
+            <Text style={styles.value}>{employerInfo.email}</Text>
           </View>
 
           <View style={styles.infoRow}>
             <Phone size={20} color="#2b5bbb" />
-            <Text style={styles.value}>07 87 35 19 23</Text>
+            <Text style={styles.value}>{employerInfo.phone}</Text>
           </View>
 
           <View style={styles.infoRow}>
             <MapPin size={20} color="#2b5bbb" />
-            <Text style={styles.value}>Casablanca</Text>
+            <Text style={styles.value}>{employerInfo.city}</Text>
           </View>
         </View>
 
@@ -73,12 +107,17 @@ export default function EmployerProfileScreen() {
             <Text style={styles.menuText}>Mes documents</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.menuItem} onPress={()=>{router.push("/employeur/autre/EmployeurCandidatures")}}>
+            <FileText size={20} color="#2b5bbb" />
+            <Text style={styles.menuText}>Mes candidatures</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.menuItem} onPress={()=>{router.push("/employeur/autre/EmployerInfoScreen")}}>
             <Settings size={20} color="#2b5bbb" />
             <Text style={styles.menuText}>Mes informations</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={()=>{router.push("/employeur/autre/PasswordChange")} }>
             <Lock size={20} color="#2b5bbb" />
             <Text style={styles.menuText}>Mot de passe</Text>
           </TouchableOpacity>
