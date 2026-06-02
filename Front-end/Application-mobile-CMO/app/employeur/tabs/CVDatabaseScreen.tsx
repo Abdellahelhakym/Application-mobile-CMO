@@ -215,8 +215,8 @@ export default function CVDatabaseScreen() {
                   <Ionicons name="person-outline" size={30} color="#2b5bbb" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>{profile.prenom} {profile.nom}</Text>
-                  <Text style={styles.status}>{profile.experience || 'Vide !'}</Text>
+                  <Text style={styles.name}>{profile.prenom} </Text>
+                  <Text style={styles.status}>{profile.experience || 'Vide !'} experience</Text>
                   <Text style={styles.info}>
                     Mobilité : {profile.mobilite?.map((m: any) => m.region).filter(Boolean).join(', ') || '-'}
                   </Text>

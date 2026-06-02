@@ -3,10 +3,19 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-nati
 
 import { Award, FileText, MessageSquare, Phone, Search, UserCheck } from "lucide-react-native";
 
-import { getPhase1, getPhase2, getPhase3, getPhase4, getPhase5 } from "@/app/employeur/services/EmployerDashboard";
+import { getPhase1, getPhase2, getPhase3, getPhase4, getPhase5, getPack } from "@/app/employeur/services/EmployerDashboard";
 import { getPsaudo } from "@/app/employeur/services/token_id";
 
+// Mapping des formules de pack
+const PACK_NAMES: { [key: number]: string } = {
+  1: "START RECRUT",
+  2: "PRO RECRUT",
+  3: "FULL RECRUT",
+  4: "DEVIS PERSONNALISÉ"
+};
+
 export default function EmployerDashboard() {
+  const [packName, setPackName] = useState<string>("Chargement du pack...");
   const [phase1Stats, setPhase1Stats] = useState({
     nouvelleCommande: 0,
     nombrePoste: 0,
@@ -42,6 +51,24 @@ export default function EmployerDashboard() {
 
   useEffect(() => {
     let isMounted = true;
+
+    const fetchPackData = async () => {
+      try {
+        const response = await getPack();
+        if (!isMounted) return;
+
+        // Vérification de la structure de votre réponse API
+        const idFormule = response?.id_formule;
+        if (idFormule && PACK_NAMES[idFormule]) {
+          setPackName(PACK_NAMES[idFormule]);
+        } else {
+          setPackName("AUCUN PACK ACTIF");
+        }
+      } catch (error) {
+        console.log("Erreur récupération pack:", error);
+        if (isMounted) setPackName("DEVIS PERSONNALISÉ"); // Fallback par sécurité
+      }
+    };
 
     const fetchPhase1 = async () => {
       try {
@@ -150,6 +177,7 @@ export default function EmployerDashboard() {
       }
     };
 
+    fetchPackData();
     fetchPhase1();
     fetchPhase2();
     fetchPhase3();
@@ -223,9 +251,6 @@ export default function EmployerDashboard() {
 
   return (
     <View style={styles.container}>
-
-      
-      {/* CONTENT */}
       <ScrollView contentContainerStyle={styles.content}>
         {/* CARD INFO */}
         <View style={styles.infoCard}>
@@ -236,7 +261,8 @@ export default function EmployerDashboard() {
 
             <View style={styles.infoContent}>
               <Text style={styles.company}>{getPsaudo()}</Text>
-              <Text style={styles.sub}>Pack DEVIS PERSONNALISE</Text>
+              {/* Affichage dynamique ici */}
+              <Text style={styles.sub}>Pack {packName}</Text>
             </View>
           </View>
 
@@ -251,8 +277,6 @@ export default function EmployerDashboard() {
               <Text style={styles.btnText}>Chat</Text>
             </TouchableOpacity>
           </View>
-
-          
         </View>
 
         {[...recruitmentPhases].sort((a, b) => a.id - b.id).map((phase) => {
@@ -260,7 +284,6 @@ export default function EmployerDashboard() {
 
           return (
             <View key={phase.id} style={styles.card}>
-
               {/* phase title */}
               <View style={styles.phaseHeader}>
                 <View style={styles.iconBox}>
@@ -285,142 +308,34 @@ export default function EmployerDashboard() {
                   </View>
                 ))}
               </View>
-
             </View>
           );
         })}
-
-       
       </ScrollView>
     </View>
   );
 }
 
+// Les styles restent inchangés
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#eef3ff',
-  },
-
-  content: {
-    padding: 15,
-    gap: 15,
-    paddingBottom: 120,
-  },
-
-  infoCard: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 15,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  logoBox: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: "#eef3ff",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logoText: {
-    fontSize: 10,
-    color: "#2b5bbb",
-  },
-  infoContent: {
-    flex: 1,
-  },
-  company: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1b2d5a",
-  },
-  sub: {
-    color: "#2b5bbb",
-    marginTop: 2,
-    fontSize: 12,
-  },
-  actions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 12,
-  },
-  btnOutline: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderWidth: 1,
-    borderColor: "#cfd9ee",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 18,
-  },
-  btnText: {
-    color: "#2b5bbb",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  infoBox: {
-    marginTop: 12,
-    backgroundColor: "#eef3ff",
-    borderRadius: 12,
-    padding: 10,
-  },
-  infoText: {
-    color: "#2b5bbb",
-    fontSize: 12,
-  },
-
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 15,
-  },
-
-  phaseHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 15,
-  },
-
-  iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#eef3ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  phaseTitle: {
-    fontSize: 13,
-    color: '#1b2d5a',
-    flex: 1,
-  },
-
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-
-  statBox: {
-    width: '48%',
-    borderRadius: 14,
-    padding: 10,
-  },
-
-  statLabel: {
-    fontSize: 11,
-  },
-
-  statValue: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 5,
-  },
+  container: { flex: 1, backgroundColor: '#eef3ff' },
+  content: { padding: 15, gap: 15, paddingBottom: 120 },
+  infoCard: { backgroundColor: "#fff", borderRadius: 18, padding: 15 },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  logoBox: { width: 50, height: 50, borderRadius: 12, backgroundColor: "#eef3ff", justifyContent: "center", alignItems: "center" },
+  logoText: { fontSize: 10, color: "#2b5bbb" },
+  infoContent: { flex: 1 },
+  company: { fontSize: 15, fontWeight: "600", color: "#1b2d5a" },
+  sub: { color: "#2b5bbb", marginTop: 2, fontSize: 12 },
+  actions: { flexDirection: "row", gap: 10, marginTop: 12 },
+  btnOutline: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: "#cfd9ee", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 18 },
+  btnText: { color: "#2b5bbb", fontSize: 12, fontWeight: "600" },
+  card: { backgroundColor: '#fff', borderRadius: 18, padding: 15 },
+  phaseHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
+  iconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#eef3ff', justifyContent: 'center', alignItems: 'center' },
+  phaseTitle: { fontSize: 13, color: '#1b2d5a', flex: 1 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statBox: { width: '48%', borderRadius: 14, padding: 10 },
+  statLabel: { fontSize: 11 },
+  statValue: { fontSize: 18, fontWeight: '600', marginTop: 5 },
 });

@@ -95,6 +95,26 @@ async function getPhase5(){
 }
 
 
+ async function getPack(){
+      try {
+        const token_id = await getTokenId(); 
+        const response = await fetch(url() + "employeur/dashboard/pack", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+               
+            },
+            body: JSON.stringify({ token_id }),
+        });
+        const data = await response.json();
+        return data;    
+    }catch (error) {
+        console.error("Error fetching pack:", error);
+        throw error;
+    }
+}
 
 
-export { getPhase1, getPhase2, getPhase3, getPhase4, getPhase5 };
+
+
+export { getPhase1, getPhase2, getPhase3, getPhase4, getPhase5, getPack };

@@ -555,4 +555,31 @@ EmployerDashboard.post('/phase5', (req, res) => {
 });
 
 
+EmployerDashboard.post('/pack', (req, res) => {
+
+    const { token_id } = req.body;
+    if (!token_id) {
+        return res.status(400).json({ error: 'token_id is required' });
+    }
+    db.query(
+        'SELECT id_formule FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
+        [token_id],
+        (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Internal server error' });
+            }
+
+            if (results.length === 0) {
+                return res.status(404).json({ error: 'Employer not found' });
+            }
+
+            const idFormule = results[0].id_formule;
+            return res.status(200).json({ id_formule: idFormule });
+        }
+    );
+
+
+});
+
 module.exports = EmployerDashboard;

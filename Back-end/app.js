@@ -78,7 +78,10 @@ app.use('/employeur/cv-database', CVDatabase);
 const EmployerInfo = require('./employeur/EmployerInfo');
 app.use('/employeur/profile', EmployerInfo);
 
+//--new--
 
+const EmployerCandidatures = require('./employeur/EmployeurCandidatures');
+app.use('/employeur/candidatures', EmployerCandidatures);
 
 
 
