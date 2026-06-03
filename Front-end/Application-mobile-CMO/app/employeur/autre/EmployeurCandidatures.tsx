@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
-  ActivityIndicator, Modal, Dimensions,
+  ActivityIndicator, Modal, Dimensions, Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getCandidat } from '@/app/employeur/services/EmployeurCandidatures';
+import { getCandidat, getCandidatValides, setCandidatValides } from '@/app/employeur/services/EmployeurCandidatures';
 
 const { width } = Dimensions.get('window');
 
@@ -16,26 +16,14 @@ const TAB_DEFINITIONS = [
 
 type TabKey = (typeof TAB_DEFINITIONS)[number]['key'];
 
-// ── Interfaces TypeScript pour les Secteurs et Métiers ──────────────────────
-interface SectorItem {
+interface MetierItem {
   id: number;
-  secteur_numero: number;
-  metier: {
-    id: number;
-    titre: string;
-  };
-  sous_categorie: {
-    id: number;
-    titre: string;
-  };
-  categorie: {
-    id: number;
-    titre: string;
-  };
+  titre: string;
 }
 
 interface ApiCandidate {
   id: number;
+  candidat_id?: number;
   id_agent: number;
   id_agent_digital: number;
   photo: string;
@@ -108,30 +96,35 @@ interface ApiCandidate {
   intitule_poste: string;
   date_aff: string;
   statut_aff: number;
-  secteur_candidat_id?: number;
-  secteur_numero?: number;
   metier_id?: number;
   metier_titre?: string;
-  sous_categorie_id?: number;
-  sous_categorie_titre?: string;
-  categorie_id?: number;
-  categorie_titre?: string;
-  secteurs?: SectorItem[]; // Ajout du tableau dynamique de l'API
+  metiers?: MetierItem[];
 }
 
 export default function EmployeurCandidatures() {
   const [activeTab, setActiveTab] = useState<TabKey>('propose');
   const [apiCandidates, setApiCandidates] = useState<ApiCandidate[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshTrigger, setRefreshTrigger] = useState<boolean>(false); // État pour forcer le rafraîchissement
 
   const [selectedCandidate, setSelectedCandidate] = useState<ApiCandidate | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
+  // Déclenchement de l'API à chaque changement d'onglet OU à chaque rafraîchissement réclamé
   useEffect(() => {
     const fetchCandidates = async () => {
       try {
         setLoading(true);
-        const response = await getCandidat();
+        let response;
+
+        if (activeTab === 'propose') {
+          response = await getCandidat();
+        } else if (activeTab === 'valide') {
+          response = await getCandidatValides();
+        } else {
+          response = [];
+        }
+
         if (Array.isArray(response)) {
           setApiCandidates(response);
         } else {
@@ -139,19 +132,35 @@ export default function EmployeurCandidatures() {
         }
       } catch (error) {
         console.error('Erreur lors de la récupération des candidats:', error);
+        setApiCandidates([]);
       } finally {
         setLoading(false);
       }
     };
-    fetchCandidates();
-  }, []);
 
-  const filteredCandidates = apiCandidates.filter((candidate) => {
-    if (activeTab === 'propose') return candidate.statut_aff !== 3;
-    if (activeTab === 'valide') return candidate.statut_aff === 3;
-    if (activeTab === 'archive') return false;
-    return false;
-  });
+    fetchCandidates();
+  }, [activeTab, refreshTrigger]); // refreshTrigger écoute ici
+
+  // Fonction de gestion de la validation au clic sur "Oui"
+  const handleValidate = async (candidate: ApiCandidate) => {
+  // On récupère le candidat_id en priorité, sinon l'id de la candidature
+  const targetId = candidate.candidat_id ?? candidate.id;
+
+  try {
+    setLoading(true);
+    // Appel de l'API avec le bon ID requis
+    await setCandidatValides(targetId);
+    
+    Alert.alert('Succès', 'Le candidat a été validé avec succès.');
+    
+    // Déclenche le rafraîchissement automatique de la liste
+    setRefreshTrigger(prev => !prev);
+  } catch (error) {
+    console.error('Erreur lors de la validation du candidat:', error);
+    Alert.alert('Erreur', 'Impossible de valider le candidat pour le moment.');
+    setLoading(false);
+  }
+};
 
   const openCvModal = (candidate: ApiCandidate) => {
     setSelectedCandidate(candidate);
@@ -181,7 +190,7 @@ export default function EmployeurCandidatures() {
         ))}
       </View>
 
-      {/* ── Loader / Liste ── */}
+      {/* ── Loader / Liste principale ── */}
       {loading ? (
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color="#2b5bbb" />
@@ -193,15 +202,15 @@ export default function EmployeurCandidatures() {
           contentContainerStyle={styles.bodyContent}
           showsVerticalScrollIndicator={false}
         >
-          {filteredCandidates.length === 0 ? (
+          {apiCandidates.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>Aucun candidat dans cette catégorie.</Text>
             </View>
           ) : (
-            filteredCandidates.map((candidate) => (
+            apiCandidates.map((candidate) => (
               <View key={candidate.id.toString()} style={styles.card}>
 
-                {/* En-tête */}
+                {/* En-tête de la Carte */}
                 <View style={styles.cardHeader}>
                   <View style={styles.avatar}>
                     <Ionicons name="person" size={28} color="#2b5bbb" />
@@ -216,18 +225,25 @@ export default function EmployeurCandidatures() {
                   </View>
                   <View style={[
                     styles.statusPill,
-                    candidate.statut_aff === 3 ? styles.statusPillValide : styles.statusPillPropose,
+                    activeTab === 'valide' ? styles.statusPillValide : styles.statusPillPropose,
                   ]}>
                     <Text style={styles.statusText}>
-                      {candidate.statut_aff === 3 ? 'Validé' : 'Proposé'}
+                      {activeTab === 'valide' ? 'Validé' : 'Proposé'}
                     </Text>
                   </View>
                 </View>
 
-                {/* Poste */}
+                {/* Affichage des métiers */}
                 <View style={styles.jobList}>
                   <Text style={styles.jobItem}>
-                    - {candidate.intitule_poste || 'Poste non spécifié'}
+                    {candidate.metiers && candidate.metiers.length > 0 ? (
+                      candidate.metiers.map((met, index) => {
+                        const titreMetier = met.titre || 'Métier non spécifié';
+                        return index === 0 ? `• ${titreMetier}` : ` • ${titreMetier}`;
+                      })
+                    ) : (
+                      `• ${candidate.metier_titre || candidate.intitule_poste || 'Poste non spécifié'}`
+                    )}
                   </Text>
                 </View>
 
@@ -238,18 +254,23 @@ export default function EmployeurCandidatures() {
                     : 'Aucune expérience mentionnée'}
                 </Text>
 
-                {/* Actions */}
+                {/* Actions (Boutons) */}
                 <View style={styles.actionsRow}>
-                  {candidate.statut_aff === 3 ? (
+                  {activeTab === 'valide' ? (
                     <TouchableOpacity style={[styles.actionButton, styles.archiveButton]}>
                       <Text style={[styles.actionText, styles.actionTextArchive]}>Archiver</Text>
                       <Ionicons name="archive-outline" size={16} color="#e15b5b" style={{ marginLeft: 6 }} />
                     </TouchableOpacity>
                   ) : (
                     <>
-                      <TouchableOpacity style={[styles.actionButton, styles.actionButtonOutline]}>
-                        <Text style={[styles.actionText, styles.actionTextOutline]}>Oui</Text>
-                      </TouchableOpacity>
+                      {/* Bouton OUI relié à handleValidate */}
+                      <TouchableOpacity 
+                  style={[styles.actionButton, styles.actionButtonOutline]}
+                  onPress={() => handleValidate(candidate)} // On passe tout l'objet ici
+                >
+                  <Text style={[styles.actionText, styles.actionTextOutline]}>Oui</Text>
+                </TouchableOpacity>
+                      
                       <TouchableOpacity style={[styles.actionButton, styles.actionButtonOutline]}>
                         <Text style={[styles.actionText, styles.actionTextOutline]}>Non</Text>
                       </TouchableOpacity>
@@ -264,7 +285,7 @@ export default function EmployeurCandidatures() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Commentaire */}
+                {/* Commentaire de l'agence */}
                 <TouchableOpacity style={styles.commentButton}>
                   <Ionicons name="chatbubble-ellipses-outline" size={16} color="#ffffff" style={styles.commentIcon} />
                   <Text style={styles.commentText}>
@@ -278,7 +299,7 @@ export default function EmployeurCandidatures() {
         </ScrollView>
       )}
 
-      {/* ──────────────── CV MODAL ──────────────── */}
+      {/* ── MODAL VISUALISATION CV ── */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -299,26 +320,19 @@ export default function EmployeurCandidatures() {
                 {!!selectedCandidate.tel2 && <Text style={styles.modalContactText}>{selectedCandidate.tel2}</Text>}
                 <Text style={styles.modalLocation}>{selectedCandidate.ville} - {selectedCandidate.pays || 'France'}</Text>
 
-                {/* 2. Secteur d'activité & Métiers (Affichage Dynamique) */}
+                {/* 2. Métiers dans la modal */}
                 <Text style={styles.sectionTitle}>Secteur d’activité & Métiers</Text>
                 
-                {selectedCandidate.secteurs && selectedCandidate.secteurs.length > 0 ? (
-                  selectedCandidate.secteurs.map((sec) => (
-                    <View key={sec.id.toString()} style={styles.sectorBlock}>
-                      <Text style={styles.sectorCategoryText}>
-                        📂 {sec.categorie?.titre || 'Catégorie non spécifiée'}
-                      </Text>
-                      <Text style={styles.sectorSubCategoryText}>
-                        └─ {sec.sous_categorie?.titre || 'Sous-catégorie non spécifiée'}
-                      </Text>
-                      <Text style={styles.sectorMetierText}>
-                        💼 Métier : {sec.metier?.titre || 'Non renseigné'}
-                      </Text>
-                    </View>
-                  ))
+                {selectedCandidate.metiers && selectedCandidate.metiers.length > 0 ? (
+                  <Text style={styles.sectionItem}>
+                    {selectedCandidate.metiers.map((met, index) => {
+                      const titreMetier = met.titre || 'Métier non spécifié';
+                      return index === 0 ? `• ${titreMetier}` : ` • ${titreMetier}`;
+                    })}
+                  </Text>
                 ) : (
                   <>
-                    <Text style={styles.sectionItem}>• {selectedCandidate.intitule_poste || 'Non renseigné'}</Text>
+                    <Text style={styles.sectionItem}>• {selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Non renseigné'}</Text>
                     {!!selectedCandidate.secteur_activite && (
                       <Text style={styles.sectionItem}>• {selectedCandidate.secteur_activite}</Text>
                     )}
@@ -333,16 +347,16 @@ export default function EmployeurCandidatures() {
                 <Text style={styles.sectionTitle}>Niveau d’études</Text>
                 <Text style={styles.sectionItem}>• {selectedCandidate.niveau_etude || 'Non spécifié'}</Text>
 
-                {/* 5. Expérience */}
+                {/* 5. Expérience passée */}
                 <Text style={styles.sectionTitle}>Expérience</Text>
                 <View style={styles.blockItem}>
-                  <Text style={styles.blockTitle}>{selectedCandidate.intitule_poste || 'Poste'}</Text>
+                  <Text style={styles.blockTitle}>{selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Poste'}</Text>
                   <Text style={styles.sectionItem}>L'entreprise : {selectedCandidate.commentaire_cmo || 'Non renseignée'}</Text>
                   <Text style={styles.sectionItem}>Ville / Pays : {selectedCandidate.ville} - {selectedCandidate.pays || 'France'}</Text>
                   <Text style={styles.sectionItem}>Période : {selectedCandidate.experience || 'Non spécifiée'}</Text>
                 </View>
 
-                {/* 6. Attestations / Documents vérifiés */}
+                {/* 6. Documents vérifiés */}
                 <Text style={styles.sectionTitle}>Attestation</Text>
                 <View style={styles.attestationList}>
                   {selectedCandidate.verifier === 1 ? (
@@ -350,7 +364,9 @@ export default function EmployeurCandidatures() {
                       <Text style={styles.sectionItem}>✅ certificat_travail</Text>
                       <Text style={styles.sectionItem}>✅ Attestationdetravail</Text>
                     </>
-                  ) : null}
+                  ) : (
+                    <Text style={styles.sectionItem}>Aucun document vérifié</Text>
+                  )}
                 </View>
 
               </ScrollView>
@@ -368,199 +384,54 @@ export default function EmployeurCandidatures() {
 }
 
 const styles = StyleSheet.create({
-  /* ── Conteneur principal ── */
-  container: {
-    flex: 1,
-    backgroundColor: '#eef4ff',
-    paddingHorizontal: 16,
-    paddingTop: 20,
-  },
-
-  /* ── Onglets ── */
-  tabs: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 18,
-    width: '100%',
-  },
-  tabButton: {
-    flex: 1,
-    backgroundColor: '#f6f8ff',
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
-    minHeight: 48,
-  },
-  tabButtonActive: {
-    backgroundColor: '#2b5bbb',
-    borderColor: '#2b5bbb',
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#4865a6',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-    textAlign: 'center',
-  },
-  tabLabelActive: {
-    color: '#ffffff',
-  },
-
-  /* ── Body / Scroll ── */
+  container: { flex: 1, backgroundColor: '#eef4ff', paddingHorizontal: 16, paddingTop: 20 },
+  tabs: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 18, width: '100%' },
+  tabButton: { flex: 1, backgroundColor: '#f6f8ff', borderRadius: 16, paddingVertical: 10, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'transparent', minHeight: 48 },
+  tabButtonActive: { backgroundColor: '#2b5bbb', borderColor: '#2b5bbb' },
+  tabLabel: { fontSize: 11, fontWeight: '700', color: '#4865a6', textTransform: 'uppercase', letterSpacing: 0.3, textAlign: 'center' },
+  tabLabelActive: { color: '#ffffff' },
   body: { flex: 1 },
   bodyContent: { paddingBottom: 30 },
-
-  /* ── États vides / chargement ── */
   centerState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 10, color: '#2b5bbb', fontSize: 14, fontWeight: '600' },
   emptyState: { paddingTop: 40, alignItems: 'center' },
   emptyText: { color: '#5f6f91', fontSize: 15 },
-
-  /* ── Carte candidat ── */
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 16,
-    elevation: 3,
-  },
+  card: { backgroundColor: '#ffffff', borderRadius: 22, padding: 18, marginBottom: 16, elevation: 3 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: '#d9e4ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
+  avatar: { width: 50, height: 50, borderRadius: 15, backgroundColor: '#d9e4ff', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   headerText: { flex: 1 },
   name: { color: '#1b2d5a', fontSize: 16, fontWeight: '800' },
   headerId: { color: '#2b5bbb', fontSize: 13, fontWeight: '600' },
-
-  /* Badge statut */
   statusPill: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20 },
   statusPillPropose: { backgroundColor: '#fef5e8' },
   statusPillValide: { backgroundColor: '#eaf7ee' },
   statusText: { color: '#1b2d5a', fontSize: 11, fontWeight: '700' },
-
-  /* Poste + expérience */
   jobList: { marginBottom: 8, paddingLeft: 4 },
-  jobItem: { fontSize: 14, fontWeight: '700', color: '#1b2d5a', marginBottom: 2 },
+  jobItem: { fontSize: 14, fontWeight: '700', color: '#1b2d5a', marginBottom: 2, lineHeight: 20 },
   experienceText: { fontSize: 13, color: '#5f6f91', fontWeight: '500', marginBottom: 14 },
-
-  /* Boutons d'action */
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
-  actionButton: {
-    flex: 1,
-    borderRadius: 22,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
+  actionButton: { flex: 1, borderRadius: 22, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
   actionButtonOutline: { borderWidth: 1, borderColor: '#2b5bbb', backgroundColor: '#ffffff' },
-  archiveButton: {
-    flex: 2,
-    borderWidth: 1,
-    borderColor: '#e15b5b',
-    backgroundColor: '#fff5f5',
-  },
+  archiveButton: { flex: 2, borderWidth: 1, borderColor: '#e15b5b', backgroundColor: '#fff5f5' },
   cvButton: { flex: 1, backgroundColor: '#2b5bbb' },
   actionText: { fontSize: 13, fontWeight: '700' },
   actionTextOutline: { color: '#2b5bbb' },
   actionTextArchive: { color: '#e15b5b' },
   actionTextWhite: { color: '#ffffff' },
   cvIcon: { marginLeft: 6 },
-
-  /* Bouton commentaire */
-  commentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2b5bbb',
-    borderRadius: 22,
-    paddingVertical: 12,
-  },
+  commentButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2b5bbb', borderRadius: 22, paddingVertical: 12 },
   commentIcon: { marginRight: 8 },
   commentText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
-
-  /* ──────────── Modal CV ──────────── */
-  cvModalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalCard: {
-    width: width * 0.9,
-    maxHeight: '85%',
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 22,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 6,
-  },
-
-  /* Identité */
+  cvModalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+  modalCard: { width: width * 0.9, maxHeight: '85%', backgroundColor: '#ffffff', borderRadius: 24, padding: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
   modalName: { fontSize: 20, fontWeight: '800', color: '#1b2d5a', marginBottom: 4 },
   modalContactText: { fontSize: 13, color: '#4865a6', fontWeight: '500', marginBottom: 2 },
   modalLocation: { marginTop: 4, marginBottom: 10, color: '#7a8ab8', fontSize: 13, fontWeight: '600' },
-
-  /* Sections */
-  sectionTitle: {
-    marginTop: 18,
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#2b5bbb',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#eef3ff',
-    paddingBottom: 4,
-    marginBottom: 6,
-  },
+  sectionTitle: { marginTop: 18, fontSize: 13, fontWeight: '800', color: '#2b5bbb', textTransform: 'uppercase', letterSpacing: 0.6, borderBottomWidth: 1.5, borderBottomColor: '#eef3ff', paddingBottom: 4, marginBottom: 6 },
   sectionItem: { marginTop: 6, fontSize: 13, color: '#1b2d5a', lineHeight: 20, fontWeight: '500' },
-
-  /* Style des Secteurs Dynamiques */
-  sectorBlock: {
-    backgroundColor: '#f4f7ff',
-    padding: 10,
-    borderRadius: 12,
-    marginTop: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#f0a11b',
-  },
-  sectorCategoryText: { fontSize: 13, fontWeight: '700', color: '#1b2d5a' },
-  sectorSubCategoryText: { fontSize: 12, fontWeight: '600', color: '#4865a6', marginTop: 2, paddingLeft: 6 },
-  sectorMetierText: { fontSize: 13, fontWeight: '700', color: '#2b5bbb', marginTop: 4, paddingLeft: 6 },
-
-  /* Bloc parcours */
-  blockItem: {
-    marginTop: 8,
-    paddingLeft: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: '#2b5bbb',
-  },
+  blockItem: { marginTop: 8, paddingLeft: 10, borderLeftWidth: 3, borderLeftColor: '#2b5bbb' },
   blockTitle: { fontSize: 14, fontWeight: '700', color: '#1b2d5a', marginBottom: 4 },
   attestationList: { marginTop: 4 },
-
-  /* Bouton fermer */
-  modalClose: {
-    marginTop: 20,
-    paddingVertical: 14,
-    borderRadius: 16,
-    backgroundColor: '#2b5bbb',
-    alignItems: 'center',
-  },
+  modalClose: { marginTop: 20, paddingVertical: 14, borderRadius: 16, backgroundColor: '#2b5bbb', alignItems: 'center' },
   modalCloseText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });
