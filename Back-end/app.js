@@ -83,6 +83,9 @@ app.use('/employeur/profile', EmployerInfo);
 const EmployerCandidatures = require('./employeur/EmployeurCandidatures');
 app.use('/employeur/candidatures', EmployerCandidatures);
 
+const subscription = require('./employeur/Subscription');
+app.use('/employeur/subscription', subscription);
+
 
 
 

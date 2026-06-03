@@ -203,36 +203,51 @@ export default function CVDatabaseScreen() {
         </View>
 
         {/* LIST */}
-        {loading ? (
-          <ActivityIndicator size="small" color="#2b5bbb" style={{ marginTop: 40 }} />
-        ) : filteredCandidats.length === 0 ? (
-          <Text style={styles.emptyText}>Aucun candidat trouvé</Text>
-        ) : (
-          filteredCandidats.map((profile, index) => (
-            <View key={profile.token_id || profile.id || index} style={styles.card}>
-              <View style={styles.row}>
-                <View style={styles.avatarLarge}>
-                  <Ionicons name="person-outline" size={30} color="#2b5bbb" />
+{loading ? (
+  <ActivityIndicator size="small" color="#2b5bbb" style={{ marginTop: 40 }} />
+) : filteredCandidats.length === 0 ? (
+  <Text style={styles.emptyText}>Aucun candidat trouvé</Text>
+) : (
+  filteredCandidats.map((profile, index) => (
+    <View key={profile.token_id || profile.id || index} style={styles.card}>
+      <View style={styles.row}>
+        <View style={styles.avatarLarge}>
+          <Ionicons name="person-outline" size={30} color="#2b5bbb" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.name}>{profile.prenom} {profile.nom}</Text>
+          <Text style={styles.status}>{profile.experience || 'Vide !'} d'experience</Text>
+          
+          {/* ── AJOUT : AFFICHAGE DES MÉTIERS ── */}
+          <View style={styles.metiersContainer}>
+            {Array.isArray(profile?.secteur_activite) && profile.secteur_activite.length > 0 ? (
+              profile.secteur_activite.map((secteur: any, idx: number) => (
+                <View key={idx} style={styles.metierBadge}>
+                  <Text style={styles.metierBadgeText}>{secteur.metier}</Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>{profile.prenom} </Text>
-                  <Text style={styles.status}>{profile.experience || 'Vide !'} experience</Text>
-                  <Text style={styles.info}>
-                    Mobilité : {profile.mobilite?.map((m: any) => m.region).filter(Boolean).join(', ') || '-'}
-                  </Text>
-                  <Text style={styles.info}>Disponibilité : Oui</Text>
-                </View>
-              </View>
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>Jamais travaillé chez vous</Text>
-                <TouchableOpacity style={styles.cvBtn} onPress={() => openCv(profile)}>
-                  <Text style={styles.cvText}>Le CV </Text>
-                  <Ionicons name="eye-outline" size={16} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
-        )}
+              ))
+            ) : (
+              <Text style={styles.noMetierText}>Aucun métier renseigné</Text>
+            )}
+          </View>
+          {/* ────────────────────────────────── */}
+
+          <Text style={styles.info}>
+            Mobilité : {profile.mobilite?.map((m: any) => m.region).filter(Boolean).join(', ') || '-'}
+          </Text>
+          <Text style={styles.info}>Disponibilité : Oui</Text>
+        </View>
+      </View>
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Jamais travaillé chez vous</Text>
+        <TouchableOpacity style={styles.cvBtn} onPress={() => openCv(profile)}>
+          <Text style={styles.cvText}>Le CV </Text>
+          <Ionicons name="eye-outline" size={16} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  ))
+)}
 
       </ScrollView>
 
@@ -627,7 +642,32 @@ const styles = StyleSheet.create({
   dropdownItemActive: { backgroundColor: '#e7eeff' },
   dropdownItemText: { fontSize: 13, color: '#1b2d5a' },
   dropdownItemTextActive: { fontWeight: '700', color: '#2b5bbb' },
-
+metiersContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 6,
+    marginBottom: 6,
+    gap: 6, // Espace entre les badges (si supporté par votre version RN, sinon utilisez margin)
+  },
+  metierBadge: {
+    backgroundColor: '#eef2ff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e0e7ff',
+  },
+  metierBadgeText: {
+    color: '#2b5bbb',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  noMetierText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginBottom: 4,
+  },
   checkboxGrid: { flexDirection: 'column' },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 7 },
   checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 2, borderColor: '#2b5bbb', alignItems: 'center', justifyContent: 'center', marginRight: 10 },

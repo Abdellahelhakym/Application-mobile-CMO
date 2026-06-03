@@ -70,8 +70,9 @@ export default function MyOffersScreen() {
       : [
           { key: 'id_fiche_poste', label: 'N° Commande', width: 120 },
           { key: 'nbr_poste', label: 'Nbr de poste', width: 120 },
-          { key: 'contrat_duree', label: 'Contrat & Duree', width: 160 },
           { key: 'details', label: 'Tous les details', width: 150 },
+          { key: 'contrat_duree', label: 'Contrat & Duree', width: 160 },
+          
           { key: 'statut_fiche', label: 'Statut', width: 90 },
         ];
 
