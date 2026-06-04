@@ -228,35 +228,36 @@ node app.js
 
 
 ## Structure du Projet
+## Structure du Projet
 
-
+```text
 front-end/Application-mobile-CMO/
-├── app/                              # Racine de l'application (routage basé sur les fichiers)
-│   ├── _layout.tsx                   # Layout principal avec configuration de la navigation
-│   ├── index.tsx                     # Écran d'accueil/splash
-│   ├── loginCan.tsx                  # Écran de connexion candidat
-│   ├── loginEmp.tsx                  # Écran de connexion employeur
-│   ├── ForgotPasswordScreen.tsx      # Récupération de mot de passe
-│   ├── RegisterCandidateScreen.tsx   # Inscription candidat
-│   ├── RegisterEmployerScreen.tsx    # Inscription employeur
+├── app/
+│   ├── _layout.tsx
+│   ├── index.tsx
+│   ├── loginCan.tsx
+│   ├── loginEmp.tsx
+│   ├── ForgotPasswordScreen.tsx
+│   ├── RegisterCandidateScreen.tsx
+│   ├── RegisterEmployerScreen.tsx
 │   │
-│   ├── candidat/                     # Module candidat
-│   │   ├── _layout.tsx               # Layout de navigation candidat
-│   │   ├── tabs/                     # Écrans avec navigation par onglets
-│   │   │   ├── _layout.tsx           # Configuration de la navigation par onglets
+│   ├── candidat/
+│   │   ├── _layout.tsx
+│   │   ├── tabs/
+│   │   │   ├── _layout.tsx
 │   │   │   ├── CandidateLandingScreen.tsx
 │   │   │   ├── DashboardScreen.tsx
 │   │   │   ├── CVScreen.tsx
 │   │   │   ├── ProfileScreen.tsx
 │   │   │   └── FavoritesScreen.tsx
 │   │   │
-│   │   ├── autre/                    # Écrans supplémentaires
+│   │   ├── autre/
 │   │   │   ├── AttestationsScreen.tsx
 │   │   │   ├── CvScreenProfile.tsx
 │   │   │   ├── FavoritesScreen.tsx
 │   │   │   └── PasswordChange.tsx
 │   │   │
-│   │   └── services/                 # Services spécifiques aux candidats
+│   │   └── services/
 │   │       ├── CandidateLandingScreen.js
 │   │       ├── CVScreen.js
 │   │       ├── DashboardScreen.js
@@ -266,24 +267,24 @@ front-end/Application-mobile-CMO/
 │   │       ├── PasswordChange.js
 │   │       └── token_id.js
 │   │
-│   ├── employeur/                    # Module employeur
-│   │   ├── _layout.tsx               # Layout de navigation employeur
-│   │   ├── tabs/                     # Écrans avec navigation par onglets
-│   │   │   ├── _layout.tsx           # Configuration de la navigation par onglets
+│   ├── employeur/
+│   │   ├── _layout.tsx
+│   │   ├── tabs/
+│   │   │   ├── _layout.tsx
 │   │   │   ├── EmployerDashboard.tsx
 │   │   │   ├── CreateOfferScreen.tsx
 │   │   │   ├── CVDatabaseScreen.tsx
 │   │   │   ├── MyOffersScreen.tsx
 │   │   │   └── EmployerProfileScreen.tsx
 │   │   │
-│   │   ├── autre/                    # Écrans supplémentaires
+│   │   ├── autre/
 │   │   │   ├── EmployerInfoScreen.tsx
 │   │   │   ├── EmployerDocumentsScreen.tsx
 │   │   │   ├── EmployeurCandidatures.tsx
 │   │   │   ├── PasswordChange.tsx
 │   │   │   └── SubscriptionScreen.tsx
 │   │   │
-│   │   └── services/                 # Services spécifiques aux employeurs
+│   │   └── services/
 │   │       ├── EmployerDashboard.js
 │   │       ├── CVDatabaseScreen.js
 │   │       ├── MyOffers.js
@@ -294,25 +295,24 @@ front-end/Application-mobile-CMO/
 │   │       ├── SubscriptionScreen.js
 │   │       └── token_id.js
 │   │
-│   └── services/                     # Services partagés et appels API
-│       ├── login.js                  # Logique de connexion
-│       ├── sign.js                   # Logique d'inscription
-│       └── url.js                    # Configuration de l'URL de base de l'API
+│   └── services/
+│       ├── login.js
+│       ├── sign.js
+│       └── url.js
 │
 ├── assets/
-│   ├── images/                       # Images et icônes de l'application
-│   │   ├── icon.png                  # Icône de l'application
-│   │   └── logo.png                  # Logo / écran de démarrage
-│   │
-├── img/                              # Ressources d'images supplémentaires
+│   └── images/
+│       ├── icon.png
+│       └── logo.png
 │
-├── Fichiers de Configuration
-    ├── app.json                      # Configuration Expo
-    ├── eas.json                      # Configuration des builds EAS
-    ├── tsconfig.json                 # Configuration TypeScript
-    ├── eslint.config.js              # Règles ESLint
-    └── package.json                  # Dépendances du projet
-
+├── img/
+│
+├── app.json
+├── eas.json
+├── tsconfig.json
+├── eslint.config.js
+└── package.json
+```
 ## Explication de la Structure des Fichiers
 
 ### Écrans d'Authentification
