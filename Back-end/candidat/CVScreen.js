@@ -4,17 +4,17 @@ const fs = require('fs');
 const multer = require("multer");
 const path = require('path');
 
-
+const auth = require('../middleware/auth');
 const CVScreen = express.Router();
 
-CVScreen.get('/', (req, res) => {
+CVScreen.get('/', auth, (req, res) => {
     res.send('CV Screen route');
 });
 
 
 //---------------------------------affichage---------------------------------
-CVScreen.post('/Informations', (req, res) => {
-    const { token_id } = req.body;
+CVScreen.post('/Informations', auth, (req, res) => {
+      const token_id = req.user.token_id;
 
     console.log('Received CV Informations request with token_id');
 
@@ -32,14 +32,10 @@ CVScreen.post('/Informations', (req, res) => {
 });
 
 CVScreen.post('/ToutMobilite', (req, res) => {
-    const { token_id } = req.body;
+      
 
     console.log('Received CV ToutMobilite request with token_id');
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
+   
     db.query(
         ` SELECT * FROM regions WHERE deleted = 0`, 
         (err, results) => {
@@ -59,9 +55,8 @@ CVScreen.post('/ToutMobilite', (req, res) => {
 });
 
 
-CVScreen.post('/Mobilite', (req, res) => {
-
-    const { token_id } = req.body;
+CVScreen.post('/Mobilite', auth, (req, res) => {
+   const token_id = req.user.token_id;
 
     console.log('Received CV Mobilite request with token_id');
 
@@ -149,8 +144,8 @@ CVScreen.post('/Mobilite', (req, res) => {
 
 
 
-CVScreen.post('/Permis', (req, res) => {
-    const { token_id } = req.body;
+CVScreen.post('/Permis', auth, (req, res) => {
+      const token_id = req.user.token_id;
 
     console.log('Received CV Informations request with token_id');
 
@@ -167,9 +162,8 @@ CVScreen.post('/Permis', (req, res) => {
 
 });
 
-CVScreen.post('/Langues', (req, res) => {
-    const { token_id } = req.body;
-
+CVScreen.post('/Langues', auth, (req, res) => {
+       const token_id = req.user.token_id;
     console.log('Received CV Informations request with token_id');
     if (!token_id) {
         return res.status(400).json({
@@ -262,9 +256,9 @@ CVScreen.get('/Secteur', (req, res) => {
 });
 
 
-CVScreen.post('/Secteur', (req, res) => {
+CVScreen.post('/Secteur', auth, (req, res) => {
 
-    const { token_id } = req.body;
+    const token_id = req.user.token_id;
 
     if(!token_id) {
         return res.status(400).json({
@@ -290,8 +284,8 @@ CVScreen.post('/Secteur', (req, res) => {
 
 });
 
-CVScreen.post('/experiences', (req, res) => {
-    const { token_id } = req.body;
+CVScreen.post('/experiences', auth, (req, res) => {
+    const token_id = req.user.token_id;
     console.log('Received CV experiences request with token_id');
     if (!token_id) {
         return res.status(400).json({
@@ -317,9 +311,9 @@ CVScreen.post('/experiences', (req, res) => {
 });
 
 
-CVScreen.post('/formation', (req, res) => {
+CVScreen.post('/formation', auth, (req, res) => {
 
-     const { token_id } = req.body;
+     const token_id = req.user.token_id;
     console.log('Received CV experiences request with token_id');
     if (!token_id) {
         return res.status(400).json({
@@ -347,14 +341,11 @@ CVScreen.post('/formation', (req, res) => {
 
 
 //---------------------------------modification---------------------------------
-CVScreen.post('/updateInformations', (req, res) => {
-    const {   token_id,civilite, prenom, nom, email, tel , tel2 , adresse , code_postal, ville, pays, num_secur_social } = req.body;
+CVScreen.post('/updateInformations', auth, (req, res) => {
+    const {  civilite, prenom, nom, email, tel , tel2 , adresse , code_postal, ville, pays, num_secur_social } = req.body;
+       const token_id = req.user.token_id;
     console.log('Received CV updateInformations request with token_id');
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
+   
 
     const updateSql = `
         UPDATE cmo_candidats
@@ -413,17 +404,13 @@ CVScreen.post('/updateInformations', (req, res) => {
 
 });
 
-CVScreen.post('/updateMobilite', (req, res) => {
+CVScreen.post('/updateMobilite', auth, (req, res) => {
 
-    const { token_id, mobilite, niveau_etude, experience, contrat_prefere1, contrat_prefere2, disponibilite, date_disponibilite } = req.body;
+    const {  mobilite, niveau_etude, experience, contrat_prefere1, contrat_prefere2, disponibilite, date_disponibilite } = req.body;
+        const token_id = req.user.token_id;
     console.log('Received CV updateMobilite request with token_id');
    
 
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
 
     const updateMobiliteSql = `
         UPDATE mobilite_candidats SET id_region = ?
@@ -512,16 +499,12 @@ CVScreen.post('/updateMobilite', (req, res) => {
     });
 });
 
-CVScreen.post('/updatePermis', (req, res) => {
-    const {token_id, perm_am, perm_a1, perm_a2, perm_a, perm_b1, perm_b, perm_c1, perm_c, perm_d1, perm_d, perm_be, perm_c1e, perm_ce, perm_d1e, perm_de, perm_cotier, perm_fluvial, perm_grandes_eaux, perm_hauturier   } = req.body;
-  
-    console.log('Received CV updatePermis request with token_id');
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
+CVScreen.post('/updatePermis', auth, (req, res) => {
+    const { perm_am, perm_a1, perm_a2, perm_a, perm_b1, perm_b, perm_c1, perm_c, perm_d1, perm_d, perm_be, perm_c1e, perm_ce, perm_d1e, perm_de, perm_cotier, perm_fluvial, perm_grandes_eaux, perm_hauturier   } = req.body;
+      const token_id = req.user.token_id;
 
+    console.log('Received CV updatePermis request with token_id');
+  
     const updateSql = `
         UPDATE permis SET perm_am = ?, perm_a1 = ?, perm_a2 = ?, perm_a = ?, perm_b1 = ?, perm_b = ?, perm_c1 = ?, perm_c = ?, perm_d1 = ?, perm_d = ?, perm_be = ?, perm_c1e = ?, perm_ce = ?, perm_d1e = ?, perm_de = ?, perm_cotier = ?, perm_fluvial = ?, perm_grandes_eaux = ?, perm_hauturier = ?
         WHERE token_id_cand = ?
@@ -573,15 +556,12 @@ CVScreen.post('/updatePermis', (req, res) => {
 
 });
 
-CVScreen.post('/updateLangues', (req, res) => {
+CVScreen.post('/updateLangues', auth, (req, res) => {
   
-    const { token_id, lang_fr , lang_en ,  lang_es , lang_de , lang_it , lang_ch , lang_po , lang_da , lang_ru , lang_ar , lang_ne , lang_por , lang_no , lang_fi } = req.body;
+    const { lang_fr , lang_en ,  lang_es , lang_de , lang_it , lang_ch , lang_po , lang_da , lang_ru , lang_ar , lang_ne , lang_por , lang_no , lang_fi } = req.body;
+      const token_id = req.user.token_id;
     console.log('Received CV updateLangues request with token_id');
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
+    
 
     const updateSql = `
         UPDATE langues SET lang_fr = ?, lang_en = ?, lang_es = ?, lang_de = ?, lang_it = ?, lang_ch = ?, lang_po = ?, lang_da = ?, lang_ru = ?, lang_ar = ?, lang_ne = ?, lang_por = ?, lang_no = ?, lang_fi = ?
@@ -634,7 +614,7 @@ CVScreen.post('/updateLangues', (req, res) => {
 
 });
 
-CVScreen.post('/updateSecteur', (req, res) => {
+CVScreen.post('/updateSecteur', auth, (req, res) => {
 
     /*
     secteur = [
@@ -653,15 +633,12 @@ CVScreen.post('/updateSecteur', (req, res) => {
     ]
     */
 
-    const { token_id, secteur } = req.body;
+    const { secteur } = req.body;
+      const token_id = req.user.token_id;
 
     console.log('Received CV updateSecteur request');
 
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
+    
 
     if (!Array.isArray(secteur)) {
         return res.status(400).json({
@@ -825,15 +802,12 @@ CVScreen.post('/updateSecteur', (req, res) => {
     });
 });
 
-CVScreen.post('/deleteExperiences', (req, res) => {
+CVScreen.post('/deleteExperiences', auth, (req, res) => {
 
-    const { token_id, id_experiences } = req.body;
+    const { id_experiences } = req.body;
+    const token_id = req.user.token_id;
     console.log('Received CV deleteExperiences request with token_id and id_experiences');
     
-
-    if (!token_id) {
-        return res.status(400).json({ error: 'token_id is required' });
-    }
 
     
 
@@ -862,8 +836,9 @@ CVScreen.post('/deleteExperiences', (req, res) => {
     );
 });
 
-CVScreen.post('/updateExperiences', (req, res) => {
-    const { token_id,id , date1, date2, titre, societe, ville_pays, pays, description } = req.body;
+CVScreen.post('/updateExperiences'  , auth, (req, res) => {
+    const { id , date1, date2, titre, societe, ville_pays, pays, description } = req.body;
+        const token_id = req.user.token_id;
     console.log('Received CV updateExperiences request with token_id');
  
 
@@ -891,16 +866,12 @@ CVScreen.post('/updateExperiences', (req, res) => {
     );
 });
 
-CVScreen.post('/addExperience', (req, res) => {
-    const { token_id, date1, date2, titre, societe, ville_pays, pays, description } = req.body;
+CVScreen.post('/addExperience', auth, (req, res) => {
+    const { date1, date2, titre, societe, ville_pays, pays, description } = req.body;
+    const token_id = req.user.token_id;
     console.log('Received CV addExperience request with token_id');
 
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
-
+  
     db.query(
         `INSERT INTO experiences (token_id, date1, date2, titre, societe, ville_pays, pays, description, deleted)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
@@ -921,16 +892,11 @@ CVScreen.post('/addExperience', (req, res) => {
 
 //----------------------formation
 
-CVScreen.post('/deleteFormation', (req, res) => {
+CVScreen.post('/deleteFormation', auth, (req, res) => {
 
-    const { token_id, id_formation } = req.body;
+    const { id_formation } = req.body;
+    const token_id = req.user.token_id;
     console.log('Received CV deleteFormation request with token_id and id_formation');
-    
-
-    if (!token_id) {
-        return res.status(400).json({ error: 'token_id is required' });
-    }
-
     
 
     db.query(
@@ -958,16 +924,12 @@ CVScreen.post('/deleteFormation', (req, res) => {
     );
 });
 
-CVScreen.post('/updateFormation', (req, res) => {
-    const { token_id,id , ecole , diplome ,mois_debut , annee_debut , mois_obtention , annee_obtention ,description } = req.body;
+CVScreen.post('/updateFormation', auth, (req, res) => {
+    const { id , ecole , diplome ,mois_debut , annee_debut , mois_obtention , annee_obtention ,description } = req.body;
+    const token_id = req.user.token_id;
     console.log('Received CV updateFormation request with token_id');
  
 
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
 
     db.query(
         `UPDATE expenreicenformations_scolaire SET ecole = ?, diplome = ?, mois_debut = ?, annee_debut = ?, mois_obtention = ?, annee_obtention = ?, description = ?
@@ -987,15 +949,11 @@ CVScreen.post('/updateFormation', (req, res) => {
     );
 });
 
-CVScreen.post('/addFormation', (req, res) => {
-    const { token_id, ecole , diplome ,mois_debut , annee_debut , mois_obtention , annee_obtention ,description} = req.body;
+CVScreen.post('/addFormation', auth, (req, res) => {
+    const { ecole , diplome ,mois_debut , annee_debut , mois_obtention , annee_obtention ,description} = req.body;
+    const token_id = req.user.token_id;
     console.log('Received CV addFormation request with token_id');
 
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
 
     db.query(
         `INSERT INTO expenreicenformations_scolaire (token_id, ecole, diplome, mois_debut, annee_debut, mois_obtention, annee_obtention, description, deleted)
@@ -1021,9 +979,9 @@ CVScreen.post('/addFormation', (req, res) => {
 //------img
 
 
-CVScreen.post('/getImage', (req, res) => {
+CVScreen.post('/getImage', auth, (req, res) => {
 
-    const { token_id } = req.body;
+  const token_id = req.user.token_id;
 
     if (!token_id) {
         return res.status(400).json({
@@ -1193,9 +1151,9 @@ CVScreen.post(
     }
 );
 
-CVScreen.post('/deleteImage', (req, res) => {
+CVScreen.post('/deleteImage', auth, (req, res) => {
 
-    const { token_id } = req.body;
+    const token_id = req.user.token_id;
     console.log('Received CV deleteImage request with token_id');
 
     if (!token_id) {

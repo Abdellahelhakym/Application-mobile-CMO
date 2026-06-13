@@ -201,6 +201,7 @@ DB_PASS=votre_mot_de_passe_db
 DB_NAME=votre_nom_base_de_donnees
 ```
 
+
 ### 2. Démarrage du Back-end
 
 ```bash
@@ -216,7 +217,7 @@ PORT=3000
 DB_HOST=localhost
 DB_USER=votre_nom_utilisateur
 DB_PASS=votre_mot_de_passe
-DB_NAME=cmo_app_database
+DB_NAME=votre_nom_database 
 
 # Lancer le serveur
 node app.js

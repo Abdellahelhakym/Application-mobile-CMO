@@ -3,17 +3,17 @@ const db = require('../db');
 
 const myOffers = express.Router();
 
-myOffers.get('/', (req, res) => {
+const auth = require('../middleware/auth');
+
+myOffers.get('/', auth, (req, res) => {
     res.send('My Offers route');
 });
 
-myOffers.post('/commandes', (req, res) => {
+myOffers.post('/commandes', auth, (req, res) => {
 
-    const { token_id } = req.body;
+    const token_id = req.user.token_id;
 
-    if (!token_id) {
-        return res.status(400).json({ error: 'Token ID is required' });
-    }
+   
         db.query(
         'SELECT id FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
         [token_id],
@@ -58,12 +58,10 @@ myOffers.post('/commandes', (req, res) => {
  
 });
 
-myOffers.post('/devis', (req, res) => {
-    const { token_id } = req.body;
+myOffers.post('/devis', auth, (req, res) => {
+    const token_id = req.user.token_id;
 
-    if (!token_id) {
-        return res.status(400).json({ error: 'Token ID is required' });
-    }
+   
 
     // 1. Recherche de l'entreprise/user via le token
     db.query(

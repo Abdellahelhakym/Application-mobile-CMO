@@ -2,21 +2,18 @@ const express = require('express');
 const db = require('../db');
 
 const createOffer = express.Router();
-
-createOffer.get('/', (req, res) => {
+const auth = require('../middleware/auth');
+createOffer.get('/', auth, (req, res) => {
     res.send('Create Offer route');
 });
 
-createOffer.post('/commande', (req, res) => {
+createOffer.post('/commande', auth, (req, res) => {
     console.log('Received create offer request with body:', req.body);
-    const token_id = req.body.token_id;
+    const token_id = req.user.token_id;
     
     const pseudo = req.body.psaudo ;
     const data = req.body.data || {};
 
-    if (!token_id) {
-        return res.status(400).json({ error: 'Token ID is required' });
-    }
 
     db.query(
         'SELECT id FROM mco_entreprise WHERE token_id = ? AND deleted = 0',

@@ -23,27 +23,7 @@ export default function EmployerDocumentsScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
     >
-      {/* CARD TOP */}
-      <View style={styles.card}>
-        <Text style={styles.subtitle}>test</Text>
-
-        <View style={styles.row}>
-          <TouchableOpacity style={styles.outlineBtn}>
-            <Ionicons name="call-outline" size={16} />
-            <Text style={styles.btnText}> Contacter</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.outlineBtn}>
-            <Ionicons name="chatbubble-outline" size={16} />
-            <Text style={styles.btnText}> Chat</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.notice}>
-          Gerezz tous les documents necessaires a vos recrutements !
-        </Text>
-      </View>
-
+    
       {/* DOCUMENTS LIST */}
       <View style={styles.card}>
         {documents.map((doc, index) => (

@@ -2,14 +2,14 @@ const express = require('express');
 const db = require('../db');
 
 const favorites = express.Router();
-
-favorites.get('/', (req, res) => {
+const auth = require('../middleware/auth');
+favorites.get('/', auth, (req, res) => {
     res.send('Favorites route');
 });
 
-favorites.post('/', (req, res) => {
+favorites.post('/', auth, (req, res) => {
 
-    const { token_id } = req.body;
+    const token_id = req.user.token_id;
 
     console.log('Received favorites request with token_id');
 

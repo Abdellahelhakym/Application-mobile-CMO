@@ -42,13 +42,13 @@ export async function getMobiliteUser() {
 
 export async function getToutMobilite() {
     try {
-        const token_id = 'test';
+        
         const response = await fetch(url() + "candidat/cv/ToutMobilite", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ token_id }),
+            body: JSON.stringify({  }),
         });
         const data = await response.json();
         return data;

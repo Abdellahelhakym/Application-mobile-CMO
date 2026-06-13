@@ -2,12 +2,13 @@ const express = require('express');
 const db = require('../db');
 
 const EmployerDashboard = express.Router();
+const auth = require('../middleware/auth');
 
-EmployerDashboard.get('/', (req, res) => {
+EmployerDashboard.get('/',auth, (req, res) => {
     res.send('Employer Dashboard route');
 });
-EmployerDashboard.post('/pseudo', (req, res) => {
-   const { token_id } = req.body;
+EmployerDashboard.post('/pseudo', auth, (req, res) => {
+   const token_id = req.user.token_id;
    if (!token_id) {
         return res.status(400).json({
             error: 'token_id is required'
@@ -37,17 +38,13 @@ EmployerDashboard.post('/pseudo', (req, res) => {
 
 
 
-EmployerDashboard.post('/phase1', (req, res) => {
+EmployerDashboard.post('/phase1', auth, (req, res) => {
 
-    const { token_id } = req.body;
+    const token_id = req.user.token_id;
 
     console.log('Received employer dashboard phase 1 request with token_id');
 
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
+   
 
     db.query(
         'SELECT id FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
@@ -177,14 +174,11 @@ EmployerDashboard.post('/phase1', (req, res) => {
 
 //---------phase 2
 
-EmployerDashboard.post('/phase2', (req, res) => {
+EmployerDashboard.post('/phase2', auth, (req, res) => {
 
-    const { token_id } = req.body;
+    const token_id = req.user.token_id;
 
-    if (!token_id) {
-        return res.status(400).json({ error: 'token_id is required' });
-    }
-    
+  
     db.query(
         'SELECT id FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
         [token_id],
@@ -341,13 +335,9 @@ EmployerDashboard.post('/phase2', (req, res) => {
 });
 
 //---------phase 3
-EmployerDashboard.post('/phase3', (req, res) => {
+EmployerDashboard.post('/phase3', auth, (req, res) => {
 
-    const { token_id } = req.body;
-
-    if (!token_id) {
-        return res.status(400).json({ error: 'token_id is required' });
-    }
+    const token_id = req.user.token_id;
 
      db.query(
         'SELECT id FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
@@ -413,13 +403,9 @@ EmployerDashboard.post('/phase3', (req, res) => {
 });
 
 //---------phase 4
-EmployerDashboard.post('/phase4', (req, res) => {
+EmployerDashboard.post('/phase4', auth, (req, res) => {
 
-    const { token_id } = req.body;
-
-    if (!token_id) {
-        return res.status(400).json({ error: 'token_id is required' });
-    }
+    const token_id = req.user.token_id;
 
      db.query(
         'SELECT id FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
@@ -486,13 +472,9 @@ EmployerDashboard.post('/phase4', (req, res) => {
 });
 
 //---------phase 5
-EmployerDashboard.post('/phase5', (req, res) => {
+EmployerDashboard.post('/phase5', auth, (req, res) => {
 
-    const { token_id } = req.body;
-
-    if (!token_id) {
-        return res.status(400).json({ error: 'token_id is required' });
-    }
+    const token_id = req.user.token_id;
 
      db.query(
         'SELECT id FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
@@ -555,12 +537,10 @@ EmployerDashboard.post('/phase5', (req, res) => {
 });
 
 
-EmployerDashboard.post('/pack', (req, res) => {
+EmployerDashboard.post('/pack', auth, (req, res) => {
 
-    const { token_id } = req.body;
-    if (!token_id) {
-        return res.status(400).json({ error: 'token_id is required' });
-    }
+    const token_id = req.user.token_id;
+ 
     db.query(
         'SELECT id_formule FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
         [token_id],

@@ -2,8 +2,8 @@ const express = require('express');
 const db = require('../db');
 
 const CVDatabase = express.Router();
-
-CVDatabase.get('/', (req, res) => {
+const auth = require('../middleware/auth');
+CVDatabase.get('/', auth, (req, res) => {
     res.send('CV Screen route');
 });
 

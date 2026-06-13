@@ -231,6 +231,7 @@ export default function CreateOfferScreen() {
   };
 
   const handleSubmit = async () => {
+    // MODIFICATION : drivingLicense et description ont été retirés de cette liste pour être optionnels
     const requiredFields: Array<{ key: keyof typeof formData; label: string }> = [
       { key: 'categoryId', label: 'Categorie' },
       { key: 'subcategoryId', label: 'Sous-categorie' },
@@ -242,8 +243,6 @@ export default function CreateOfferScreen() {
       { key: 'positions', label: 'Nombre de poste' },
       { key: 'salary', label: 'Salaire' },
       { key: 'housing', label: 'Logement' },
-      { key: 'drivingLicense', label: 'Permis de conduire' },
-      { key: 'description', label: 'Description' },
     ];
 
     const nextErrors: Record<string, string> = {};
@@ -480,7 +479,6 @@ export default function CreateOfferScreen() {
           error={errors.housing}
         />
 
-        {/* MODIFICATION ICI : Remplacement du SelectPicker par MultiSelectPicker pour le permis de conduire */}
         <MultiSelectPicker
           value={formData.drivingLicense}
           options={drivingLicenseOptions}

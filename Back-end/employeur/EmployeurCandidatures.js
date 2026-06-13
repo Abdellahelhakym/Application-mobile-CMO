@@ -2,19 +2,17 @@ const express = require('express');
 const db = require('../db');
 
 const EmployerCandidatures = express.Router();
+const auth = require('../middleware/auth');
 
-EmployerCandidatures.get('/', (req, res) => {
+EmployerCandidatures.get('/', auth, (req, res) => {
     res.send('Employer Candidatures route');
 });
 
-EmployerCandidatures.post('/getCandidatures', (req, res) => {
+EmployerCandidatures.post('/getCandidatures', auth, (req, res) => {
 
-    const { token_id } = req.body;
+   const token_id = req.user.token_id;
 
-    if (!token_id) {
-        return res.status(400).json({ error: 'Token ID is required' });
-    }
-
+ 
     db.query(
         'SELECT id FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
         [token_id],
@@ -102,14 +100,12 @@ EmployerCandidatures.post('/getCandidatures', (req, res) => {
     );
 });
 
-EmployerCandidatures.post('/getCandidaturesValide', (req, res) => {
+EmployerCandidatures.post('/getCandidaturesValide', auth, (req, res) => {
 
     
-    const { token_id } = req.body;
+    const token_id = req.user.token_id;
 
-    if (!token_id) {
-        return res.status(400).json({ error: 'Token ID is required' });
-    }
+  
 
     db.query(
         'SELECT id FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
@@ -199,11 +195,12 @@ EmployerCandidatures.post('/getCandidaturesValide', (req, res) => {
 });
 
 
-EmployerCandidatures.post('/setCandidaturesValide', (req, res) => {
-    const { token_id, id_candidat } = req.body;
- 
-    if (!token_id || !id_candidat) {
-        return res.status(400).json({ error: 'Token ID and Candidate ID are required' });
+EmployerCandidatures.post('/setCandidaturesValide', auth, (req, res) => {
+    const { id_candidat } = req.body;
+    const token_id = req.user.token_id;
+
+    if (!id_candidat) {
+        return res.status(400).json({ error: ' Candidate ID are required' });
     }
 
     db.query(

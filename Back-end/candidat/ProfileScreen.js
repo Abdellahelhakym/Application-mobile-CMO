@@ -6,10 +6,11 @@ profile.get('/', (req, res) => {
     res.send('Profile route');
     
 });
+const auth = require('../middleware/auth');
 
-profile.post('/data', (req, res) => {
+profile.post('/data', auth, (req, res) => {
 
-    const { token_id } = req.body;
+   const token_id = req.user.token_id;
 
     db.query(
         'SELECT  pseudo  FROM users WHERE token_id = ?',

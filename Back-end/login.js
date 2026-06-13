@@ -2,8 +2,9 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const db = require('./db');
 const router = express.Router();
+const auth = require('./middleware/auth');
 
-router.get('/candidat', (req, res) => {
+router.get('/candidat', auth, (req, res) => {
   res.send('Login route');
 });
 

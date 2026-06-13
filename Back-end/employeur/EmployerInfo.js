@@ -3,17 +3,19 @@ const db = require('../db');
 
 const EmployerInfo = express.Router();
 
-EmployerInfo.get('/', (req, res) => {
+const auth = require('../middleware/auth');
+
+
+EmployerInfo.get('/', auth, (req, res) => {
     res.send('Employer Info route');
 });
 
-EmployerInfo.post('/getInfo', (req, res) => {
+EmployerInfo.post('/getInfo', auth, (req, res) => {
 
-    const { token_id } = req.body;
+   const token_id = req.user.token_id;
     console.log('Received employer info request with token_id');
-    if (!token_id) {
-        return res.status(400).json({ error: 'Token ID is required' });
-    }
+   
+
     db.query(
         'SELECT * FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
         [token_id],
@@ -32,12 +34,12 @@ EmployerInfo.post('/getInfo', (req, res) => {
 
 });
 
-EmployerInfo.post('/updateInfo', (req, res) => {
+EmployerInfo.post('/updateInfo', auth, (req, res) => {
     // 1. On récupère token_id et l'objet data depuis le body
-    const { token_id, data } = req.body;
-
-    if (!token_id || !data) {
-        return res.status(400).json({ error: 'Token ID and Data are required' });
+    const { data } = req.body;
+ const token_id = req.user.token_id;
+    if ( !data) {
+        return res.status(400).json({ error: ' Data are required' });
     }
 
     // 2. On extrait les colonnes directement depuis l'objet data

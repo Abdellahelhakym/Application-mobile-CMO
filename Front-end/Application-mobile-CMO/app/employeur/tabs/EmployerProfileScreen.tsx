@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { router } from "expo-router";
 import {
-  View,
+  View,Alert,
   Text,
   TouchableOpacity,
   StyleSheet,
@@ -36,6 +36,27 @@ export default function EmployerProfileScreen() {
   firstName: "",
   lastName: "",
 });
+
+
+ function handleLogout() {
+  Alert.alert(
+    'Déconnexion',
+    'Voulez-vous vraiment vous déconnecter ?',
+    [
+      {
+        text: 'Annuler',
+        style: 'cancel',
+      },
+      {
+        text: 'Déconnecter',
+        style: 'destructive',
+        onPress: () => {
+          router.replace("/loginEmp")
+        },
+      },
+    ]
+  );
+}
 
 useEffect(() => {
   const loadEmployerInfo = async () => {
@@ -125,7 +146,7 @@ useEffect(() => {
         </View>
 
         {/* 🚪 LOGOUT */}
-        <TouchableOpacity style={styles.logout} onPress={() => router.replace("/loginEmp")}>
+        <TouchableOpacity style={styles.logout} onPress={handleLogout}>
           <LogOut size={20} color="#1b2d5a" />
           <Text style={styles.logoutText}>Se déconnecter</Text>
         </TouchableOpacity>

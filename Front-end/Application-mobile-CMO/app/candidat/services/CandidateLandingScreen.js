@@ -12,6 +12,7 @@ export async function getCandidatures() {
             },
             body: JSON.stringify({ token_id }),
         });
+        
         const data = await response.json();
         return data;    
     }catch (error) {

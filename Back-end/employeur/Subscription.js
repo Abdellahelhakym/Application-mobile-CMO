@@ -2,12 +2,13 @@ const express = require('express');
 const db = require('../db');
 
 const subscription = express.Router();
+const auth = require('../middleware/auth');
 
-subscription.get('/', (req, res) => {
+subscription.get('/', auth, (req, res) => {
     res.send('Subscription route');
-})
-subscription.post('/historique', (req, res) => {
-    const { token_id } = req.body;
+});
+subscription.post('/historique', auth, (req, res) => {
+    const token_id = req.user.token_id;
 
     if (!token_id) {
         return res.status(400).json({ error: 'Token ID is required' });

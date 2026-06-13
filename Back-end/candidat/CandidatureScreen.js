@@ -2,8 +2,9 @@ const express = require('express');
 const db = require('../db');
 
 const CandidatureScreen = express.Router();
+const auth = require('../middleware/auth');
 
-CandidatureScreen.get('/', (req, res) => {
+CandidatureScreen.get('/', auth, (req, res) => {
     try {
         res.send('Candidature Screen route');
     } catch (err) {
@@ -13,9 +14,9 @@ CandidatureScreen.get('/', (req, res) => {
 });
 
 
-CandidatureScreen.post('/', (req, res) => {
+CandidatureScreen.post('/', auth, (req, res) => {
     try {
-        const { token_id } = req.body;
+        const token_id = req.user.token_id;
 
         console.log('Received candidature request with token_id:');
 
@@ -98,11 +99,12 @@ CandidatureScreen.post('/', (req, res) => {
 
 
 
-CandidatureScreen.post('/ajouterFavoris', (req, res) => {
+CandidatureScreen.post('/ajouterFavoris', auth, (req, res) => {
 
-    const { token_id, id_offre, titre_offre } = req.body;
+    const {  id_offre, titre_offre } = req.body;
+      const token_id = req.user.token_id;
 
-    if (!token_id || !id_offre) {
+    if (!id_offre) {
         return res.status(400).json({
             error: 'token_id and id_offre are required'
         });
@@ -177,12 +179,13 @@ CandidatureScreen.post('/ajouterFavoris', (req, res) => {
 });
 
 
-CandidatureScreen.post('/isFavorite', (req, res) => {
+CandidatureScreen.post('/isFavorite', auth, (req, res) => {
    
-    const { token_id, id_offre } = req.body;
-     if (!token_id || !id_offre) {
+    const { id_offre } = req.body;
+          const token_id = req.user.token_id;
+     if ( !id_offre) {
         return res.status(400).json({
-            error: 'token_id and id_offre are required'
+            error: ' id_offre are required'
         });
     }
 

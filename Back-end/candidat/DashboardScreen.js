@@ -2,24 +2,19 @@ const express = require('express');
 const db = require('../db');
 
 const dashboard = express.Router();
+const auth = require('../middleware/auth');
 
-dashboard.get('/', (req, res) => {
+dashboard.get('/', auth, (req, res) => {
     res.send('Dashboard route');
 });
 
-dashboard.post('/', (req, res) => {
+dashboard.post('/', auth, (req, res) => {
 
-    const { token_id } = req.body;
+const token_id = req.user.token_id;
 
     console.log('Received dashboard request with token_id');
 
-    // Vérification token
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
-
+    
     // USER
     db.query(
         'SELECT pseudo FROM users WHERE token_id = ? AND deleted = 0',
@@ -163,17 +158,12 @@ dashboard.post('/', (req, res) => {
 });
 
 
-dashboard.post('/secteurs', (req, res) => {
+dashboard.post('/secteurs', auth, (req, res) => {
 
-    const { token_id } = req.body;
+   const token_id = req.user.token_id;
 
     console.log('Received secteurs request with token_id:');
 
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
 
     db.query(
         `
