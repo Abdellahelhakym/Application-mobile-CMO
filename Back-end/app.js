@@ -85,8 +85,19 @@ app.use('/employeur/candidatures', EmployerCandidatures);
 const subscription = require('./employeur/Subscription');
 app.use('/employeur/subscription', subscription);
 
+//----documents---
+const documents = require('./employeur/documents');
+app.use('/employeur/documents', documents);
 
-
+app.use(
+  '/documents/photos_employeur',
+  express.static(
+    path.resolve(
+      __dirname,
+      '../../crm_cmo/documents/photos_employeur'
+    )
+  )
+);
 
 app.get('/cmo_app/test', (req, res) => {
   res.send('Hello World!');

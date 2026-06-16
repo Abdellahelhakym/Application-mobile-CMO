@@ -329,6 +329,10 @@ const IdentityTab = ({
   setPhotoUpload: React.Dispatch<React.SetStateAction<{ uri: string; name: string; type: string } | null>>;
 }) => {
   const [photoLoading, setPhotoLoading] = useState(false);
+
+  // 🎯 REJOUTE CETTE LIGNE ICI POUR CORRIGER L'ERREUR :
+  const [cacheBuster, setCacheBuster] = useState(Date.now());
+  
   const set = (key: string) => (v: string) =>
     setFormData((p: any) => ({ ...p, [key]: v }));
 
@@ -362,34 +366,50 @@ const IdentityTab = ({
     }
   };
 
-  const handleSaveInformations = async () => {
-    try {
-      const codePostalValue = formData.postalCode ? Number(formData.postalCode) : 0;
+ const handleSaveInformations = async () => {
+  try {
+    const codePostalValue = formData.postalCode ? Number(formData.postalCode) : 0;
 
-      await updateInformations(
-        formData.civility,
-        formData.firstName,
-        formData.lastName,
-        formData.email,
-        formData.phone,
-        formData.phone2,
-        formData.address,
-        codePostalValue,
-        formData.city,
-        formData.country,
-        formData.socialSecurity
-      );
+    await updateInformations(
+      formData.civility,
+      formData.firstName,
+      formData.lastName,
+      formData.email,
+      formData.phone,
+      formData.phone2,
+      formData.address,
+      codePostalValue,
+      formData.city,
+      formData.country,
+      formData.socialSecurity
+    );
 
-      if (photoUpload) {
-        await updateImage(photoUpload as any);
-        setPhotoUpload(null);
+    if (photoUpload) {
+      // 1. On active le loader avant l'upload pour être sûr
+      setPhotoLoading(true);
+
+      const response = await updateImage(photoUpload as any);
+      setPhotoUpload(null);
+
+      if (response && response.photo) {
+        setFormData((p: any) => ({ ...p, photo: response.photo }));
       }
-
-      Alert.alert('Enregistré', 'Informations enregistrées avec succès.');
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible de sauvegarder les informations.');
+      
+      // 2. On force le changement de cache
+      setCacheBuster(Date.now());
+      
+      // 3. 🎯 SÉCURITÉ : On coupe le loader ici au cas où l'événement natif onLoadEnd rate le coche
+      setTimeout(() => {
+        setPhotoLoading(false);
+      }, 500); 
     }
-  };
+
+    Alert.alert('Enregistré', 'Informations enregistrées avec succès.');
+  } catch (error) {
+    setPhotoLoading(false); // On coupe aussi en cas d'erreur
+    Alert.alert('Erreur', 'Impossible de sauvegarder les informations.');
+  }
+};
 
   return (
     <View style={{ gap: 16 }}>
