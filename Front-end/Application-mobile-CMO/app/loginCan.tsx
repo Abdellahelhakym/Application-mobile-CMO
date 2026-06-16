@@ -9,7 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
+  TextInput,Linking,
   TouchableOpacity,
   View
 } from "react-native";
@@ -123,7 +123,7 @@ export default function LoginScreen() {
 
             {/* Forgot */}
             <TouchableOpacity
-              onPress={() => router.push("/ForgotPasswordScreen")}
+              onPress={() => Linking.openURL("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie")}
             >
               <Text style={styles.forgot}>Mot de passe oublié ?</Text>
             </TouchableOpacity>
@@ -144,7 +144,7 @@ export default function LoginScreen() {
 
               <TouchableOpacity
                 style={styles.secondaryBtn}
-                onPress={() => router.push("/RegisterCandidateScreen")}
+                onPress={() => Linking.openURL("https://conceptmaindoeuvre.com/creer-compte")}
               >
                 <Text style={styles.secondaryText}>Créer un compte</Text>
               </TouchableOpacity>

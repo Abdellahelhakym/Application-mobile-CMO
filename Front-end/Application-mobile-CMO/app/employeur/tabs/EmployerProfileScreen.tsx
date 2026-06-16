@@ -128,10 +128,7 @@ useEffect(() => {
             <Text style={styles.menuText}>Mes documents</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={()=>{router.push("/employeur/autre/EmployeurCandidatures")}}>
-            <FileText size={20} color="#2b5bbb" />
-            <Text style={styles.menuText}>Mes candidatures</Text>
-          </TouchableOpacity>
+
 
           <TouchableOpacity style={styles.menuItem} onPress={()=>{router.push("/employeur/autre/EmployerInfoScreen")}}>
             <Settings size={20} color="#2b5bbb" />

@@ -12,9 +12,12 @@ import {
 } from 'react-native';
 
 import { Phone, MessageSquare, ChevronDown } from 'lucide-react-native';
+import { Feather } from '@expo/vector-icons'; // 1. Ajout de l'icône Feather
+import { useRouter } from 'expo-router'; // 2. Ajout du routeur pour expo-router
 import { getCommandes, getDevis } from '@/app/employeur/services/MyOffers';
 
 export default function MyOffersScreen() {
+  const router = useRouter(); // Initialisation du router
   const [activeTab, setActiveTab] =
     useState<'commands' | 'quotes' | 'archive'>('commands');
   const [commandes, setCommandes] = useState<any[]>([]);
@@ -104,23 +107,22 @@ export default function MyOffersScreen() {
     setSelectedCommande(null);
   };
 
-  const tableTitle =
-    activeTab === 'commands'
-      ? 'N° Commande'
-      : activeTab === 'quotes'
-      ? 'N° Devis'
-      : 'Archive';
-
   return (
     <View style={styles.container}>
-      {/* ✅ SCROLL FIXÉ */}
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
 
-   
+        {/* ➕ BOUTON CRÉER UNE COMMANDE */}
+        <TouchableOpacity 
+          style={styles.createButton} 
+          onPress={() => router.push("/employeur/autre/CreateOfferScreen")}
+        >
+          <Feather name="plus" size={20} color="#fff" />
+          <Text style={styles.createButtonText}>Créer une commande</Text>
+        </TouchableOpacity>
 
         {/* TABS */}
         <View style={styles.tabs}>
@@ -276,6 +278,7 @@ export default function MyOffersScreen() {
 
       </ScrollView>
 
+      {/* MODAL */}
       <Modal
         visible={detailsVisible}
         transparent
@@ -340,87 +343,42 @@ export default function MyOffersScreen() {
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#eef3ff',
   },
-
   content: {
     padding: 15,
-    paddingBottom: 120, // ✅ IMPORTANT pour scroll
+    paddingBottom: 120,
     gap: 15,
   },
-
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 15,
-  },
-
-  row: {
+  /* Styles pour le nouveau bouton */
+  createButton: {
     flexDirection: 'row',
-    gap: 10,
+    backgroundColor: '#2b5bbb', // Couleur bleue harmonisée avec votre app
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 20,
     alignItems: 'center',
-  },
-
-  logo: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: '#f6f8ff',
     justifyContent: 'center',
-    alignItems: 'center',
+    gap: 8,
+    elevation: 2, // Ombre légère sur Android
+    shadowColor: '#000', // Ombre sur iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-
-  company: {
-    fontSize: 16,
-    color: '#1b2d5a',
+  createButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
-
-  sub: {
-    fontSize: 12,
-    color: '#7a8ab8',
-  },
-
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-  },
-
-  btnOutline: {
-    flexDirection: 'row',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#cfd9ee',
-    padding: 10,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-
-  btnText: {
-    color: '#2b5bbb',
-    fontSize: 12,
-  },
-
-  infoBox: {
-    marginTop: 10,
-    backgroundColor: '#fff1dc',
-    padding: 10,
-    borderRadius: 12,
-  },
-
-  infoText: {
-    fontSize: 12,
-    color: '#1b2d5a',
-  },
-
   tabs: {
     flexDirection: 'row',
     gap: 10,
   },
-
   tab: {
     flex: 1,
     padding: 12,
@@ -430,39 +388,32 @@ const styles = StyleSheet.create({
     borderColor: '#e1e9fb',
     alignItems: 'center',
   },
-
   tabActive: {
     backgroundColor: '#ffe9cf',
     borderColor: '#f2d9bf',
   },
-
   tabText: {
     fontSize: 12,
     color: '#1b2d5a',
   },
-
   tabTextActive: {
     fontWeight: '600',
   },
-
   tableCard: {
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: 15,
   },
-
   tableControls: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     justifyContent: 'center',
   },
-
   smallText: {
     fontSize: 12,
     color: '#1b2d5a',
   },
-
   select: {
     flexDirection: 'row',
     gap: 5,
@@ -471,7 +422,6 @@ const styles = StyleSheet.create({
     padding: 5,
     borderRadius: 10,
   },
-
   selectMenu: {
     position: 'absolute',
     top: 34,
@@ -483,24 +433,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     zIndex: 10,
   },
-
   selectItem: {
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
-
   selectItemText: {
     fontSize: 12,
     color: '#1b2d5a',
   },
-
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     marginVertical: 10,
   },
-
   input: {
     flex: 1,
     borderWidth: 1,
@@ -509,25 +455,21 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: '#fff',
   },
-
   tableHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 10,
   },
-
   th: {
     fontSize: 10,
     color: '#2b5bbb',
     flex: 1,
   },
-
   empty: {
     textAlign: 'center',
     marginTop: 20,
     color: '#7a8ab8',
   },
-
   tableRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -535,19 +477,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e1e9fb',
   },
-
   td: {
     fontSize: 12,
     color: '#1b2d5a',
     flex: 1,
   },
-
   linkText: {
     fontSize: 12,
     color: '#2b5bbb',
     textDecorationLine: 'underline',
   },
-
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
@@ -555,27 +494,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-
   modalCard: {
     width: '100%',
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
   },
-
   modalTitle: {
     fontSize: 16,
     color: '#1b2d5a',
     marginBottom: 10,
     fontWeight: '600',
   },
-
   modalRow: {
     fontSize: 12,
     color: '#1b2d5a',
     marginBottom: 6,
   },
-
   modalClose: {
     marginTop: 12,
     paddingVertical: 10,
@@ -583,7 +518,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2b5bbb',
     alignItems: 'center',
   },
-
   modalCloseText: {
     color: '#fff',
     fontSize: 12,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View , Linking } from "react-native";
 
 import { Award, FileText, MessageSquare, Phone, Search, UserCheck } from "lucide-react-native";
 
@@ -267,7 +267,8 @@ export default function EmployerDashboard() {
           </View>
 
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.btnOutline}>
+            <TouchableOpacity style={styles.btnOutline} onPress={() => Linking.openURL("tel:+212788361923")}>
+              
               <Phone size={16} color="#2b5bbb" />
               <Text style={styles.btnText}>Conseiller</Text>
             </TouchableOpacity>

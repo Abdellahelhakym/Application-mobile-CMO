@@ -141,27 +141,28 @@ export default function Layout() {
   }}
 />
 
-   <Tabs.Screen
-  name="CreateOfferScreen"
+<Tabs.Screen
+  name="EmployeurCandidatures"
   options={{
-    title: "Ajouter ", 
-
+    title: "Candidatures", 
+    
 
     tabBarIcon: ({ color, focused }) => (
-      <View>
-       <Feather name="plus" size={20} color={color} />
+      <View >
+       <Feather name="users" size={20} color={color} />
       </View>
     ),
   }}
 />
 
+
 <Tabs.Screen
   name="CVDatabaseScreen"
   options={{
-    title: "Candidats", 
+    title: "Park CV", 
     tabBarLabel: ({ color }) => (
       <Text style={[styles.tabLabel, { color }]} numberOfLines={2}>
-        Candidats
+        Park CV CMO
       </Text>
     ),
     tabBarIcon: ({ color }) => (
