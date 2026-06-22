@@ -9,14 +9,14 @@ import {
   Alert,
   Modal,
   Dimensions,
-  Image, // 👈 Ajout de l'import Image de react-native
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCandidats } from '@/app/employeur/services/CVDatabaseScreen';
 import { getSecteur } from '@/app/candidat/services/CVScreen';
-import url from "@/app/services/url.js"; // 👈 Ajout de l'import de l'URL de base
+import url from "@/app/services/url.js";
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const CONTRATS = ['CDI', 'CDD', 'Saisonnier', 'Alternance', 'Stage', 'Mi-temps', 'Interim', 'Liberal'];
 
@@ -45,14 +45,12 @@ export default function CVDatabaseScreen() {
     metiers: any[];
   }>({ categories: [], subCategories: [], metiers: [] });
 
-  // Filter state
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedSubCategory, setSelectedSubCategory] = useState<string>('');
   const [selectedMetier, setSelectedMetier] = useState<string>('');
   const [selectedContrats, setSelectedContrats] = useState<string[]>([]);
   const [selectedPays, setSelectedPays] = useState<string>('');
 
-  // Dropdown open state
   const [catOpen, setCatOpen] = useState(false);
   const [subCatOpen, setSubCatOpen] = useState(false);
   const [metierOpen, setMetierOpen] = useState(false);
@@ -157,18 +155,6 @@ export default function CVDatabaseScreen() {
     ...selectedContrats,
   ].filter(Boolean).length;
 
-  const resetFilters = () => {
-    setSelectedCategory('');
-    setSelectedSubCategory('');
-    setSelectedMetier('');
-    setSelectedContrats([]);
-    setSelectedPays('');
-    setCatOpen(false);
-    setSubCatOpen(false);
-    setMetierOpen(false);
-    setPaysOpen(false);
-  };
-
   const getCategoryLabel = () =>
     secteurData.categories.find((c) => String(c.id_categorie) === selectedCategory)?.titre || 'Catégorie';
 
@@ -205,7 +191,6 @@ export default function CVDatabaseScreen() {
           <Text style={styles.emptyText}>Aucun candidat trouvé</Text>
         ) : (
           filteredCandidats.map((profile, index) => {
-            // ── CALCUL DE L'URL DE LA PHOTO EN TEMPS RÉEL ──
             const hasPhoto = profile.photo && profile.photo.trim() !== '';
             const photoUrl = hasPhoto 
               ? `${url()}documents/photos_candidats/${profile.photo}?t=${Date.now()}`
@@ -215,7 +200,6 @@ export default function CVDatabaseScreen() {
               <View key={profile.token_id || profile.id || index} style={styles.card}>
                 <View style={styles.row}>
                   
-                  {/* ── CONDITION D'AFFICHAGE DE L'AVATAR / IMAGE ── */}
                   <View style={styles.avatarLarge}>
                     {hasPhoto ? (
                       <Image 
@@ -229,19 +213,22 @@ export default function CVDatabaseScreen() {
                   </View>
 
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.name}>{profile.prenom} {profile.nom}</Text>
+                    <Text style={styles.name}>{profile.prenom} </Text>
                     <Text style={styles.status}>{profile.experience || 'Vide !'} d'experience</Text>
                     
                     {/* METIERS */}
                     <View style={styles.metiersContainer}>
                       {Array.isArray(profile?.secteur_activite) && profile.secteur_activite.length > 0 ? (
-                        profile.secteur_activite.map((secteur: any, idx: number) => (
+                        profile.secteur_activite.slice(0, 2).map((secteur: any, idx: number) => (
                           <View key={idx} style={styles.metierBadge}>
                             <Text style={styles.metierBadgeText}>{secteur.metier}</Text>
                           </View>
                         ))
                       ) : (
                         <Text style={styles.noMetierText}>Aucun métier renseigné</Text>
+                      )}
+                      {Array.isArray(profile?.secteur_activite) && profile.secteur_activite.length > 2 && (
+                        <Text style={styles.moreBadge}>+{profile.secteur_activite.length - 2}</Text>
                       )}
                     </View>
 
@@ -264,6 +251,132 @@ export default function CVDatabaseScreen() {
         )}
 
       </ScrollView>
+
+      {/* ──────────────── MODAL DU CV AMÉLIORÉE ──────────────── */}
+      <Modal
+        visible={cvVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={closeCv}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.cvCard}>
+            <View style={styles.cvHeader}>
+              <Text style={styles.cvTitle}>CV du Candidat</Text>
+              <TouchableOpacity onPress={closeCv}>
+                <Ionicons name="close-circle" size={26} color="#ff4d4d" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedCandidate && (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                
+                {/* HEADER AVEC AVATAR ET NOM */}
+                <View style={styles.cvCenterAvatar}>
+                  <View style={styles.cvAvatarLarge}>
+                    {selectedCandidate.photo ? (
+                      <Image 
+                        source={{ uri: `${url()}documents/photos_candidats/${selectedCandidate.photo}` }} 
+                        style={styles.avatarImage} 
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Ionicons name="person-outline" size={40} color="#2b5bbb" />
+                    )}
+                  </View>
+                  <Text style={styles.cvName}>{selectedCandidate.prenom} </Text>
+                </View>
+
+                <View style={styles.divider} />
+
+                {/* SECTEUR D'ACTIVITÉ */}
+                {Array.isArray(selectedCandidate?.secteur_activite) && selectedCandidate.secteur_activite.length > 0 && (
+                  <>
+                    <Text style={styles.sectionTitle}>Secteur d'activité</Text>
+                    {selectedCandidate.secteur_activite.map((s: any, i: number) => (
+                      <View key={i} style={styles.sectorItem}>
+                        <Text style={styles.sectorMetier}>• {s.metier}</Text>
+                        <Text style={styles.sectorCategory}>
+                          {s.sous_categorie} - {s.categorie}
+                        </Text>
+                      </View>
+                    ))}
+                    <View style={styles.divider} />
+                  </>
+                )}
+
+                {/* MOBILITÉ */}
+                {Array.isArray(selectedCandidate?.mobilite) && selectedCandidate.mobilite.length > 0 && (
+                  <>
+                    <Text style={styles.sectionTitle}>Mobilité</Text>
+                    {selectedCandidate.mobilite.map((m: any, i: number) => (
+                      <Text key={i} style={styles.mobiliteText}>• {m.region}</Text>
+                    ))}
+                    <View style={styles.divider} />
+                  </>
+                )}
+
+                {/* NIVEAU D'ÉTUDES */}
+                {selectedCandidate.niveau_etudes && (
+                  <>
+                    <Text style={styles.sectionTitle}>Niveau d'études</Text>
+                    <Text style={styles.contentText}>{selectedCandidate.niveau_etudes}</Text>
+                    <View style={styles.divider} />
+                  </>
+                )}
+
+                {/* EXPÉRIENCE PROFESSIONNELLE */}
+                {selectedCandidate.experience && (
+                  <>
+                    <Text style={styles.sectionTitle}>Expérience</Text>
+                    <Text style={styles.contentText}>{selectedCandidate.experience}</Text>
+                    <View style={styles.divider} />
+                  </>
+                )}
+
+                {/* PARCOURS SCOLAIRE */}
+                {Array.isArray(selectedCandidate?.parcours_scolaire) && selectedCandidate.parcours_scolaire.length > 0 && (
+                  <>
+                    <Text style={styles.sectionTitle}>Parcours scolaire</Text>
+                    {selectedCandidate.parcours_scolaire.map((p: any, i: number) => (
+                      <View key={i} style={styles.educationItem}>
+                        <Text style={styles.educationDiplome}>
+                          {p.diplome.toUpperCase() || 'Diplôme non renseigné'}
+                        </Text>
+                        <Text style={styles.educationSchool}>École : {p.ecole}</Text>
+                        <Text style={styles.educationDate}>
+                          Durée : {String(p.mois_debut).padStart(2, '0')}/{p.annee_debut} à {String(p.mois_obtention).padStart(2, '0')}/{p.annee_obtention}
+                        </Text>
+                        {p.description && (
+                          <Text style={styles.educationDescription}>{p.description}</Text>
+                        )}
+                      </View>
+                    ))}
+                    <View style={styles.divider} />
+                  </>
+                )}
+
+               {/* ATTESTATIONS */}
+                        {Array.isArray(selectedCandidate?.attestation) &&
+                          selectedCandidate.attestation.length > 0 && (
+                            <>
+                              <Text style={styles.sectionTitle}>Attestations</Text>
+
+                              {selectedCandidate.attestation.map((a: any, i: number) => (
+                                <View key={i} style={styles.attestationItem}>
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={styles.attestationTitle}>{a.titre}</Text>
+                                    <Text style={styles.attestationCategory}>{a.categorie}</Text>
+                                  </View>
+                                </View>
+                              ))}
+                            </>
+                        )}
+                                      </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* ──────────────── FILTER MODAL ──────────────── */}
       <Modal
@@ -489,7 +602,36 @@ export default function CVDatabaseScreen() {
                 <Text style={[styles.dropdownText, selectedPays ? styles.dropdownTextActive : null]}>
                   {getPaysLabel()}
                 </Text>
+                <Ionicons name={paysOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
               </TouchableOpacity>
+              {paysOpen && (
+                <View style={styles.dropdownList}>
+                  <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
+                    {PAYS.map((item) => (
+                      <TouchableOpacity
+                        key={item.value}
+                        style={[
+                          styles.dropdownItem,
+                          item.value === selectedPays ? styles.dropdownItemActive : null,
+                        ]}
+                        onPress={() => {
+                          setSelectedPays(item.value);
+                          setPaysOpen(false);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.dropdownItemText,
+                            item.value === selectedPays ? styles.dropdownItemTextActive : null,
+                          ]}
+                        >
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
 
             </ScrollView>
           </View>
@@ -499,7 +641,6 @@ export default function CVDatabaseScreen() {
   );
 }
 
-// ── AJOUT DES STYLES POUR LA PHOTO ARRONDEE ──
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f6fa' },
   content: { padding: 15 },
@@ -512,7 +653,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 10, padding: 15, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1.41 },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
   
-  // Conteneur de l'avatar
+  // Avatar liste
   avatarLarge: { 
     width: 60, 
     height: 60, 
@@ -521,9 +662,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     alignItems: 'center', 
     marginRight: 15,
-    overflow: 'hidden' // Important pour que l'image interne respecte le border radius !
+    overflow: 'hidden'
   },
-  // Style appliqué au composant <Image>
   avatarImage: {
     width: '100%',
     height: '100%',
@@ -534,6 +674,7 @@ const styles = StyleSheet.create({
   metiersContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
   metierBadge: { backgroundColor: '#eef2ff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, marginRight: 6, marginBottom: 4 },
   metierBadgeText: { color: '#2b5bbb', fontSize: 11, fontWeight: '600' },
+  moreBadge: { color: '#2b5bbb', fontSize: 11, fontWeight: '600', paddingHorizontal: 6 },
   noMetierText: { color: '#a0aec0', fontSize: 12, fontStyle: 'italic', marginBottom: 8 },
   info: { fontSize: 13, color: '#4a5568', marginBottom: 2 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#edf2f7' },
@@ -541,8 +682,48 @@ const styles = StyleSheet.create({
   cvBtn: { flexDirection: 'row', backgroundColor: '#2b5bbb', paddingHorizontal: 15, paddingVertical: 6, borderRadius: 15, alignItems: 'center' },
   cvText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   
-  // Styles Modal Filtre (restants)
+  // Modals Backdrops
   filterBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  
+  // Modal CV
+  cvCard: { backgroundColor: '#fff', width: width * 0.95, maxHeight: height * 0.9, borderRadius: 15, padding: 20, elevation: 5 },
+  cvHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  cvTitle: { fontSize: 18, fontWeight: 'bold', color: '#1b2d5a' },
+  cvCenterAvatar: { alignItems: 'center', marginTop: 10, marginBottom: 15 },
+  cvAvatarLarge: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#eef2ff', justifyContent: 'center', alignItems: 'center', marginBottom: 10, overflow: 'hidden' },
+  cvName: { fontSize: 20, fontWeight: 'bold', color: '#1b2d5a' },
+  divider: { height: 1, backgroundColor: '#edf2f7', marginVertical: 15 },
+  
+  // Sections CV
+  sectionTitle: { fontSize: 15, fontWeight: 'bold', color: '#2b5bbb', marginBottom: 10, marginTop: 5 },
+  contentText: { fontSize: 14, color: '#4a5568', marginBottom: 8 },
+  
+  // Secteur d'activité
+  sectorItem: { marginBottom: 12, paddingLeft: 5 },
+  sectorMetier: { fontSize: 14, fontWeight: '600', color: '#1b2d5a', marginBottom: 3 },
+  sectorCategory: { fontSize: 12, color: '#7a8ab8', marginLeft: 15 },
+  
+  // Mobilité
+  mobiliteText: { fontSize: 14, color: '#4a5568', marginBottom: 6, paddingLeft: 5 },
+  
+  // Parcours scolaire
+  educationItem: { marginBottom: 15, paddingLeft: 5, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#edf2f7' },
+  educationDiplome: { fontSize: 14, fontWeight: 'bold', color: '#2b5bbb', marginBottom: 5 },
+  educationSchool: { fontSize: 13, color: '#4a5568', marginBottom: 3 },
+  educationDate: { fontSize: 13, color: '#7a8ab8', marginBottom: 5, fontStyle: 'italic' },
+  educationDescription: { fontSize: 12, color: '#4a5568', marginTop: 5, lineHeight: 18 },
+  
+  // Attestations
+  attestationItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 10, backgroundColor: '#f8f9fa', borderRadius: 8, marginBottom: 10 },
+  attestationStatus: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  attestationValid: { backgroundColor: '#4caf50' },
+  attestationInvalid: { backgroundColor: '#ff4d4d' },
+  attestationStatus2: { fontSize: 18, fontWeight: 'bold', color: '#2b5bbb' },
+  attestationTitle: { fontSize: 14, fontWeight: '600', color: '#1b2d5a' },
+  attestationCategory: { fontSize: 12, color: '#7a8ab8' },
+
+  // Modal Filtre
   filterCard: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '80%' },
   filterHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   filterHeaderLeft: { flexDirection: 'row', alignItems: 'center' },

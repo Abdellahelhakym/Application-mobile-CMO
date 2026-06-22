@@ -16,6 +16,31 @@ import { Picker } from '@react-native-picker/picker';
 import { getSecteur, getToutMobilite } from "@/app/candidat/services/CVScreen";
 import { createCommande } from '@/app/employeur/services/CreatOffesScreen';
 
+// 🔧 Fonction mise à jour pour décoder AUSSI les entités numériques comme &#039;
+const decodeHTML = (str: string): string => {
+  if (!str) return '';
+  return str
+    // 1. Décodage des entités numériques (ex: &#039; -> ', &#233; -> é)
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    // 2. Décodage des entités nommées classiques
+    .replace(/&eacute;/g, 'é')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&agrave;/g, 'à')
+    .replace(/&acirc;/g, 'â')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&iuml;/g, 'ï')
+    .replace(/&ocirc;/g, 'ô')
+    .replace(/&ugrave;/g, 'ù')
+    .replace(/&ucirc;/g, 'û')
+    .replace(/&ccedil;/g, 'ç')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+};
 
 const SelectPicker = ({
   value,
@@ -31,7 +56,8 @@ const SelectPicker = ({
   error?: string;
 }) => {
   const [open, setOpen] = useState(false);
-  const displayLabel = options.find(opt => opt.value === value)?.label || placeholder;
+  const rawLabel = options.find(opt => opt.value === value)?.label || placeholder;
+  const displayLabel = decodeHTML(rawLabel);
   
   return (
     <View style={[styles.selectContainer, open && styles.selectContainerOpen]}>
@@ -57,7 +83,7 @@ const SelectPicker = ({
                 onPress={() => { onChange(opt.value); setOpen(false); }}
               >
                 <Text style={[styles.dropdownItemText, opt.value === value ? styles.dropdownItemActive : undefined]}>
-                  {opt.label}
+                  {decodeHTML(opt.label)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -69,7 +95,6 @@ const SelectPicker = ({
   );
 };
 
-// --- NOUVEAU COMPOSANT : SelectPicker pour choix multiples (Permis) ---
 const MultiSelectPicker = ({
   value,
   options,
@@ -77,27 +102,22 @@ const MultiSelectPicker = ({
   placeholder = 'Sélectionner',
   error,
 }: {
-  value: string; // Stocké sous forme de string séparée par des virgules ex: "A1,B1,BE"
+  value: string;
   options: Array<{ label: string; value: string }>;
   onChange: (v: string) => void;
   placeholder?: string;
   error?: string;
 }) => {
   const [open, setOpen] = useState(false);
-
-  // Convertit la chaîne "A1,B1,BE" en tableau ["A1", "B1", "BE"] pour la gestion interne
   const selectedValues = value ? value.split(',') : [];
 
   const handleSelect = (itemValue: string) => {
     let nextValues: string[];
     if (selectedValues.includes(itemValue)) {
-      // Si déjà sélectionné, on l'enlève
       nextValues = selectedValues.filter(v => v !== itemValue);
     } else {
-      // Sinon, on l'ajoute
       nextValues = [...selectedValues, itemValue];
     }
-    // Renvoie la chaîne finale formatée "A1,B1,BE"
     onChange(nextValues.join(','));
   };
 
@@ -129,7 +149,7 @@ const MultiSelectPicker = ({
                   onPress={() => handleSelect(opt.value)}
                 >
                   <Text style={[styles.dropdownItemText, isSelected ? styles.dropdownItemActive : undefined]}>
-                    {opt.label}
+                    {decodeHTML(opt.label)}
                   </Text>
                   {isSelected && (
                     <Ionicons name="checkmark" size={18} color="#2b5bbb" />
@@ -161,7 +181,7 @@ export default function CreateOfferScreen() {
     positions: '',
     salary: '',
     housing: '',
-    drivingLicense: '', // contiendra la string "A1,B1,BE"
+    drivingLicense: '', 
     description: '',
     comments: '',
   };
@@ -172,7 +192,6 @@ export default function CreateOfferScreen() {
   const [mobilites, setMobilites] = useState<any[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Liste des permis disponibles
   const drivingLicenseOptions = [
     { label: 'AM', value: 'AM' },
     { label: 'A1', value: 'A1' },
@@ -231,7 +250,6 @@ export default function CreateOfferScreen() {
   };
 
   const handleSubmit = async () => {
-    // MODIFICATION : drivingLicense et description ont été retirés de cette liste pour être optionnels
     const requiredFields: Array<{ key: keyof typeof formData; label: string }> = [
       { key: 'categoryId', label: 'Categorie' },
       { key: 'subcategoryId', label: 'Sous-categorie' },
@@ -320,15 +338,16 @@ export default function CreateOfferScreen() {
     return () => { mounted = false; };
   }, []);
 
+  const selectedMobilityText = mobilites.find(m => String(m.id) === String(formData.mobility))?.titre ?? '';
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* FORM */}
       <View style={styles.card}>
         {Platform.OS === 'ios' ? (
           <View>
             <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowCategoryPicker(true)}>
               <Text style={[styles.pickerTriggerText, !formData.category && styles.pickerPlaceholder]}>
-                {formData.category || 'Categorie'}
+                {formData.category ? decodeHTML(formData.category) : 'Categorie'}
               </Text>
               <Ionicons name="chevron-down" size={18} color="#7a8ab8" />
             </TouchableOpacity>
@@ -354,7 +373,7 @@ export default function CreateOfferScreen() {
                 >
                   <Picker.Item label="Categorie" value="" />
                   {sectorData.categories.map((c) => (
-                    <Picker.Item key={c.id_categorie ?? c.id} label={c.titre} value={String(c.id_categorie ?? c.id)} />
+                    <Picker.Item key={c.id_categorie ?? c.id} label={decodeHTML(c.titre)} value={String(c.id_categorie ?? c.id)} />
                   ))}
                 </Picker>
               </View>
@@ -372,7 +391,7 @@ export default function CreateOfferScreen() {
             >
               <Picker.Item label="Categorie" value="" />
               {sectorData.categories.map((c) => (
-                <Picker.Item key={c.id_categorie ?? c.id} label={c.titre} value={String(c.id_categorie ?? c.id)} />
+                <Picker.Item key={c.id_categorie ?? c.id} label={decodeHTML(c.titre)} value={String(c.id_categorie ?? c.id)} />
               ))}
             </Picker>
             {errors.categoryId ? <Text style={styles.errorText}>{errors.categoryId}</Text> : null}
@@ -435,17 +454,16 @@ export default function CreateOfferScreen() {
         />
         {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
 
-     {/* Mobility picker - dropdown */}
-      <SelectPicker
-        value={formData.mobility}
-        options={[
-          { label: 'Mobilité', value: '' },
-          ...mobilites.map((item) => ({ label: item.titre, value: String(item.id) })),
-        ]}
-        onChange={(v) => handleChange('mobility', v)}
-        placeholder="Mobilité"
-        error={errors.mobility}
-      />
+        <SelectPicker
+          value={formData.mobility}
+          options={[
+            { label: 'Mobilité', value: '' },
+            ...mobilites.map((item) => ({ label: item.titre, value: String(item.id) })),
+          ]}
+          onChange={(v) => handleChange('mobility', v)}
+          placeholder="Mobilité"
+          error={errors.mobility}
+        />
 
         <TextInput
           style={styles.input}
@@ -510,17 +528,16 @@ export default function CreateOfferScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* RECAP */}
       <View style={styles.card}>
         <Text style={styles.subtitle}>Recapitulatif</Text>
-        <Text>Categorie : {formData.category}</Text>
-        <Text>Sous-Categorie : {formData.subcategory}</Text>
-        <Text>Metier : {formData.jobTitle}</Text>
+        <Text>Categorie : {decodeHTML(formData.category)}</Text>
+        <Text>Sous-Categorie : {decodeHTML(formData.subcategory)}</Text>
+        <Text>Metier : {decodeHTML(formData.jobTitle)}</Text>
         <Text>Contrat : {formData.jobType}</Text>
         <Text>Date debut : {formData.startDate}</Text>
         <Text>Date fin : {formData.endDate}</Text>
         <Text>Adresse : {formData.address}</Text>
-        <Text>Mobilite : {formData.mobility}</Text>
+        <Text>Mobilite : {decodeHTML(selectedMobilityText)}</Text>
         <Text>Postes : {formData.positions}</Text>
         <Text>Salaire : {formData.salary}</Text>
         <Text>Logement : {formData.housing}</Text>

@@ -59,7 +59,32 @@ import url from "@/app/services/url.js";
 import { getImage , updateImage , DeleteImage} from "../services/document";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
+// 🔧 Fonction de décodage des entités HTML (nommées et numériques)
+// 🔧 Fonction de décodage des entités HTML mise à jour
+const decodeHTML = (str: string): string => {
+  if (!str) return '';
+  return str
+    // 1. Décodage des entités numériques (ex: &#039; -> ', &#233; -> é)
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    // 2. Décodage des entités nommées classiques (accents français)
+    .replace(/&eacute;/g, 'é')
+    .replace(/&Eacute;/g, 'É')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&agrave;/g, 'à')
+    .replace(/&acirc;/g, 'â')
+    .replace(/&ocirc;/g, 'ô') // ✨ Ajouté pour Auvergne-Rhône-Alpes
+    .replace(/&Ocirc;/g, 'Ô')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&iuml;/g, 'ï')
+    .replace(/&ucirc;/g, 'û')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+};
 interface Experience {
   id: number;
   position: string;
@@ -576,8 +601,10 @@ const MobilityTab = ({
   const handleSaveMobilite = async () => {
     try {
       const disponibiliteValue = formData.availabilityChoice === 'Oui' ? 1 : 0;
+      
+      // ✨ Correction ici : on décode le titre de l'option pour correspondre à la valeur décodée choisie
       const selectedMobilite = mobilityOptions.find(
-        (item) => item.titre === formData.mobilityZone
+        (item) => decodeHTML(item.titre) === formData.mobilityZone
       );
       const mobiliteId = selectedMobilite?.id ?? null;
 
@@ -607,7 +634,8 @@ const MobilityTab = ({
         <Label>{'Mobilité'}</Label>
         <SelectPicker
           value={formData.mobilityZone}
-          options={['', ...mobilityOptions.map((item) => item.titre)]}
+          // ✨ Correction ici : application du decodeHTML sur chaque option
+          options={['', ...mobilityOptions.map((item) => decodeHTML(item.titre))]}
           onChange={set('mobilityZone')}
         />
 
@@ -769,7 +797,6 @@ const LanguagesTab = ({
     </View>
   );
 };
-
 const SectorsTab = ({
   sectors,
   setSectors,
@@ -811,7 +838,7 @@ const SectorsTab = ({
   };
 
   const remove = (id: number) => {
-    if (sectors.length <= 3) return;
+    if (sectors.length <= 1) return; // Modifié à 1 pour permettre de vider s'il y en a trop
     setSectors((p) => p.filter((s) => s.id !== id));
   };
 
@@ -839,16 +866,31 @@ const SectorsTab = ({
 
   return (
     <View style={{ gap: 16 }}>
-      <View style={styles.sectionTitleRow}>
-        <View style={styles.sectionTitleIcon}>
-          <Briefcase size={18} color={C.blue} />
+      {/* En-tête avec bouton Ajouter */}
+      <View style={styles.rowBetween}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionTitleIcon}>
+            <Briefcase size={18} color={C.blue} />
+          </View>
+          <Text style={styles.sectionTitlePlain}>{"Secteurs d'activité"}</Text>
         </View>
-        <Text style={styles.sectionTitlePlain}>{"Secteurs d'activité"}</Text>
+        <TouchableOpacity style={styles.addBtn} onPress={add}>
+          <Plus size={14} color={C.blueDark} />
+          <Text style={styles.addBtnText}>{'Ajouter'}</Text>
+        </TouchableOpacity>
       </View>
 
       {sectors.map((sector, index) => (
         <Card key={sector.id}>
-          <Label>{`Secteur d'activité ${index + 1}`}</Label>
+          <View style={styles.rowBetween}>
+            <Label>{`Secteur d'activité ${index + 1}`}</Label>
+            {/* Bouton de suppression si plus de 1 secteur */}
+            {sectors.length > 1 && (
+              <TouchableOpacity onPress={() => remove(sector.id)} style={{ padding: 4 }}>
+                <Trash2 size={16} color={C.red} />
+              </TouchableOpacity>
+            )}
+          </View>
 
           <View style={styles.sectorColumn}>
             <Label>Catégorie</Label>
@@ -1222,45 +1264,52 @@ const [langues, setLangues] = useState<string[]>([]);
 
     loadImage();
   }, []);
-
-  useEffect(() => {
-    const loadMobilite = async () => {
-      try {
-        const [tout, user] = await Promise.all([
-          getToutMobilite(),
-          getMobiliteUser(),
-        ]);
-
-        const allOptions: MobiliteOption[] = Array.isArray(tout)
-          ? tout
-          : tout?.data || [];
-
-        setMobilityOptions(
-          allOptions.filter((item) => item?.deleted !== 1)
-        );
-
-        const userMobilite = user?.mobilite?.[0];
-        const disponibiliteValue = user?.disponibilite;
-        const disponibiliteChoice =
-          disponibiliteValue === 1 || disponibiliteValue === '1' ? 'Oui' : 'Non';
-
-        setFormData((prev) => ({
-          ...prev,
-          mobilityZone: userMobilite?.region ?? prev.mobilityZone,
-          educationLevel: user?.niveau_etude ?? prev.educationLevel,
-          experienceLevel: user?.experience ?? prev.experienceLevel,
-          contract1: user?.contrat_prefere1 ?? prev.contract1,
-          contract2: user?.contrat_prefere2 ?? prev.contract2,
-          availabilityChoice: disponibiliteChoice,
-          availabilityDate: user?.date_disponibilite ?? prev.availabilityDate,
+// Appliquer decodeHTML aux titres et valeurs
+useEffect(() => {
+  const loadMobilite = async () => {
+    try {
+      const [tout, user] = await Promise.all([
+        getToutMobilite(),
+        getMobiliteUser(),
+      ]);
+ 
+      const allOptions: MobiliteOption[] = Array.isArray(tout)
+        ? tout
+        : tout?.data || [];
+ 
+      // ✅ DÉCODAGE: Décoder les titres HTML des options de mobilité
+      const decodedOptions = allOptions
+        .filter((item) => item?.deleted !== 1)
+        .map((item) => ({
+          ...item,
+          titre: decodeHTML(item?.titre ?? ''),
         }));
-      } catch (error) {
-        return;
-      }
-    };
-
-    loadMobilite();
-  }, []);
+ 
+      setMobilityOptions(decodedOptions);
+ 
+      const userMobilite = user?.mobilite?.[0];
+      const disponibiliteValue = user?.disponibilite;
+      const disponibiliteChoice =
+        disponibiliteValue === 1 || disponibiliteValue === '1' ? 'Oui' : 'Non';
+ 
+      // ✅ DÉCODAGE: Tous les champs qui viennent du serveur
+      setFormData((prev) => ({
+        ...prev,
+        mobilityZone: decodeHTML(userMobilite?.region ?? '') || prev.mobilityZone,
+        educationLevel: decodeHTML(user?.niveau_etude ?? '') || prev.educationLevel,
+        experienceLevel: decodeHTML(user?.experience ?? '') || prev.experienceLevel,
+        contract1: decodeHTML(user?.contrat_prefere1 ?? '') || prev.contract1,
+        contract2: decodeHTML(user?.contrat_prefere2 ?? '') || prev.contract2,
+        availabilityChoice: disponibiliteChoice,
+        availabilityDate: user?.date_disponibilite ?? prev.availabilityDate,
+      }));
+    } catch (error) {
+      return;
+    }
+  };
+ 
+  loadMobilite();
+}, []);
 
   useEffect(() => {
     const loadPermis = async () => {
@@ -1381,24 +1430,34 @@ const [langues, setLangues] = useState<string[]>([]);
     loadFormations();
   }, []);
 
-  // Chargement des secteurs depuis l'API (categories, sous-categories, metiers).
-  useEffect(() => {
-    const loadSecteurs = async () => {
-      try {
-        const data = await getSecteur();
-        setSectorData({
-          categories: data?.secteurs ?? [],
-          subCategories: data?.sousCategories ?? [],
-          jobs: data?.metiers ?? [],
-        });
-      } catch (error) {
-        setSectorData({ categories: [], subCategories: [], jobs: [] });
-      }
-    };
-
-    loadSecteurs();
-  }, []);
-
+  
+useEffect(() => {
+  const loadSecteurs = async () => {
+    try {
+      const data = await getSecteur();
+      
+      // ✅ DÉCODAGE: Décoder tous les titres HTML
+      setSectorData({
+        categories: (data?.secteurs ?? []).map((cat: SectorCategory) => ({
+          ...cat,
+          titre: decodeHTML(cat.titre ?? ''),
+        })),
+        subCategories: (data?.sousCategories ?? []).map((sub: SectorSubCategory) => ({
+          ...sub,
+          titre: decodeHTML(sub.titre ?? ''),
+        })),
+        jobs: (data?.metiers ?? []).map((job: SectorJob) => ({
+          ...job,
+          titre: decodeHTML(job.titre ?? ''),
+        })),
+      });
+    } catch (error) {
+      setSectorData({ categories: [], subCategories: [], jobs: [] });
+    }
+  };
+ 
+  loadSecteurs();
+}, []);
   // Chargement des choix utilisateur (id_metier) et mapping vers categorie/sous-categorie/metier.
   useEffect(() => {
     const loadSecteurUser = async () => {

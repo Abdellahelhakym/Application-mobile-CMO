@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react"; // 👈 Remplacement de useEffect par useCallback
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image } from "react-native";
-import { useFocusEffect } from "expo-router"; // 👈 Importation du hook de navigation d'Expo
+import { useFocusEffect , router} from "expo-router"; // 👈 Importation du hook de navigation d'Expo
 
 import { Award, FileText, MessageSquare, Phone, Search, UserCheck } from "lucide-react-native";
 
@@ -278,7 +278,7 @@ export default function EmployerDashboard() {
               <Text style={styles.btnText}>Conseiller</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.btnOutline}>
+            <TouchableOpacity style={styles.btnOutline}  onPress={() => router.push("/employeur/autre/Chat")}>
               <MessageSquare size={16} color="#2b5bbb" />
               <Text style={styles.btnText}>Chat</Text>
             </TouchableOpacity>

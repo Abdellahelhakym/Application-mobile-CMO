@@ -170,7 +170,7 @@ export default function EmployerDocumentsScreen() {
                   style={[styles.importBtn, isUploaded && styles.replaceBtn]} 
                   onPress={() => handlePickAndUpload(doc)}
                 >
-                  <Text style={styles.importText}>{isUploaded ? "Remplacer " : "Importer "}</Text>
+                  <Text style={styles.importText}>{isUploaded ? "Importé " : "Importer "}</Text>
                   <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
                 </TouchableOpacity>
 

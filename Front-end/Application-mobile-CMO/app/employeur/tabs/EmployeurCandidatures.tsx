@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
-  ActivityIndicator, Modal, Dimensions, Alert, Image // 1. AJOUT DE IMAGE ICI
+  ActivityIndicator, Modal, Dimensions, Alert, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCandidat, getCandidatValides, setCandidatValides } from '@/app/employeur/services/EmployeurCandidatures';
@@ -100,6 +100,7 @@ interface ApiCandidate {
   metier_id?: number;
   metier_titre?: string;
   metiers?: MetierItem[];
+  documents_manquants?: string[];
 }
 
 export default function EmployeurCandidatures() {
@@ -202,7 +203,6 @@ export default function EmployeurCandidatures() {
             </View>
           ) : (
             apiCandidates.map((candidate) => {
-              // Construction de l'URL absolue pour la photo du candidat
               const candidatePhotoUrl = candidate.photo 
                 ? `${url()}documents/photos_candidats/${candidate.photo}?t=${Date.now()}`
                 : null;
@@ -306,101 +306,117 @@ export default function EmployeurCandidatures() {
         </ScrollView>
       )}
 
-      {/* ── MODAL VISUALISATION CV ── */}
+      {/* ── MODAL VISUALISATION CV (DESIGN NOIR ET DESIGN PACK CV INTEGRÉ) ── */}
       <Modal
-        animationType="slide"
-        transparent={true}
         visible={isModalVisible}
+        transparent
+        animationType="slide"
         onRequestClose={closeCvModal}
       >
-        <View style={styles.cvModalBackdrop}>
-          <View style={styles.modalCard}>
-            {selectedCandidate && (() => {
-              // URL Photo pour la modal
-              const modalPhotoUrl = selectedCandidate.photo 
-                ? `${url()}documents/photos_candidats/${selectedCandidate.photo}?t=${Date.now()}`
-                : null;
+        <View style={styles.modalBackdrop}>
+          <View style={styles.cvCard}>
+            <View style={styles.cvHeader}>
+              <Text style={styles.cvTitle}>CV du Candidat</Text>
+              <TouchableOpacity onPress={closeCvModal}>
+                <Ionicons name="close-circle" size={26} color="#ff4d4d" />
+              </TouchableOpacity>
+            </View>
 
-              return (
-                <ScrollView showsVerticalScrollIndicator={false}>
-
-                  {/* Identité avec Photo Intégrée au CV */}
-                  <View style={styles.modalHeaderRow}>
-                    <View style={styles.modalAvatarContainer}>
-                      {modalPhotoUrl ? (
-                        <Image source={{ uri: modalPhotoUrl }} style={styles.modalAvatarImage} />
-                      ) : (
-                        <Ionicons name="person" size={32} color="#2b5bbb" />
-                      )}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.modalName}>
-                        {`${selectedCandidate.prenom.charAt(0).toUpperCase() + selectedCandidate.prenom.slice(1)} ${selectedCandidate.nom.toUpperCase()}`}
-                      </Text>
-                      <Text style={styles.modalLocation}>{selectedCandidate.ville} - {selectedCandidate.pays || 'France'}</Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.modalContactText}>{selectedCandidate.email}</Text>
-                  <Text style={styles.modalContactText}>{selectedCandidate.tel}</Text>
-                  {!!selectedCandidate.tel2 && <Text style={styles.modalContactText}>{selectedCandidate.tel2}</Text>}
-
-                  {/* Métiers dans la modal */}
-                  <Text style={styles.sectionTitle}>Secteur d’activité & Métiers</Text>
-                  
-                  {selectedCandidate.metiers && selectedCandidate.metiers.length > 0 ? (
-                    <Text style={styles.sectionItem}>
-                      {selectedCandidate.metiers.map((met, index) => {
-                        const titreMetier = met.titre || 'Métier non spécifié';
-                        return index === 0 ? `• ${titreMetier}` : ` • ${titreMetier}`;
-                      })}
-                    </Text>
-                  ) : (
-                    <>
-                      <Text style={styles.sectionItem}>• {selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Non renseigné'}</Text>
-                      {!!selectedCandidate.secteur_activite && (
-                        <Text style={styles.sectionItem}>• {selectedCandidate.secteur_activite}</Text>
-                      )}
-                    </>
-                  )}
-
-                  {/* Mobilité */}
-                  <Text style={styles.sectionTitle}>Mobilité</Text>
-                  <Text style={styles.sectionItem}>• Toute la France</Text>
-
-                  {/* Niveau d'études */}
-                  <Text style={styles.sectionTitle}>Niveau d’études</Text>
-                  <Text style={styles.sectionItem}>• {selectedCandidate.niveau_etude || 'Non spécifié'}</Text>
-
-                  {/* Expérience passée */}
-                  <Text style={styles.sectionTitle}>Expérience</Text>
-                  <View style={styles.blockItem}>
-                    <Text style={styles.blockTitle}>{selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Poste'}</Text>
-                    <Text style={styles.sectionItem}>L'entreprise : {selectedCandidate.commentaire_cmo || 'Non renseignée'}</Text>
-                    <Text style={styles.sectionItem}>Ville / Pays : {selectedCandidate.ville} - {selectedCandidate.pays || 'France'}</Text>
-                    <Text style={styles.sectionItem}>Période : {selectedCandidate.experience || 'Non spécifiée'}</Text>
-                  </View>
-
-                  {/* Documents vérifiés */}
-                  <Text style={styles.sectionTitle}>Attestation</Text>
-                  <View style={styles.attestationList}>
-                    {selectedCandidate.verifier === 1 ? (
-                      <>
-                        <Text style={styles.sectionItem}>✅ certificat_travail</Text>
-                        <Text style={styles.sectionItem}>✅ Attestationdetravail</Text>
-                      </>
+            {selectedCandidate && (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                
+                {/* HEADER AVEC AVATAR ET NOM CENTRÉ */}
+                <View style={styles.cvCenterAvatar}>
+                  <View style={styles.cvAvatarLarge}>
+                    {selectedCandidate.photo ? (
+                      <Image 
+                        source={{ uri: `${url()}documents/photos_candidats/${selectedCandidate.photo}?t=${Date.now()}` }} 
+                        style={styles.avatarImage} 
+                        resizeMode="cover"
+                      />
                     ) : (
-                      <Text style={styles.sectionItem}>Aucun document vérifié</Text>
+                      <Ionicons name="person-outline" size={40} color="#2b5bbb" />
                     )}
                   </View>
+                  <Text style={styles.cvName}>
+                    {`${selectedCandidate.prenom.charAt(0).toUpperCase() + selectedCandidate.prenom.slice(1)} ${selectedCandidate.nom.toUpperCase()}`}
+                  </Text>
+                </View>
 
-                </ScrollView>
+                <View style={styles.divider} />
+
+                {/* INFOS DE CONTACT ET LOCALISATION */}
+                <Text style={styles.sectionTitle}>Coordonnées</Text>
+                <Text style={styles.sectionItem}>• {selectedCandidate.email}</Text>
+                <Text style={styles.sectionItem}>• {selectedCandidate.tel}</Text>
+                {!!selectedCandidate.tel2 && <Text style={styles.sectionItem}>• {selectedCandidate.tel2}</Text>}
+                <Text style={styles.sectionItem}>• Ville : {selectedCandidate.ville} - {selectedCandidate.pays || 'France'}</Text>
+
+                {/* SECTEUR D'ACTIVITÉ & MÉTIERS */}
+                <Text style={styles.sectionTitle}>Secteur d’activité & Métiers</Text>
+                {selectedCandidate.metiers && selectedCandidate.metiers.length > 0 ? (
+                  <Text style={styles.sectionItem}>
+                    {selectedCandidate.metiers.map((met, index) => {
+                      const titreMetier = met.titre || 'Métier non spécifié';
+                      return index === 0 ? `• ${titreMetier}` : ` • ${titreMetier}`;
+                    })}
+                  </Text>
+                ) : (
+                  <>
+                    <Text style={styles.sectionItem}>• {selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Non renseigné'}</Text>
+                    {!!selectedCandidate.secteur_activite && (
+                      <Text style={styles.sectionItem}>• {selectedCandidate.secteur_activite}</Text>
+                    )}
+                  </>
+                )}
+
+                {/* MOBILITÉ */}
+                <Text style={styles.sectionTitle}>Mobilité</Text>
+                <Text style={styles.sectionItem}>• Toute la France</Text>
+
+                {/* NIVEAU D'ÉTUDES */}
+                <Text style={styles.sectionTitle}>Niveau d’études</Text>
+                <Text style={styles.sectionItem}>• {selectedCandidate.niveau_etude || 'Non spécifié'}</Text>
+
+                {/* EXPÉRIENCE PASSÉE */}
+                <Text style={styles.sectionTitle}>Expérience</Text>
+                <View style={styles.blockItem}>
+                  <Text style={styles.blockTitle}>{selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Poste'}</Text>
+                  <Text style={styles.sectionItem}>L'entreprise : {selectedCandidate.commentaire_cmo || 'Non renseignée'}</Text>
+                  <Text style={styles.sectionItem}>Période : {selectedCandidate.experience || 'Non spécifiée'}</Text>
+                </View>
+
+              {/* DOCUMENTS / ATTESTATION */}
+        <Text style={styles.sectionTitle}>Attestation </Text>
+
+        <View style={styles.attestationList}>
+          {selectedCandidate.documents_manquants && selectedCandidate.documents_manquants.length > 0 ? (
+            selectedCandidate.documents_manquants.map((doc, index) => {
+              // Formater le texte pour remplacer les underscores par des espaces et mettre une majuscule
+              const formattedDoc = doc.replace(/_/g, ' ');
+              const cleanDoc = formattedDoc.charAt(0).toUpperCase() + formattedDoc.slice(1);
+
+              return (
+                <View key={index} style={styles.documentMissingRow}>
+                  
+                  <Text style={[styles.sectionItem, {fontWeight: '600' }]}>
+                    {cleanDoc} manquant
+                  </Text>
+                </View>
               );
-            })()}
+            })
+          ) : (
+            <View style={styles.documentMissingRow}>
+              <Ionicons name="checkmark-circle-outline" size={14} color="#2e7d32" style={{ marginRight: 6 }} />
+              <Text style={[styles.sectionItem, { marginTop: 0, color: '#2e7d32', fontWeight: '600' }]}>
+                Aucun document manquant
+              </Text>
+            </View>
+          )}
+        </View>
 
-            <TouchableOpacity style={styles.modalClose} onPress={closeCvModal}>
-              <Text style={styles.modalCloseText}>Fermer</Text>
-            </TouchableOpacity>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
@@ -425,7 +441,6 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#ffffff', borderRadius: 22, padding: 18, marginBottom: 16, elevation: 3 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   
-  // Styles de l'avatar et de l'Image de la liste
   avatar: { width: 50, height: 50, borderRadius: 15, backgroundColor: '#d9e4ff', alignItems: 'center', justifyContent: 'center', marginRight: 12, overflow: 'hidden' },
   avatarImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   
@@ -445,6 +460,12 @@ const styles = StyleSheet.create({
   archiveButton: { flex: 2, borderWidth: 1, borderColor: '#e15b5b', backgroundColor: '#fff5f5' },
   cvButton: { flex: 1, backgroundColor: '#2b5bbb' },
   actionText: { fontSize: 13, fontWeight: '700' },
+  attestationList: { marginTop: 4 },
+  documentMissingRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginTop: 6 
+  },
   actionTextOutline: { color: '#2b5bbb' },
   actionTextArchive: { color: '#e15b5b' },
   actionTextWhite: { color: '#ffffff' },
@@ -453,21 +474,19 @@ const styles = StyleSheet.create({
   commentIcon: { marginRight: 8 },
   commentText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
   
-  // Styles de la modal et de l'image de profil de la modal
-  cvModalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  modalCard: { width: width * 0.9, maxHeight: '85%', backgroundColor: '#ffffff', borderRadius: 24, padding: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
-  modalHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 14 },
-  modalAvatarContainer: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#d9e4ff', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
-  modalAvatarImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  modalName: { fontSize: 18, fontWeight: '800', color: '#1b2d5a' },
-  modalContactText: { fontSize: 13, color: '#4865a6', fontWeight: '500', marginBottom: 2 },
-  modalLocation: { color: '#7a8ab8', fontSize: 13, fontWeight: '600' },
+  // ── STYLES IMPORTÉS DE L'AUTRE MODAL (PAGE PACK CV) ──
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+  cvCard: { width: width * 0.9, maxHeight: '85%', backgroundColor: '#ffffff', borderRadius: 24, padding: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
+  cvHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  cvTitle: { fontSize: 16, fontWeight: '800', color: '#1b2d5a' },
+  cvCenterAvatar: { alignItems: 'center', marginVertical: 10 },
+  cvAvatarLarge: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#d9e4ff', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', marginBottom: 10, borderWidth: 2, borderColor: '#2b5bbb' },
+  cvName: { fontSize: 18, fontWeight: '800', color: '#1b2d5a', textAlign: 'center' },
+  divider: { height: 1, backgroundColor: '#eef3ff', marginVertical: 12, width: '100%' },
   
   sectionTitle: { marginTop: 18, fontSize: 13, fontWeight: '800', color: '#2b5bbb', textTransform: 'uppercase', letterSpacing: 0.6, borderBottomWidth: 1.5, borderBottomColor: '#eef3ff', paddingBottom: 4, marginBottom: 6 },
   sectionItem: { marginTop: 6, fontSize: 13, color: '#1b2d5a', lineHeight: 20, fontWeight: '500' },
   blockItem: { marginTop: 8, paddingLeft: 10, borderLeftWidth: 3, borderLeftColor: '#2b5bbb' },
   blockTitle: { fontSize: 14, fontWeight: '700', color: '#1b2d5a', marginBottom: 4 },
-  attestationList: { marginTop: 4 },
-  modalClose: { marginTop: 20, paddingVertical: 14, borderRadius: 16, backgroundColor: '#2b5bbb', alignItems: 'center' },
-  modalCloseText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  
 });

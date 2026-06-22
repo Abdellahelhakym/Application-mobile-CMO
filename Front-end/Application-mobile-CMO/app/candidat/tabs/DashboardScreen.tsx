@@ -6,13 +6,13 @@ import {
     Image,
     ScrollView,
     StyleSheet,
-    Text,
+    Text,Linking,
     TouchableOpacity,
     View,
 } from "react-native";
 
 import { PieChart } from "react-native-chart-kit";
-
+import { MessageSquare, Phone} from "lucide-react-native";
 import {
     getDashboardData,
     getSecteursActivite,
@@ -214,7 +214,19 @@ export default function DashboardScreen() {
               </Text>
             </View>
           </View>
+          <View style={styles.actions}>
+                    <TouchableOpacity style={styles.btnOutline} onPress={() => Linking.openURL("tel:+212788361923")}>
+                      <Phone size={16} color="#2b5bbb" />
+                      <Text style={styles.btnText}>Conseiller</Text>
+                    </TouchableOpacity>
+        
+                    <TouchableOpacity style={styles.btnOutline}   onPress={() => router.push('/candidat/autre/Chat')}>
+                      <MessageSquare size={16} color="#2b5bbb" />
+                      <Text style={styles.btnText}>Chat</Text>
+                    </TouchableOpacity>
+                </View>
         </View>
+           
 
         {/* INSCRIPTION STATUS */}
         <View style={styles.card}>
@@ -412,6 +424,8 @@ const styles = StyleSheet.create({
     marginRight: 10,
     position: "relative",
   },
+    actions: { flexDirection: "row", gap: 10, marginTop: 12 },
+  btnOutline: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: "#cfd9ee", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 18 },
   badgeIcon: {
     width: 28,
     height: 28,
@@ -436,6 +450,7 @@ const styles = StyleSheet.create({
     color: "#1b2d5a",
     fontWeight: "600",
   },
+    btnText: { color: "#2b5bbb", fontSize: 12, fontWeight: "600" },
   grid: {
     flexDirection: "row",
     justifyContent: "space-between",

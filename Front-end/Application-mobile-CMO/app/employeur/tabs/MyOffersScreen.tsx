@@ -12,14 +12,35 @@ import {
 } from 'react-native';
 
 import { Phone, MessageSquare, ChevronDown } from 'lucide-react-native';
-import { Feather } from '@expo/vector-icons'; // 1. Ajout de l'icône Feather
-import { useRouter } from 'expo-router'; // 2. Ajout du routeur pour expo-router
+import { Feather } from '@expo/vector-icons'; 
+import { useRouter } from 'expo-router'; 
 import { getCommandes, getDevis } from '@/app/employeur/services/MyOffers';
 
+// 🔧 Fonction globale de décodage des entités HTML (nommées et numériques)
+const decodeHTML = (str: string): string => {
+  if (!str) return '';
+  return str
+    // 1. Décodage des entités numériques (ex: &#039; -> ', &#233; -> é)
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    // 2. Décodage des entités nommées classiques
+    .replace(/&eacute;/g, 'é')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&agrave;/g, 'à')
+    .replace(/&acirc;/g, 'â')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&iuml;/g, 'ï')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+};
+
 export default function MyOffersScreen() {
-  const router = useRouter(); // Initialisation du router
-  const [activeTab, setActiveTab] =
-    useState<'commands' | 'quotes' | 'archive'>('commands');
+  const router = useRouter(); 
+  const [activeTab, setActiveTab] = useState<'commands' | 'quotes' | 'archive'>('commands');
   const [commandes, setCommandes] = useState<any[]>([]);
   const [devis, setDevis] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,13 +54,13 @@ export default function MyOffersScreen() {
       setLoading(true);
       try {
         if (activeTab === 'commands') {
-          const data = await getCommandes();
-     
-          setCommandes(data || []);
+          const res = await getCommandes();
+          const cleanData = Array.isArray(res) ? res : (res?.data || []);
+          setCommandes(cleanData);
         } else if (activeTab === 'quotes') {
-          const data = await getDevis();
-   
-          setDevis(data || []);
+          const res = await getDevis();
+          const cleanData = Array.isArray(res) ? res : (res?.data || []);
+          setDevis(cleanData);
         }
       } catch (error) {
         const message =
@@ -75,7 +96,6 @@ export default function MyOffersScreen() {
           { key: 'nbr_poste', label: 'Nbr de poste', width: 120 },
           { key: 'details', label: 'Tous les details', width: 150 },
           { key: 'contrat_duree', label: 'Contrat & Duree', width: 160 },
-          
           { key: 'statut_fiche', label: 'Statut', width: 90 },
         ];
 
@@ -114,7 +134,6 @@ export default function MyOffersScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-
         {/* ➕ BOUTON CRÉER UNE COMMANDE */}
         <TouchableOpacity 
           style={styles.createButton} 
@@ -153,10 +172,8 @@ export default function MyOffersScreen() {
 
         {/* TABLE */}
         <View style={styles.tableCard}>
-
           <View style={styles.tableControls}>
             <Text style={styles.smallText}>Show</Text>
-
             <View>
               <TouchableOpacity
                 style={styles.select}
@@ -184,7 +201,6 @@ export default function MyOffersScreen() {
                 </View>
               ) : null}
             </View>
-
             <Text style={styles.smallText}>entries</Text>
           </View>
 
@@ -218,7 +234,7 @@ export default function MyOffersScreen() {
                     <View key={index} style={styles.tableRow}>
                       {columns.map((col) => {
                         const value = row?.[col.key];
-                        const displayValue =
+                        let displayValue =
                           col.key === 'statut_fiche'
                             ? row?.statut_titre || (value === '2' ? 'Actif' : 'Inactif')
                             : col.key === 'statut' && activeTab === 'quotes'
@@ -228,15 +244,9 @@ export default function MyOffersScreen() {
                               ? 'Refuser'
                               : value ?? '-')
                             : col.key === 'nbr_poste'
-                            ?
-                                row?.nbr_poste ??
-                                row?.nombre_poste ??
-                                row?.nbr_postes ??
-                                '-'
+                            ? row?.nbr_poste ?? row?.nombre_poste ?? row?.nbr_postes ?? '-'
                             : col.key === 'contrat_duree'
-                            ? [row?.contrat, row?.duree, row?.duree_contrat]
-                                .filter(Boolean)
-                                .join(' / ') || '-'
+                            ? [row?.contrat, row?.duree, row?.duree_contrat].filter(Boolean).join(' / ') || '-'
                             : col.key === 'details'
                             ? 'Voir'
                             : col.key === 'download'
@@ -244,6 +254,10 @@ export default function MyOffersScreen() {
                             : col.key === 'action'
                             ? 'Accepter / Refuser'
                             : value ?? '-';
+
+                        // Appliquer le décodage HTML uniquement sur les chaînes de texte affichées
+                        const cleanedText = typeof displayValue === 'string' ? decodeHTML(displayValue) : displayValue;
+
                         if (col.key === 'details' && activeTab === 'commands') {
                           return (
                             <TouchableOpacity
@@ -251,7 +265,7 @@ export default function MyOffersScreen() {
                               onPress={() => openDetails(row)}
                               style={[styles.td, { width: col.width }]}
                             >
-                              <Text style={styles.linkText}>{displayValue}</Text>
+                              <Text style={styles.linkText}>{cleanedText}</Text>
                             </TouchableOpacity>
                           );
                         }
@@ -261,7 +275,7 @@ export default function MyOffersScreen() {
                             key={`${col.key}-${index}`}
                             style={[styles.td, { width: col.width }]}
                           >
-                            {displayValue}
+                            {cleanedText}
                           </Text>
                         );
                       })}
@@ -275,7 +289,6 @@ export default function MyOffersScreen() {
             </View>
           )}
         </View>
-
       </ScrollView>
 
       {/* MODAL */}
@@ -290,13 +303,13 @@ export default function MyOffersScreen() {
             <Text style={styles.modalTitle}>Details</Text>
 
             <Text style={styles.modalRow}>
-              Categorie : {selectedCommande?.categorie || '-'}
+              Categorie : {decodeHTML(selectedCommande?.categorie || '-')}
             </Text>
             <Text style={styles.modalRow}>
-              Sous Categorie : {selectedCommande?.sous_categorie || '-'}
+              Sous Categorie : {decodeHTML(selectedCommande?.sous_categorie || '-')}
             </Text>
             <Text style={styles.modalRow}>
-              Metier : {selectedCommande?.metier || '-'}
+              Metier : {decodeHTML(selectedCommande?.metier || '-')}
             </Text>
             <Text style={styles.modalRow}>
               Contrat : {selectedCommande?.contrat || '-'}
@@ -308,13 +321,10 @@ export default function MyOffersScreen() {
               Date de fin : {selectedCommande?.date_fin || '-'}
             </Text>
             <Text style={styles.modalRow}>
-              Adresse : {selectedCommande?.adresse || '-'}
+              Adresse : {decodeHTML(selectedCommande?.adresse || '-')}
             </Text>
             <Text style={styles.modalRow}>
-              Mobilite :
-              {selectedCommande?.lieu_travail2 ||
-                selectedCommande?.lieu_travail ||
-                '-'}
+              Mobilite : {decodeHTML(selectedCommande?.lieu_travail2 || selectedCommande?.lieu_travail || '-')}
             </Text>
             <Text style={styles.modalRow}>
               Nombre de poste : {selectedCommande?.nbr_poste || '-'}
@@ -323,12 +333,7 @@ export default function MyOffersScreen() {
               Salaire propose : {selectedCommande?.salaire_proposer || '-'}
             </Text>
             <Text style={styles.modalRow}>
-              Logement :
-              {selectedCommande?.logement === 1
-                ? 'Oui'
-                : selectedCommande?.logement === 0
-                ? 'Non'
-                : '-'}
+              Logement : {selectedCommande?.logement === 1 ? 'Oui' : selectedCommande?.logement === 0 ? 'Non' : '-'}
             </Text>
             <Text style={styles.modalRow}>
               Permis : {selectedCommande?.permis || '-'}
@@ -344,183 +349,36 @@ export default function MyOffersScreen() {
   );
 }
 
+// ... Vos styles d'origine restent inchangés
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#eef3ff',
-  },
-  content: {
-    padding: 15,
-    paddingBottom: 120,
-    gap: 15,
-  },
-  /* Styles pour le nouveau bouton */
-  createButton: {
-    flexDirection: 'row',
-    backgroundColor: '#2b5bbb', // Couleur bleue harmonisée avec votre app
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    elevation: 2, // Ombre légère sur Android
-    shadowColor: '#000', // Ombre sur iOS
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  createButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  tabs: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  tab: {
-    flex: 1,
-    padding: 12,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#e1e9fb',
-    alignItems: 'center',
-  },
-  tabActive: {
-    backgroundColor: '#ffe9cf',
-    borderColor: '#f2d9bf',
-  },
-  tabText: {
-    fontSize: 12,
-    color: '#1b2d5a',
-  },
-  tabTextActive: {
-    fontWeight: '600',
-  },
-  tableCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 15,
-  },
-  tableControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    justifyContent: 'center',
-  },
-  smallText: {
-    fontSize: 12,
-    color: '#1b2d5a',
-  },
-  select: {
-    flexDirection: 'row',
-    gap: 5,
-    borderWidth: 1,
-    borderColor: '#cfd9ee',
-    padding: 5,
-    borderRadius: 10,
-  },
-  selectMenu: {
-    position: 'absolute',
-    top: 34,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#cfd9ee',
-    borderRadius: 10,
-    zIndex: 10,
-  },
-  selectItem: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-  },
-  selectItemText: {
-    fontSize: 12,
-    color: '#1b2d5a',
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginVertical: 10,
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#cfd9ee',
-    borderRadius: 20,
-    padding: 8,
-    backgroundColor: '#fff',
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-  },
-  th: {
-    fontSize: 10,
-    color: '#2b5bbb',
-    flex: 1,
-  },
-  empty: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#7a8ab8',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e9fb',
-  },
-  td: {
-    fontSize: 12,
-    color: '#1b2d5a',
-    flex: 1,
-  },
-  linkText: {
-    fontSize: 12,
-    color: '#2b5bbb',
-    textDecorationLine: 'underline',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-  },
-  modalTitle: {
-    fontSize: 16,
-    color: '#1b2d5a',
-    marginBottom: 10,
-    fontWeight: '600',
-  },
-  modalRow: {
-    fontSize: 12,
-    color: '#1b2d5a',
-    marginBottom: 6,
-  },
-  modalClose: {
-    marginTop: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#2b5bbb',
-    alignItems: 'center',
-  },
-  modalCloseText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: '#eef3ff' },
+  content: { padding: 15, paddingBottom: 120, gap: 15 },
+  createButton: { flexDirection: 'row', backgroundColor: '#2b5bbb', paddingVertical: 14, paddingHorizontal: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', gap: 8, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+  createButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  tabs: { flexDirection: 'row', gap: 10 },
+  tab: { flex: 1, padding: 12, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#e1e9fb', alignItems: 'center' },
+  tabActive: { backgroundColor: '#ffe9cf', borderColor: '#f2d9bf' },
+  tabText: { fontSize: 12, color: '#1b2d5a' },
+  tabTextActive: { fontWeight: '600' },
+  tableCard: { backgroundColor: '#fff', borderRadius: 20, padding: 15 },
+  tableControls: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center' },
+  smallText: { fontSize: 12, color: '#1b2d5a' },
+  select: { flexDirection: 'row', gap: 5, borderWidth: 1, borderColor: '#cfd9ee', padding: 5, borderRadius: 10 },
+  selectMenu: { position: 'absolute', top: 34, left: 0, right: 0, backgroundColor: '#fff', borderWidth: 1, borderColor: '#cfd9ee', borderRadius: 10, zIndex: 10 },
+  selectItem: { paddingVertical: 6, paddingHorizontal: 8 },
+  selectItemText: { fontSize: 12, color: '#1b2d5a' },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 10 },
+  input: { flex: 1, borderWidth: 1, borderColor: '#cfd9ee', borderRadius: 20, padding: 8, backgroundColor: '#fff' },
+  tableHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10 },
+  th: { fontSize: 10, color: '#2b5bbb', flex: 1 },
+  empty: { textAlign: 'center', marginTop: 20, color: '#7a8ab8' },
+  tableRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#e1e9fb' },
+  td: { fontSize: 12, color: '#1b2d5a', flex: 1 },
+  linkText: { fontSize: 12, color: '#2b5bbb', textDecorationLine: 'underline' },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.3)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalCard: { width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 16 },
+  modalTitle: { fontSize: 16, color: '#1b2d5a', marginBottom: 10, fontWeight: '600' },
+  modalRow: { fontSize: 12, color: '#1b2d5a', marginBottom: 6 },
+  modalClose: { marginTop: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: '#2b5bbb', alignItems: 'center' },
+  modalCloseText: { color: '#fff', fontSize: 12, fontWeight: '600' },
 });

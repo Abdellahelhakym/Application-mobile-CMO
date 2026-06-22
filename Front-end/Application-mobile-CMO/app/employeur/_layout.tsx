@@ -25,6 +25,10 @@ export default function EmployeurLayout() {
         name="autre/CreateOfferScreen"
         options={{ title: "Creer une commande", headerShown: true }}
       />
+      <Stack.Screen
+        name="autre/Chat"
+        options={{ title: "Messagerie", headerShown: true }}
+      />
 
     </Stack>
   );

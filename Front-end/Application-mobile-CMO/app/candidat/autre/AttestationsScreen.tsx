@@ -14,6 +14,29 @@ import url from '@/app/services/url';
 import * as DocumentPicker from 'expo-document-picker';
 import { Eye, Trash2, Upload } from 'lucide-react-native';
 
+// 🔧 Fonction pour décoder les entités HTML courantes
+const decodeHTML = (str: string): string => {
+  if (!str) return '';
+  return str
+    .replace(/&eacute;/g, 'é')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&agrave;/g, 'à')
+    .replace(/&acirc;/g, 'â')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&iuml;/g, 'ï')
+    .replace(/&ocirc;/g, 'ô')
+    .replace(/&ugrave;/g, 'ù')
+    .replace(/&ucirc;/g, 'û')
+    .replace(/&ccedil;/g, 'ç')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+};
+
 type Category = { id: number; titre: string; deleted?: number };
 
 type AttestationItem = {
@@ -30,30 +53,25 @@ type AttestationItem = {
 export default function AttestationsScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<AttestationItem[]>([]);
-  // ✅ Stocker les VRAIS noms de fichiers (cvitae)
   const [uploadedDocs, setUploadedDocs] = useState<Record<number, string>>({});
 
   const loadFiles = async () => {
     try {
-      // ✅ Appeler à la fois getCategorie(), getListFils() et getAttestations()
       const [cats, list, attestations] = await Promise.all([
         getCategorie(),
         getListFils(),
-        getDocument(),  // ✅ Récupérer les vrais fichiers avec cvitae
+        getDocument(),
       ]);
 
       const catList = Array.isArray(cats) ? cats.filter((c) => c?.deleted !== 1) : [];
       const itemList = Array.isArray(list) ? list : [];
 
-      // ✅ Mapper par id_attestation avec les VRAIS noms de fichiers (cvitae)
       const docsMap: Record<number, string> = {};
       
-      // D'abord, récupérer les vrais fichiers uploadés depuis getAttestations()
       if (attestations?.success && Array.isArray(attestations.files)) {
         attestations.files.forEach((file: any) => {
           if (file?.id_attestation != null && file?.cvitae) {
-            docsMap[Number(file.id_attestation)] = file.cvitae; // ✅ Utiliser cvitae réel
-            
+            docsMap[Number(file.id_attestation)] = file.cvitae;
           }
         });
       }
@@ -72,14 +90,10 @@ export default function AttestationsScreen() {
 
   const handleUpload = async (item: AttestationItem) => {
     try {
-      
-      
       const result = await DocumentPicker.getDocumentAsync({
         copyToCacheDirectory: true,
         multiple: false,
       });
-
-      
 
       if (result.canceled || !result.assets?.length) {
         console.log('❌ Sélection annulée ou pas de fichier');
@@ -92,8 +106,6 @@ export default function AttestationsScreen() {
         asset.mimeType === 'application/pdf' ||
         fileName.toLowerCase().endsWith('.pdf');
 
-   
-
       if (!isPdf) {
         Alert.alert('Format invalide', 'Veuillez sélectionner un fichier PDF.');
         return;
@@ -105,34 +117,24 @@ export default function AttestationsScreen() {
         type: asset.mimeType ?? 'application/octet-stream',
       };
 
-  
-
-      // ✅ Utiliser la vraie signature de l'API candidat
-      const response = await updateDocument(file as any, item.id_attestation);
-      
-      
+      await updateDocument(file as any, item.id_attestation);
       
       Alert.alert('Enregistré', 'Document envoyé avec succès.');
       loadFiles(); 
     } catch (error) {
       console.error('❌ Error uploading file:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      Alert.alert('Erreur', `Impossible d'envoyer le document.\n\nDétails: ${String(error)}`);
+      Alert.alert('Erreur', `Impossible d'envoyer le document.`);
     }
   };
 
   const handleView = async (item: AttestationItem) => {
-    // ✅ Utiliser le VRAI nom de fichier (cvitae)
     const fileName = uploadedDocs[item.id_attestation];
-
     if (!fileName) {
       Alert.alert('Aucun fichier', 'Aucun document pour ce type.');
       return;
     }
 
-    // ✅ Construire l'URL avec le vrai nom de fichier
     const currentPhotoUrl = url() + "documents/attestations/" + fileName + "?t=" + Date.now();
-   
     
     Linking.openURL(currentPhotoUrl).catch(() => {
       Alert.alert("Erreur", "Impossible d'ouvrir le lien du document.");
@@ -150,7 +152,6 @@ export default function AttestationsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-   
               await DeleteDocument(item.id_attestation);
               Alert.alert('Supprimé', 'Document supprimé avec succès.');
               loadFiles(); 
@@ -171,8 +172,9 @@ export default function AttestationsScreen() {
         {categories.map((category) => (
           <View key={category.id} style={styles.card}>
 
+            {/* 🛠️ Application de decodeHTML sur le titre de la catégorie */}
             <Text style={styles.sectionTitle}>
-              {category.titre}
+              {decodeHTML(category.titre)}
             </Text>
 
             {items.filter((item) => item.id_categorie === category.id).length === 0 ? (
@@ -183,20 +185,21 @@ export default function AttestationsScreen() {
               items
                 .filter((item) => item.id_categorie === category.id)
                 .map((item) => {
-                  // ✅ Vérifier si le document est uploadé par id_attestation
                   const isUploaded = !!uploadedDocs[item.id_attestation];
                   const fileName = uploadedDocs[item.id_attestation];
 
                   return (
                     <View key={item.id} style={styles.itemRow}>
 
+                      {/* 🛠️ Application de decodeHTML sur le titre de l'item */}
                       <Text style={styles.itemText}>
-                        {item.titre}
+                        {decodeHTML(item.titre)}
                         {isUploaded && <Text style={{ color: 'green' }}> ✓</Text>}
                       </Text>
 
+                      {/* 🛠️ Application de decodeHTML sur le sous-titre si présent */}
                       {item.titre2 ? (
-                        <Text style={styles.itemSubtitle}>{item.titre2}</Text>
+                        <Text style={styles.itemSubtitle}>{decodeHTML(item.titre2)}</Text>
                       ) : null}
 
                       {isUploaded ? (
@@ -208,18 +211,16 @@ export default function AttestationsScreen() {
                       )}
 
                       <View style={styles.actions}>
-
                         <TouchableOpacity
                           style={[styles.uploadBtn, isUploaded && styles.replaceBtn]}
                           onPress={() => handleUpload(item)}
                         >
                           <Text style={styles.uploadText}>
-                            {isUploaded ? 'Remplacer' : 'Importer'}
+                            {isUploaded ? 'Importé' : 'Importer'}
                           </Text>
                           <Upload size={16} color="#fff" />
                         </TouchableOpacity>
 
-                        {/* Bouton voir - seulement si le document est uploadé */}
                         {isUploaded && (
                           <TouchableOpacity
                             style={styles.iconCircle}
@@ -229,7 +230,6 @@ export default function AttestationsScreen() {
                           </TouchableOpacity>
                         )}
 
-                        {/* Bouton supprimer - seulement si le document est uploadé */}
                         {isUploaded && (
                           <TouchableOpacity
                             style={styles.iconDanger}
@@ -238,7 +238,6 @@ export default function AttestationsScreen() {
                             <Trash2 size={18} color="#b64a2f" />
                           </TouchableOpacity>
                         )}
-
                       </View>
                     </View>
                   );
@@ -258,9 +257,7 @@ const styles = StyleSheet.create({
   content: { padding: 15, gap: 15, paddingBottom: 60 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 15 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1b2d5a', marginBottom: 12 },
-  
   empty: { fontSize: 13, color: '#7a8ab8', fontStyle: 'italic' }, 
-  
   itemRow: { backgroundColor: '#f6f8ff', borderWidth: 1, borderColor: '#e1e9fb', borderRadius: 16, padding: 12, marginBottom: 10 },
   itemText: { color: '#1b2d5a', fontWeight: '600', fontSize: 14, marginBottom: 4 },
   itemSubtitle: { fontSize: 12, color: '#5b6a8e', marginBottom: 8 },
