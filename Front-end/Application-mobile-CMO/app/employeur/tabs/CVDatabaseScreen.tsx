@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -10,10 +9,12 @@ import {
   Alert,
   Modal,
   Dimensions,
+  Image, // 👈 Ajout de l'import Image de react-native
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCandidats } from '@/app/employeur/services/CVDatabaseScreen';
 import { getSecteur } from '@/app/candidat/services/CVScreen';
+import url from "@/app/services/url.js"; // 👈 Ajout de l'import de l'URL de base
 
 const { width } = Dimensions.get('window');
 
@@ -120,13 +121,10 @@ export default function CVDatabaseScreen() {
     (item) => String(item.id_sous) === String(selectedSubCategory)
   );
 
-  // FILTRAGE + TRI PAR ORDRE ID
-// FILTRAGE + TRI PAR ID DÉCROISSANT (Le max ID en premier)
   const filteredCandidats = candidats
     .filter((cand) => {
       const secteurs = Array.isArray(cand?.secteur_activite) ? cand.secteur_activite : [];
 
-      // Secteur filter
       if (selectedCategory || selectedSubCategory || selectedMetier) {
         const matchSecteur = secteurs.some((s: any) => {
           const matchCategory = selectedCategory ? String(s.id_categorie) === String(selectedCategory) : true;
@@ -137,7 +135,6 @@ export default function CVDatabaseScreen() {
         if (!matchSecteur) return false;
       }
 
-      // Pays filter
       if (selectedPays) {
         const regions = cand?.mobilite?.map((m: any) => m.region || '') ?? [];
         const matchPays = regions.some((r: string) => r.toLowerCase().includes(selectedPays.toLowerCase()));
@@ -146,7 +143,6 @@ export default function CVDatabaseScreen() {
 
       return true;
     })
-    // Correction ici : standardisation des arguments (a, b) et soustraction (idB - idA)
     .sort((a, b) => {
       const idA = a.id || a.id_candidat || 0;
       const idB = b.id || b.id_candidat || 0;
@@ -203,51 +199,69 @@ export default function CVDatabaseScreen() {
         </View>
 
         {/* LIST */}
-{loading ? (
-  <ActivityIndicator size="small" color="#2b5bbb" style={{ marginTop: 40 }} />
-) : filteredCandidats.length === 0 ? (
-  <Text style={styles.emptyText}>Aucun candidat trouvé</Text>
-) : (
-  filteredCandidats.map((profile, index) => (
-    <View key={profile.token_id || profile.id || index} style={styles.card}>
-      <View style={styles.row}>
-        <View style={styles.avatarLarge}>
-          <Ionicons name="person-outline" size={30} color="#2b5bbb" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{profile.prenom} {profile.nom}</Text>
-          <Text style={styles.status}>{profile.experience || 'Vide !'} d'experience</Text>
-          
-          {/* ── AJOUT : AFFICHAGE DES MÉTIERS ── */}
-          <View style={styles.metiersContainer}>
-            {Array.isArray(profile?.secteur_activite) && profile.secteur_activite.length > 0 ? (
-              profile.secteur_activite.map((secteur: any, idx: number) => (
-                <View key={idx} style={styles.metierBadge}>
-                  <Text style={styles.metierBadgeText}>{secteur.metier}</Text>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.noMetierText}>Aucun métier renseigné</Text>
-            )}
-          </View>
-          {/* ────────────────────────────────── */}
+        {loading ? (
+          <ActivityIndicator size="small" color="#2b5bbb" style={{ marginTop: 40 }} />
+        ) : filteredCandidats.length === 0 ? (
+          <Text style={styles.emptyText}>Aucun candidat trouvé</Text>
+        ) : (
+          filteredCandidats.map((profile, index) => {
+            // ── CALCUL DE L'URL DE LA PHOTO EN TEMPS RÉEL ──
+            const hasPhoto = profile.photo && profile.photo.trim() !== '';
+            const photoUrl = hasPhoto 
+              ? `${url()}documents/photos_candidats/${profile.photo}?t=${Date.now()}`
+              : null;
 
-          <Text style={styles.info}>
-            Mobilité : {profile.mobilite?.map((m: any) => m.region).filter(Boolean).join(', ') || '-'}
-          </Text>
-          <Text style={styles.info}>Disponibilité : Oui</Text>
-        </View>
-      </View>
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Jamais travaillé chez vous</Text>
-        <TouchableOpacity style={styles.cvBtn} onPress={() => openCv(profile)}>
-          <Text style={styles.cvText}>Le CV </Text>
-          <Ionicons name="eye-outline" size={16} color="#fff" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  ))
-)}
+            return (
+              <View key={profile.token_id || profile.id || index} style={styles.card}>
+                <View style={styles.row}>
+                  
+                  {/* ── CONDITION D'AFFICHAGE DE L'AVATAR / IMAGE ── */}
+                  <View style={styles.avatarLarge}>
+                    {hasPhoto ? (
+                      <Image 
+                        source={{ uri: photoUrl! }} 
+                        style={styles.avatarImage} 
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Ionicons name="person-outline" size={30} color="#2b5bbb" />
+                    )}
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name}>{profile.prenom} {profile.nom}</Text>
+                    <Text style={styles.status}>{profile.experience || 'Vide !'} d'experience</Text>
+                    
+                    {/* METIERS */}
+                    <View style={styles.metiersContainer}>
+                      {Array.isArray(profile?.secteur_activite) && profile.secteur_activite.length > 0 ? (
+                        profile.secteur_activite.map((secteur: any, idx: number) => (
+                          <View key={idx} style={styles.metierBadge}>
+                            <Text style={styles.metierBadgeText}>{secteur.metier}</Text>
+                          </View>
+                        ))
+                      ) : (
+                        <Text style={styles.noMetierText}>Aucun métier renseigné</Text>
+                      )}
+                    </View>
+
+                    <Text style={styles.info}>
+                      Mobilité : {profile.mobilite?.map((m: any) => m.region).filter(Boolean).join(', ') || '-'}
+                    </Text>
+                    <Text style={styles.info}>Disponibilité : Oui</Text>
+                  </View>
+                </View>
+                <View style={styles.footer}>
+                  <Text style={styles.footerText}>Jamais travaillé chez vous</Text>
+                  <TouchableOpacity style={styles.cvBtn} onPress={() => openCv(profile)}>
+                    <Text style={styles.cvText}>Le CV </Text>
+                    <Ionicons name="eye-outline" size={16} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })
+        )}
 
       </ScrollView>
 
@@ -260,8 +274,6 @@ export default function CVDatabaseScreen() {
       >
         <View style={styles.filterBackdrop}>
           <View style={styles.filterCard}>
-
-            {/* Header */}
             <View style={styles.filterHeader}>
               <View style={styles.filterHeaderLeft}>
                 <Ionicons name="filter-outline" size={18} color="#1b2d5a" />
@@ -273,8 +285,7 @@ export default function CVDatabaseScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-
-              {/* ── CATÉGORIE ── */}
+              {/* CATEGORIE */}
               <Text style={styles.filterLabel}>Catégorie :</Text>
               <TouchableOpacity
                 style={styles.dropdownBtn}
@@ -332,7 +343,7 @@ export default function CVDatabaseScreen() {
                 </View>
               )}
 
-              {/* ── SOUS CATÉGORIE ── */}
+              {/* SOUS CATEGORIE */}
               <Text style={styles.filterLabel}>Sous catégorie :</Text>
               <TouchableOpacity
                 style={[styles.dropdownBtn, !selectedCategory ? styles.dropdownDisabled : null]}
@@ -389,7 +400,7 @@ export default function CVDatabaseScreen() {
                 </View>
               )}
 
-              {/* ── MÉTIER ── */}
+              {/* METIER */}
               <Text style={styles.filterLabel}>Métier :</Text>
               <TouchableOpacity
                 style={[styles.dropdownBtn, !selectedSubCategory ? styles.dropdownDisabled : null]}
@@ -444,7 +455,7 @@ export default function CVDatabaseScreen() {
                 </View>
               )}
 
-              {/* ── CONTRAT ── */}
+              {/* CONTRAT */}
               <Text style={styles.filterLabel}>Contrat :</Text>
               <View style={styles.checkboxGrid}>
                 {CONTRATS.map((contrat) => {
@@ -464,7 +475,7 @@ export default function CVDatabaseScreen() {
                 })}
               </View>
 
-              {/* ── PAYS ── */}
+              {/* PAYS */}
               <Text style={styles.filterLabel}>Pays :</Text>
               <TouchableOpacity
                 style={styles.dropdownBtn}
@@ -478,125 +489,9 @@ export default function CVDatabaseScreen() {
                 <Text style={[styles.dropdownText, selectedPays ? styles.dropdownTextActive : null]}>
                   {getPaysLabel()}
                 </Text>
-                <Ionicons name={paysOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
               </TouchableOpacity>
-              {paysOpen && (
-                <View style={styles.dropdownList}>
-                  <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
-                    {PAYS.map((p) => (
-                      <TouchableOpacity
-                        key={p.value}
-                        style={[
-                          styles.dropdownItem,
-                          p.value === selectedPays ? styles.dropdownItemActive : null,
-                        ]}
-                        onPress={() => {
-                          setSelectedPays(p.value);
-                          setPaysOpen(false);
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.dropdownItemText,
-                            p.value === selectedPays ? styles.dropdownItemTextActive : null,
-                          ]}
-                        >
-                          {p.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
 
             </ScrollView>
-
-            {/* Actions */}
-            <View style={styles.filterActions}>
-              <TouchableOpacity style={styles.filterReset} onPress={resetFilters}>
-                <Text style={styles.filterResetText}>Réinitialiser</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.filterApply} onPress={() => setFilterVisible(false)}>
-                <Text style={styles.filterApplyText}>Appliquer</Text>
-              </TouchableOpacity>
-            </View>
-
-          </View>
-        </View>
-      </Modal>
-
-      {/* ──────────────── CV MODAL ──────────────── */}
-      <Modal
-        visible={cvVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={closeCv}
-      >
-        <View style={styles.cvModalBackdrop}>
-          <View style={styles.modalCard}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalName}>
-                {selectedCandidate?.prenom} {selectedCandidate?.nom}
-              </Text>
-              <Text style={styles.modalLocation}>
-                {selectedCandidate?.mobilite?.[0]?.region || ''}
-              </Text>
-
-              <Text style={styles.sectionTitle}>Secteur d'activité</Text>
-              {selectedCandidate?.secteur_activite?.length ? (
-                selectedCandidate.secteur_activite.map((item: any, idx: number) => (
-                  <Text key={`secteur-${idx}`} style={styles.sectionItem}>• {item.metier}</Text>
-                ))
-              ) : (
-                <Text style={styles.sectionItem}>-</Text>
-              )}
-
-              <Text style={styles.sectionTitle}>Mobilité</Text>
-              <Text style={styles.sectionItem}>
-                {selectedCandidate?.mobilite?.map((m: any) => m.region).filter(Boolean).join(', ') || '-'}
-              </Text>
-
-              <Text style={styles.sectionTitle}>Niveau d'études</Text>
-              <Text style={styles.sectionItem}>{selectedCandidate?.niveau_etudes || '-'}</Text>
-
-              <Text style={styles.sectionTitle}>Expérience</Text>
-              <Text style={styles.sectionItem}>{selectedCandidate?.experience || '-'}</Text>
-
-              <Text style={styles.sectionTitle}>Parcours scolaire</Text>
-              {selectedCandidate?.parcours_scolaire?.length ? (
-                selectedCandidate.parcours_scolaire.map((item: any, idx: number) => (
-                  <View key={`scolaire-${idx}`} style={styles.blockItem}>
-                    <Text style={styles.blockTitle}>{item.diplome || '-'}</Text>
-                    <Text style={styles.sectionItem}>• {item.ecole}</Text>
-                    <Text style={styles.sectionItem}>• Début : {item.mois_debut}/{item.annee_debut}</Text>
-                    <Text style={styles.sectionItem}>• Fin : {item.mois_obtention}/{item.annee_obtention}</Text>
-                    {!!item.description && (
-                      <Text style={styles.sectionItem}>• {item.description}</Text>
-                    )}
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.sectionItem}>-</Text>
-              )}
-
-              <Text style={styles.sectionTitle}>Attestations</Text>
-              {selectedCandidate?.attestation?.length ? (
-                selectedCandidate.attestation.map((item: any, idx: number) => (
-                  <View key={`att-${idx}`} style={styles.attestationRow}>
-                    <Text style={styles.sectionItem}>• {item.titre}</Text>
-                    <View style={[styles.etatBadge, item.etats === 1 ? styles.etatOk : styles.etatPending]}>
-                      <Text style={styles.etatText}>{item.etats === 1 ? 'Validé' : 'En attente'}</Text>
-                    </View>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.sectionItem}>-</Text>
-              )}
-            </ScrollView>
-
-            <TouchableOpacity style={styles.modalClose} onPress={closeCv}>
-              <Text style={styles.modalCloseText}>Fermer</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -604,113 +499,67 @@ export default function CVDatabaseScreen() {
   );
 }
 
+// ── AJOUT DES STYLES POUR LA PHOTO ARRONDEE ──
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#eef3ff' },
-  content: { paddingBottom: 120 },
-  emptyText: { textAlign: 'center', marginTop: 40, color: '#7a8ab8', fontSize: 14 },
-
-  center: { alignItems: 'center', marginVertical: 10 },
-  filterBtn: { flexDirection: 'row', backgroundColor: '#2b5bbb', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, alignItems: 'center' },
-  filterText: { color: '#fff', marginLeft: 5, fontWeight: '600' },
-  badge: { backgroundColor: '#e84040', borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-
-  card: { backgroundColor: '#fff', margin: 10, padding: 15, borderRadius: 20 },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  avatarLarge: { width: 60, height: 60, borderRadius: 15, backgroundColor: '#e7eeff', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  name: { fontSize: 16, fontWeight: 'bold', color: '#1b2d5a' },
-  status: { fontSize: 13, color: '#7a8ab8', fontStyle: 'italic' },
-  info: { marginTop: 4, fontSize: 13, color: '#1b2d5a' },
-  footer: { marginTop: 15, backgroundColor: '#fff1dc', padding: 10, borderRadius: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  footerText: { color: '#b87400', fontSize: 12 },
-  cvBtn: { flexDirection: 'row', backgroundColor: '#2b5bbb', padding: 8, borderRadius: 20, alignItems: 'center' },
-  cvText: { color: '#fff', fontSize: 13 },
-
-  filterBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  filterCard: { backgroundColor: '#fdf8f2', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '90%' },
-  filterHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  filterHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
-  filterTitle: { fontSize: 17, fontWeight: '700', color: '#1b2d5a' },
-  filterLabel: { fontSize: 13, fontWeight: '700', color: '#1b2d5a', marginTop: 14, marginBottom: 6 },
-
-  dropdownBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1.5, borderColor: '#c8d4f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff' },
-  dropdownDisabled: { backgroundColor: '#f0f3fb', borderColor: '#e1e9fb' },
-  dropdownText: { fontSize: 13, color: '#7a8ab8' },
-  dropdownTextActive: { color: '#1b2d5a', fontWeight: '600' },
-  dropdownList: { borderWidth: 1.5, borderColor: '#c8d4f0', borderRadius: 12, marginTop: 4, backgroundColor: '#fff', maxHeight: 180, overflow: 'hidden' },
-  dropdownItem: { paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: '#eef3ff' },
-  dropdownItemActive: { backgroundColor: '#e7eeff' },
-  dropdownItemText: { fontSize: 13, color: '#1b2d5a' },
-  dropdownItemTextActive: { fontWeight: '700', color: '#2b5bbb' },
-metiersContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 6,
-    marginBottom: 6,
-    gap: 6, // Espace entre les badges (si supporté par votre version RN, sinon utilisez margin)
-  },
-  metierBadge: {
-    backgroundColor: '#eef2ff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#e0e7ff',
-  },
-  metierBadgeText: {
-    color: '#2b5bbb',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  noMetierText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    fontStyle: 'italic',
-    marginBottom: 4,
-  },
-  checkboxGrid: { flexDirection: 'column' },
-  checkboxRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 7 },
-  checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 2, borderColor: '#2b5bbb', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  checkboxChecked: { backgroundColor: '#2b5bbb' },
-  checkboxLabel: { fontSize: 14, color: '#1b2d5a' },
-
-  filterActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, gap: 10 },
-  filterReset: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderColor: '#c8d4f0', alignItems: 'center' },
-  filterResetText: { color: '#1b2d5a', fontSize: 13, fontWeight: '600' },
-  filterApply: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#2b5bbb', alignItems: 'center' },
-  filterApplyText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-
-  cvModalBackdrop: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.5)', 
+  container: { flex: 1, backgroundColor: '#f5f6fa' },
+  content: { padding: 15 },
+  center: { alignItems: 'center', marginBottom: 15 },
+  filterBtn: { flexDirection: 'row', backgroundColor: '#2b5bbb', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25, alignItems: 'center' },
+  filterText: { color: '#fff', fontWeight: 'bold' },
+  badge: { backgroundColor: '#ff4d4d', borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  emptyText: { textAlign: 'center', marginTop: 40, color: '#7a8ab8' },
+  card: { backgroundColor: '#fff', borderRadius: 10, padding: 15, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1.41 },
+  row: { flexDirection: 'row', alignItems: 'flex-start' },
+  
+  // Conteneur de l'avatar
+  avatarLarge: { 
+    width: 60, 
+    height: 60, 
+    borderRadius: 30, 
+    backgroundColor: '#eef2ff', 
     justifyContent: 'center', 
     alignItems: 'center', 
+    marginRight: 15,
+    overflow: 'hidden' // Important pour que l'image interne respecte le border radius !
   },
-  modalCard: { 
-    width: width * 0.9, 
-    maxHeight: '80%', 
-    backgroundColor: '#fff', 
-    borderRadius: 20, 
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+  // Style appliqué au composant <Image>
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
-  modalName: { fontSize: 18, fontWeight: '700', color: '#1b2d5a' },
-  modalLocation: { marginBottom: 10, color: '#7a8ab8', fontSize: 13 },
-  sectionTitle: { marginTop: 14, fontSize: 14, fontWeight: '700', color: '#2b5bbb', borderBottomWidth: 1, borderBottomColor: '#eef3ff', paddingBottom: 4 },
-  sectionItem: { marginTop: 4, fontSize: 12, color: '#1b2d5a', lineHeight: 18 },
-  blockItem: { marginTop: 8, paddingLeft: 6, borderLeftWidth: 2, borderLeftColor: '#e7eeff' },
-  blockTitle: { fontSize: 13, fontWeight: '700', color: '#1b2d5a', marginBottom: 2 },
-  attestationRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
-  gridBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  etatBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  etatOk: { backgroundColor: '#d4f4e2' },
-  etatPending: { backgroundColor: '#fff1dc' },
-  etatText: { fontSize: 10, fontWeight: '700', color: '#1b2d5a' },
-  modalClose: { marginTop: 16, paddingVertical: 12, borderRadius: 12, backgroundColor: '#2b5bbb', alignItems: 'center' },
-  modalCloseText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-});
 
+  name: { fontSize: 16, fontWeight: 'bold', color: '#1b2d5a', marginBottom: 2 },
+  status: { fontSize: 13, color: '#7a8ab8', marginBottom: 8 },
+  metiersContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
+  metierBadge: { backgroundColor: '#eef2ff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, marginRight: 6, marginBottom: 4 },
+  metierBadgeText: { color: '#2b5bbb', fontSize: 11, fontWeight: '600' },
+  noMetierText: { color: '#a0aec0', fontSize: 12, fontStyle: 'italic', marginBottom: 8 },
+  info: { fontSize: 13, color: '#4a5568', marginBottom: 2 },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#edf2f7' },
+  footerText: { fontSize: 12, color: '#a0aec0', fontStyle: 'italic' },
+  cvBtn: { flexDirection: 'row', backgroundColor: '#2b5bbb', paddingHorizontal: 15, paddingVertical: 6, borderRadius: 15, alignItems: 'center' },
+  cvText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  
+  // Styles Modal Filtre (restants)
+  filterBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  filterCard: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '80%' },
+  filterHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  filterHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
+  filterTitle: { fontSize: 18, fontWeight: 'bold', color: '#1b2d5a' },
+  filterLabel: { fontSize: 14, fontWeight: '600', color: '#4a5568', marginTop: 15, marginBottom: 5 },
+  dropdownBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#cbd5e1', padding: 12, borderRadius: 8, backgroundColor: '#fff' },
+  dropdownDisabled: { backgroundColor: '#f1f5f9', borderColor: '#e2e8f0' },
+  dropdownText: { color: '#94a3b8', fontSize: 14 },
+  dropdownTextActive: { color: '#1b2d5a', fontWeight: '500' },
+  dropdownList: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, marginTop: 4, backgroundColor: '#fff', maxHeight: 150, padding: 4 },
+  dropdownItem: { padding: 12, borderRadius: 6 },
+  dropdownItemActive: { backgroundColor: '#eef2ff' },
+  dropdownItemText: { color: '#4a5568', fontSize: 14 },
+  dropdownItemTextActive: { color: '#2b5bbb', fontWeight: '600' },
+  checkboxGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 5 },
+  checkboxRow: { flexDirection: 'row', alignItems: 'center', width: '50%', marginBottom: 12 },
+  checkbox: { width: 18, height: 18, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, marginRight: 8, justifyContent: 'center', alignItems: 'center' },
+  checkboxChecked: { backgroundColor: '#2b5bbb', borderColor: '#2b5bbb' },
+  checkboxLabel: { fontSize: 14, color: '#4a5568' },
+});

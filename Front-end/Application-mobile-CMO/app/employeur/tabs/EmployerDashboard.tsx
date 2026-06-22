@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View , Linking } from "react-native";
+import React, { useState, useCallback } from "react"; // 👈 Remplacement de useEffect par useCallback
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image } from "react-native";
+import { useFocusEffect } from "expo-router"; // 👈 Importation du hook de navigation d'Expo
 
 import { Award, FileText, MessageSquare, Phone, Search, UserCheck } from "lucide-react-native";
 
 import { getPhase1, getPhase2, getPhase3, getPhase4, getPhase5, getPack } from "@/app/employeur/services/EmployerDashboard";
 import { getPsaudo } from "@/app/employeur/services/token_id";
+import { getImage } from '@/app/employeur/services/documents';
+import url from "@/app/services/url.js";
 
-// Mapping des formules de pack
 const PACK_NAMES: { [key: number]: string } = {
   1: "START RECRUT",
   2: "PRO RECRUT",
@@ -16,6 +18,8 @@ const PACK_NAMES: { [key: number]: string } = {
 
 export default function EmployerDashboard() {
   const [packName, setPackName] = useState<string>("Chargement du pack...");
+  const [photoUrl, setPhotoUrl] = useState<string>(""); 
+  
   const [phase1Stats, setPhase1Stats] = useState({
     nouvelleCommande: 0,
     nombrePoste: 0,
@@ -49,145 +53,144 @@ export default function EmployerDashboard() {
     missionTermine: 0,
   });
 
-  useEffect(() => {
-    let isMounted = true;
+  // 👈 useFocusEffect s'exécute à CHAQUE FOIS que l'utilisateur entre sur la page
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
 
-    const fetchPackData = async () => {
-      try {
-        const response = await getPack();
-        if (!isMounted) return;
+      const fetchPackData = async () => {
+        try {
+          const response = await getPack();
+          if (!isMounted) return;
 
-        // Vérification de la structure de votre réponse API
-        const idFormule = response?.id_formule;
-        if (idFormule && PACK_NAMES[idFormule]) {
-          setPackName(PACK_NAMES[idFormule]);
-        } else {
-          setPackName("AUCUN PACK ACTIF");
+          const idFormule = response?.id_formule;
+          if (idFormule && PACK_NAMES[idFormule]) {
+            setPackName(PACK_NAMES[idFormule]);
+          } else {
+            setPackName("AUCUN PACK ACTIF");
+          }
+        } catch (error) {
+          console.log("Erreur récupération pack:", error);
+          if (isMounted) setPackName("DEVIS PERSONNALISÉ");
         }
-      } catch (error) {
-        console.log("Erreur récupération pack:", error);
-        if (isMounted) setPackName("DEVIS PERSONNALISÉ"); // Fallback par sécurité
-      }
-    };
+      };
 
-    const fetchPhase1 = async () => {
-      try {
-        const response = await getPhase1();
+      const fetchEmployerImage = async () => {
+        try {
+          const imageData = await getImage();
+          if (!isMounted) return;
 
-        if (!isMounted) {
-          return;
+          if (imageData?.image) {
+            // 👈 Ajout de `?t=` avec le timestamp actuel (Date.now()) pour casser le cache de l'image
+            const currentPhotoUrl = url() + "documents/photos_employeur/" + imageData.image + "?t=" + Date.now();
+            setPhotoUrl(currentPhotoUrl);
+          }
+        } catch (imgError) {
+          console.log("Pas d'image ou erreur de récupération :", imgError);
         }
+      };
 
-        if (response?.success) {
-          setPhase1Stats({
-            nouvelleCommande: response.nouvelle_commande ?? 0,
-            nombrePoste: response.nombre_poste ?? 0,
-            enCours: response["En_cours"] ?? 0,
-            commandeValidee: response["commande_validée"] ?? 0,
-            commandesRefusees: response["commandes_refusées"] ?? 0,
-            commandesAnnulees: response["commandes_annulées"] ?? 0,
-          });
+      const fetchPhase1 = async () => {
+        try {
+          const response = await getPhase1();
+          if (!isMounted) return;
+          if (response?.success) {
+            setPhase1Stats({
+              nouvelleCommande: response.nouvelle_commande ?? 0,
+              nombrePoste: response.nombre_poste ?? 0,
+              enCours: response["En_cours"] ?? 0,
+              commandeValidee: response["commande_validée"] ?? 0,
+              commandesRefusees: response["commandes_refusées"] ?? 0,
+              commandesAnnulees: response["commandes_annulées"] ?? 0,
+            });
+          }
+        } catch (error) {
+          console.log("Erreur phase 1:", error);
         }
-      } catch (error) {
-        console.log("Erreur phase 1:", error);
-      }
-    };
+      };
 
-    const fetchPhase2 = async () => {
-      try {
-        const response = await getPhase2();
-
-        if (!isMounted) {
-          return;
+      const fetchPhase2 = async () => {
+        try {
+          const response = await getPhase2();
+          if (!isMounted) return;
+          if (response?.success) {
+            setPhase2Stats({
+              candidatsProposes: response.phase2_1 ?? 0,
+              candidatsContactes: response.phase2_2 ?? 0,
+              candidatsInteresses: response.phase2_3 ?? 0,
+              candidatsAcceptes: response.phase2_4 ?? 0,
+              preselectionValidee: response.phase2_5 ?? 0,
+              preselectionNonValidee: response.phase2_6 ?? 0,
+            });
+          }
+        } catch (error) {
+          console.log("Erreur phase 2:", error);
         }
+      };
 
-        if (response?.success) {
-          setPhase2Stats({
-            candidatsProposes: response.phase2_1 ?? 0,
-            candidatsContactes: response.phase2_2 ?? 0,
-            candidatsInteresses: response.phase2_3 ?? 0,
-            candidatsAcceptes: response.phase2_4 ?? 0,
-            preselectionValidee: response.phase2_5 ?? 0,
-            preselectionNonValidee: response.phase2_6 ?? 0,
-          });
+      const fetchPhase3 = async () => {
+        try {
+          const response = await getPhase3();
+          if (!isMounted) return;
+          if (response?.success) {
+            setPhase3Stats({
+              entretienProgramme: response.phase3_1 ?? 0,
+              candidatRetenu: response.phase3_2 ?? 0,
+              candidatNonRetenu: response.phase3_3 ?? 0,
+            });
+          }
+        } catch (error) {
+          console.log("Erreur phase 3:", error);
         }
-      } catch (error) {
-        console.log("Erreur phase 2:", error);
-      }
-    };
+      };
 
-    const fetchPhase3 = async () => {
-      try {
-        const response = await getPhase3();
-
-        if (!isMounted) {
-          return;
+      const fetchPhase4 = async () => {
+        try {
+          const response = await getPhase4();
+          if (!isMounted) return;
+          if (response?.success) {
+            setPhase4Stats({
+              contratEnCours: response.phase4_1 ?? 0,
+              contratSigne: response.phase4_2 ?? 0,
+              salarieIntegre: response.phase4_3 ?? 0,
+              periodeEssai: response.phase4_4 ?? 0,
+            });
+          }
+        } catch (error) {
+          console.log("Erreur phase 4:", error);
         }
+      };
 
-        if (response?.success) {
-          setPhase3Stats({
-            entretienProgramme: response.phase3_1 ?? 0,
-            candidatRetenu: response.phase3_2 ?? 0,
-            candidatNonRetenu: response.phase3_3 ?? 0,
-          });
+      const fetchPhase5 = async () => {
+        try {
+          const response = await getPhase5();
+          if (!isMounted) return;
+          if (response?.success) {
+            setPhase5Stats({
+              retenu: response.phase5_1 ?? 0,
+              nonRetenu: response.phase5_2 ?? 0,
+              missionTermine: response.phase5_3 ?? 0,
+            });
+          }
+        } catch (error) {
+          console.log("Erreur phase 5:", error);
         }
-      } catch (error) {
-        console.log("Erreur phase 3:", error);
-      }
-    };
+      };
 
-    const fetchPhase4 = async () => {
-      try {
-        const response = await getPhase4();
+      // Exécution de toutes les requêtes à l'entrée sur l'écran
+      fetchPackData();
+      fetchEmployerImage();
+      fetchPhase1();
+      fetchPhase2();
+      fetchPhase3();
+      fetchPhase4();
+      fetchPhase5();
 
-        if (!isMounted) {
-          return;
-        }
-
-        if (response?.success) {
-          setPhase4Stats({
-            contratEnCours: response.phase4_1 ?? 0,
-            contratSigne: response.phase4_2 ?? 0,
-            salarieIntegre: response.phase4_3 ?? 0,
-            periodeEssai: response.phase4_4 ?? 0,
-          });
-        }
-      } catch (error) {
-        console.log("Erreur phase 4:", error);
-      }
-    };
-
-    const fetchPhase5 = async () => {
-      try {
-        const response = await getPhase5();
-
-        if (!isMounted) {
-          return;
-        }
-
-        if (response?.success) {
-          setPhase5Stats({
-            retenu: response.phase5_1 ?? 0,
-            nonRetenu: response.phase5_2 ?? 0,
-            missionTermine: response.phase5_3 ?? 0,
-          });
-        }
-      } catch (error) {
-        console.log("Erreur phase 5:", error);
-      }
-    };
-
-    fetchPackData();
-    fetchPhase1();
-    fetchPhase2();
-    fetchPhase3();
-    fetchPhase4();
-    fetchPhase5();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      return () => {
+        isMounted = false;
+      };
+    }, [])
+  );
 
   const recruitmentPhases = [
     {
@@ -256,19 +259,21 @@ export default function EmployerDashboard() {
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
             <View style={styles.logoBox}>
-              <Text style={styles.logoText}>Logo</Text>
+              {photoUrl ? (
+                <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.logoText}>Logo</Text>
+              )}
             </View>
 
             <View style={styles.infoContent}>
               <Text style={styles.company}>{getPsaudo()}</Text>
-              {/* Affichage dynamique ici */}
               <Text style={styles.sub}>Pack {packName}</Text>
             </View>
           </View>
 
           <View style={styles.actions}>
             <TouchableOpacity style={styles.btnOutline} onPress={() => Linking.openURL("tel:+212788361923")}>
-              
               <Phone size={16} color="#2b5bbb" />
               <Text style={styles.btnText}>Conseiller</Text>
             </TouchableOpacity>
@@ -285,7 +290,6 @@ export default function EmployerDashboard() {
 
           return (
             <View key={phase.id} style={styles.card}>
-              {/* phase title */}
               <View style={styles.phaseHeader}>
                 <View style={styles.iconBox}>
                   <Icon size={20} color="#2b5bbb" />
@@ -293,7 +297,6 @@ export default function EmployerDashboard() {
                 <Text style={styles.phaseTitle}>{phase.title}</Text>
               </View>
 
-              {/* stats */}
               <View style={styles.grid}>
                 {phase.stats.map((stat, i) => (
                   <View
@@ -317,14 +320,26 @@ export default function EmployerDashboard() {
   );
 }
 
-// Les styles restent inchangés
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#eef3ff' },
   content: { padding: 15, gap: 15, paddingBottom: 120 },
   infoCard: { backgroundColor: "#fff", borderRadius: 18, padding: 15 },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  logoBox: { width: 50, height: 50, borderRadius: 12, backgroundColor: "#eef3ff", justifyContent: "center", alignItems: "center" },
+  logoBox: { 
+    width: 50, 
+    height: 50, 
+    borderRadius: 12, 
+    backgroundColor: "#eef3ff", 
+    justifyContent: "center", 
+    alignItems: "center",
+    overflow: "hidden" 
+  },
   logoText: { fontSize: 10, color: "#2b5bbb" },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover"
+  },
   infoContent: { flex: 1 },
   company: { fontSize: 15, fontWeight: "600", color: "#1b2d5a" },
   sub: { color: "#2b5bbb", marginTop: 2, fontSize: 12 },

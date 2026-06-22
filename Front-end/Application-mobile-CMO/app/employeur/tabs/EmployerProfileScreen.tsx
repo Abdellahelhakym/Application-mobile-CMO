@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { router } from "expo-router";
+import React, { useState, useCallback } from "react"; // 👈 Utilisation de useState et useCallback
+import { router, useFocusEffect } from "expo-router"; // 👈 Importation de useFocusEffect
 import {
-  View,Alert,
+  View,
+  Alert,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Image,
 } from "react-native";
 
 import {
@@ -13,7 +15,6 @@ import {
   Mail,
   Phone,
   MapPin,
-  Database,
   CreditCard,
   FileText,
   Settings,
@@ -22,62 +23,79 @@ import {
   Trash2,
 } from "lucide-react-native";
 import { getEmployerInfo } from "@/app/employeur/services/EmployerInfoScreen";
-
-
+import { getImage } from '@/app/employeur/services/documents';
+import url from "@/app/services/url.js";
 
 export default function EmployerProfileScreen() {
 
-
   const [employerInfo, setEmployerInfo] = useState({
-  companyName: "",
-  city: "",
-  email: "",
-  phone: "",
-  firstName: "",
-  lastName: "",
-});
+    companyName: "",
+    city: "",
+    email: "",
+    phone: "",
+    firstName: "",
+    lastName: "",
+  });
 
+  const [photoUrl, setPhotoUrl] = useState("");
 
- function handleLogout() {
-  Alert.alert(
-    'Déconnexion',
-    'Voulez-vous vraiment vous déconnecter ?',
-    [
-      {
-        text: 'Annuler',
-        style: 'cancel',
-      },
-      {
-        text: 'Déconnecter',
-        style: 'destructive',
-        onPress: () => {
-          router.replace("/loginEmp")
-        },
-      },
-    ]
+  function handleLogout() {
+    Alert.alert(
+      'Déconnexion',
+      'Voulez-vous vraiment vous déconnecter ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Déconnecter', style: 'destructive', onPress: () => router.replace("/loginEmp") },
+      ]
+    );
+  }
+
+  // 👈 Remplacement de useEffect par useFocusEffect pour s'exécuter à chaque fois qu'on entre sur la page
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+
+      const loadEmployerInfo = async () => {
+        try {
+          // 1. Récupération des infos textuelles
+          const response = await getEmployerInfo();
+          if (!isMounted) return;
+
+          setEmployerInfo({
+            companyName: response.raison_social || "",
+            city: response.ville || "",
+            email: response.email || "",
+            phone: response.num_tel || "",
+            firstName: response.prenom_responsable || "",
+            lastName: response.responsable || "",
+          });
+
+          // 2. Récupération de l'image avec bypass du cache
+          try {
+            const imageData = await getImage();
+            if (!isMounted) return;
+
+            if (imageData?.image) {
+              // 👈 Ajout du paramètre unique ?t= pour forcer le rafraîchissement de l'image
+              const currentPhotoUrl = url() + "documents/photos_employeur/" + imageData.image + "?t=" + Date.now();
+              setPhotoUrl(currentPhotoUrl); 
+            }
+          } catch (imgError) {
+            console.log("Pas d'image ou erreur de récupération :", imgError);
+          }
+
+        } catch (error) {
+          console.log(error);
+        }
+      };
+
+      loadEmployerInfo();
+
+      return () => {
+        isMounted = false;
+      };
+    }, [])
   );
-}
-
-useEffect(() => {
-  const loadEmployerInfo = async () => {
-    try {
-      const response = await getEmployerInfo();
-
-      setEmployerInfo({
-        companyName: response.raison_social || "",
-        city: response.ville || "",
-        email: response.email || "",
-        phone: response.num_tel || "",
-        firstName: response.prenom_responsable || "",
-        lastName: response.responsable || "",
-      });
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  loadEmployerInfo();
-}, []);
 
   return (
     <View style={styles.container}>
@@ -87,12 +105,16 @@ useEffect(() => {
         <View style={styles.card}>
           <View style={styles.row}>
             <View style={styles.logo}>
-              <Building2 size={40} color="#2b5bbb" />
+              {photoUrl ? (
+                <Image source={{ uri: photoUrl }} style={styles.avatar} />
+              ) : (
+                <Building2 size={40} color="#2b5bbb" />
+              )}
             </View>
 
             <Text style={styles.company}>
-  {employerInfo.companyName}
-</Text>
+              {employerInfo.companyName}
+            </Text>
           </View>
         </View>
 
@@ -116,30 +138,25 @@ useEffect(() => {
 
         {/* ⚙️ MENU */}
         <View style={styles.card}>
-
-         
-          <TouchableOpacity style={styles.menuItem} onPress={()=>{router.push("/employeur/autre/SubscriptionScreen")}}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/employeur/autre/SubscriptionScreen")}>
             <CreditCard size={20} color="#2b5bbb" />
             <Text style={styles.menuText}>Abonnement</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={()=>{router.push("/employeur/autre/EmployerDocumentsScreen")}}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/employeur/autre/EmployerDocumentsScreen")}>
             <FileText size={20} color="#2b5bbb" />
             <Text style={styles.menuText}>Mes documents</Text>
           </TouchableOpacity>
 
-
-
-          <TouchableOpacity style={styles.menuItem} onPress={()=>{router.push("/employeur/autre/EmployerInfoScreen")}}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/employeur/autre/EmployerInfoScreen")}>
             <Settings size={20} color="#2b5bbb" />
             <Text style={styles.menuText}>Mes informations</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={()=>{router.push("/employeur/autre/PasswordChange")} }>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/employeur/autre/PasswordChange")}>
             <Lock size={20} color="#2b5bbb" />
             <Text style={styles.menuText}>Mot de passe</Text>
           </TouchableOpacity>
-
         </View>
 
         {/* 🚪 LOGOUT */}
@@ -164,25 +181,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#eef3ff",
   },
-
   content: {
     padding: 16,
     gap: 16,
     paddingBottom: 120,
   },
-
   card: {
     backgroundColor: "#fff",
     padding: 16,
     borderRadius: 16,
   },
-
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-
   logo: {
     width: 70,
     height: 70,
@@ -190,29 +203,26 @@ const styles = StyleSheet.create({
     backgroundColor: "#eef3ff",
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
   },
-
+  avatar: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
   company: {
     fontSize: 16,
     color: "#1b2d5a",
   },
-
-  plan: {
-    fontSize: 12,
-    color: "#7a8ab8",
-  },
-
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     marginBottom: 10,
   },
-
   value: {
     color: "#1b2d5a",
   },
-
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -221,11 +231,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "#eee",
   },
-
   menuText: {
     color: "#1b2d5a",
   },
-
   logout: {
     flexDirection: "row",
     justifyContent: "center",
@@ -234,11 +242,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 12,
   },
-
   logoutText: {
     color: "#1b2d5a",
   },
-
   delete: {
     flexDirection: "row",
     justifyContent: "center",
@@ -247,7 +253,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 12,
   },
-
   deleteText: {
     color: "red",
   },

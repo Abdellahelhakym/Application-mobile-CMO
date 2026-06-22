@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
-  ActivityIndicator, Modal, Dimensions, Alert
+  ActivityIndicator, Modal, Dimensions, Alert, Image // 1. AJOUT DE IMAGE ICI
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCandidat, getCandidatValides, setCandidatValides } from '@/app/employeur/services/EmployeurCandidatures';
+import url from "@/app/services/url.js"; 
 
 const { width } = Dimensions.get('window');
 
@@ -105,12 +106,11 @@ export default function EmployeurCandidatures() {
   const [activeTab, setActiveTab] = useState<TabKey>('propose');
   const [apiCandidates, setApiCandidates] = useState<ApiCandidate[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [refreshTrigger, setRefreshTrigger] = useState<boolean>(false); // État pour forcer le rafraîchissement
+  const [refreshTrigger, setRefreshTrigger] = useState<boolean>(false); 
 
   const [selectedCandidate, setSelectedCandidate] = useState<ApiCandidate | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
-  // Déclenchement de l'API à chaque changement d'onglet OU à chaque rafraîchissement réclamé
   useEffect(() => {
     const fetchCandidates = async () => {
       try {
@@ -139,28 +139,22 @@ export default function EmployeurCandidatures() {
     };
 
     fetchCandidates();
-  }, [activeTab, refreshTrigger]); // refreshTrigger écoute ici
+  }, [activeTab, refreshTrigger]); 
 
-  // Fonction de gestion de la validation au clic sur "Oui"
   const handleValidate = async (candidate: ApiCandidate) => {
-  // On récupère le candidat_id en priorité, sinon l'id de la candidature
-  const targetId = candidate.candidat_id ?? candidate.id;
+    const targetId = candidate.candidat_id ?? candidate.id;
 
-  try {
-    setLoading(true);
-    // Appel de l'API avec le bon ID requis
-    await setCandidatValides(targetId);
-    
-    Alert.alert('Succès', 'Le candidat a été validé avec succès.');
-    
-    // Déclenche le rafraîchissement automatique de la liste
-    setRefreshTrigger(prev => !prev);
-  } catch (error) {
-    console.error('Erreur lors de la validation du candidat:', error);
-    Alert.alert('Erreur', 'Impossible de valider le candidat pour le moment.');
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      await setCandidatValides(targetId);
+      Alert.alert('Succès', 'Le candidat a été validé avec succès.');
+      setRefreshTrigger(prev => !prev);
+    } catch (error) {
+      console.error('Erreur lors de la validation du candidat:', error);
+      Alert.alert('Erreur', 'Impossible de valider le candidat pour le moment.');
+      setLoading(false);
+    }
+  };
 
   const openCvModal = (candidate: ApiCandidate) => {
     setSelectedCandidate(candidate);
@@ -207,94 +201,107 @@ export default function EmployeurCandidatures() {
               <Text style={styles.emptyText}>Aucun candidat dans cette catégorie.</Text>
             </View>
           ) : (
-            apiCandidates.map((candidate) => (
-              <View key={candidate.id.toString()} style={styles.card}>
+            apiCandidates.map((candidate) => {
+              // Construction de l'URL absolue pour la photo du candidat
+              const candidatePhotoUrl = candidate.photo 
+                ? `${url()}documents/photos_candidats/${candidate.photo}?t=${Date.now()}`
+                : null;
 
-                {/* En-tête de la Carte */}
-                <View style={styles.cardHeader}>
-                  <View style={styles.avatar}>
-                    <Ionicons name="person" size={28} color="#2b5bbb" />
-                  </View>
-                  <View style={styles.headerText}>
-                    <Text style={styles.name}>
-                      {`${candidate.prenom.charAt(0).toUpperCase() + candidate.prenom.slice(1)} ${candidate.nom.toUpperCase()}`}
-                    </Text>
-                    <Text style={styles.headerId}>
-                      {candidate.id_fiche_poste || `000-Cmd-${candidate.id}`}
-                    </Text>
-                  </View>
-                  <View style={[
-                    styles.statusPill,
-                    activeTab === 'valide' ? styles.statusPillValide : styles.statusPillPropose,
-                  ]}>
-                    <Text style={styles.statusText}>
-                      {activeTab === 'valide' ? 'Validé' : 'Proposé'}
-                    </Text>
-                  </View>
-                </View>
+              return (
+                <View key={candidate.id.toString()} style={styles.card}>
 
-                {/* Affichage des métiers */}
-                <View style={styles.jobList}>
-                  <Text style={styles.jobItem}>
-                    {candidate.metiers && candidate.metiers.length > 0 ? (
-                      candidate.metiers.map((met, index) => {
-                        const titreMetier = met.titre || 'Métier non spécifié';
-                        return index === 0 ? `• ${titreMetier}` : ` • ${titreMetier}`;
-                      })
-                    ) : (
-                      `• ${candidate.metier_titre || candidate.intitule_poste || 'Poste non spécifié'}`
-                    )}
+                  {/* En-tête de la Carte */}
+                  <View style={styles.cardHeader}>
+                    <View style={styles.avatar}>
+                      {candidatePhotoUrl ? (
+                        <Image 
+                          source={{ uri: candidatePhotoUrl }} 
+                          style={styles.avatarImage} 
+                        />
+                      ) : (
+                        <Ionicons name="person" size={28} color="#2b5bbb" />
+                      )}
+                    </View>
+                    <View style={styles.headerText}>
+                      <Text style={styles.name}>
+                        {`${candidate.prenom.charAt(0).toUpperCase() + candidate.prenom.slice(1)} ${candidate.nom.toUpperCase()}`}
+                      </Text>
+                      <Text style={styles.headerId}>
+                        {candidate.id_fiche_poste || `000-Cmd-${candidate.id}`}
+                      </Text>
+                    </View>
+                    <View style={[
+                      styles.statusPill,
+                      activeTab === 'valide' ? styles.statusPillValide : styles.statusPillPropose,
+                    ]}>
+                      <Text style={styles.statusText}>
+                        {activeTab === 'valide' ? 'Validé' : 'Proposé'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Affichage des métiers */}
+                  <View style={styles.jobList}>
+                    <Text style={styles.jobItem}>
+                      {candidate.metiers && candidate.metiers.length > 0 ? (
+                        candidate.metiers.map((met, index) => {
+                          const titreMetier = met.titre || 'Métier non spécifié';
+                          return index === 0 ? `• ${titreMetier}` : ` • ${titreMetier}`;
+                        })
+                      ) : (
+                        `• ${candidate.metier_titre || candidate.intitule_poste || 'Poste non spécifié'}`
+                      )}
+                    </Text>
+                  </View>
+
+                  {/* Expérience */}
+                  <Text style={styles.experienceText}>
+                    {candidate.experience
+                      ? `${candidate.experience} d'expérience`
+                      : 'Aucune expérience mentionnée'}
                   </Text>
-                </View>
 
-                {/* Expérience */}
-                <Text style={styles.experienceText}>
-                  {candidate.experience
-                    ? `${candidate.experience} d'expérience`
-                    : 'Aucune expérience mentionnée'}
-                </Text>
-
-                {/* Actions (Boutons) */}
-                <View style={styles.actionsRow}>
-                  {activeTab === 'valide' ? (
-                    <TouchableOpacity style={[styles.actionButton, styles.archiveButton]}>
-                      <Text style={[styles.actionText, styles.actionTextArchive]}>Archiver</Text>
-                      <Ionicons name="archive-outline" size={16} color="#e15b5b" style={{ marginLeft: 6 }} />
-                    </TouchableOpacity>
-                  ) : (
-                    <>
-                      {/* Bouton OUI relié à handleValidate */}
-                      <TouchableOpacity 
-                  style={[styles.actionButton, styles.actionButtonOutline]}
-                  onPress={() => handleValidate(candidate)} // On passe tout l'objet ici
-                >
-                  <Text style={[styles.actionText, styles.actionTextOutline]}>Oui</Text>
-                </TouchableOpacity>
-                      
-                      <TouchableOpacity style={[styles.actionButton, styles.actionButtonOutline]}>
-                        <Text style={[styles.actionText, styles.actionTextOutline]}>Non</Text>
+                  {/* Actions (Boutons) */}
+                  <View style={styles.actionsRow}>
+                    {activeTab === 'valide' ? (
+                      <TouchableOpacity style={[styles.actionButton, styles.archiveButton]}>
+                        <Text style={[styles.actionText, styles.actionTextArchive]}>Archiver</Text>
+                        <Ionicons name="archive-outline" size={16} color="#e15b5b" style={{ marginLeft: 6 }} />
                       </TouchableOpacity>
-                    </>
-                  )}
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.cvButton]}
-                    onPress={() => openCvModal(candidate)}
-                  >
-                    <Text style={[styles.actionText, styles.actionTextWhite]}>CV</Text>
-                    <Ionicons name="eye-outline" size={16} color="#ffffff" style={styles.cvIcon} />
+                    ) : (
+                      <>
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.actionButtonOutline]}
+                          onPress={() => handleValidate(candidate)} 
+                        >
+                          <Text style={[styles.actionText, styles.actionTextOutline]}>Oui</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity style={[styles.actionButton, styles.actionButtonOutline]}>
+                          <Text style={[styles.actionText, styles.actionTextOutline]}>Non</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.cvButton]}
+                      onPress={() => openCvModal(candidate)}
+                    >
+                      <Text style={[styles.actionText, styles.actionTextWhite]}>CV</Text>
+                      <Ionicons name="eye-outline" size={16} color="#ffffff" style={styles.cvIcon} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Commentaire de l'agence */}
+                  <TouchableOpacity style={styles.commentButton}>
+                    <Ionicons name="chatbubble-ellipses-outline" size={16} color="#ffffff" style={styles.commentIcon} />
+                    <Text style={styles.commentText}>
+                      {candidate.commentaire_cand ? 'Voir le commentaire' : 'CMO commentaire'}
+                    </Text>
                   </TouchableOpacity>
+
                 </View>
-
-                {/* Commentaire de l'agence */}
-                <TouchableOpacity style={styles.commentButton}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={16} color="#ffffff" style={styles.commentIcon} />
-                  <Text style={styles.commentText}>
-                    {candidate.commentaire_cand ? 'Voir le commentaire' : 'CMO commentaire'}
-                  </Text>
-                </TouchableOpacity>
-
-              </View>
-            ))
+              );
+            })
           )}
         </ScrollView>
       )}
@@ -308,69 +315,88 @@ export default function EmployeurCandidatures() {
       >
         <View style={styles.cvModalBackdrop}>
           <View style={styles.modalCard}>
-            {selectedCandidate && (
-              <ScrollView showsVerticalScrollIndicator={false}>
+            {selectedCandidate && (() => {
+              // URL Photo pour la modal
+              const modalPhotoUrl = selectedCandidate.photo 
+                ? `${url()}documents/photos_candidats/${selectedCandidate.photo}?t=${Date.now()}`
+                : null;
 
-                {/* 1. Identité & Coordonnées */}
-                <Text style={styles.modalName}>
-                  {`${selectedCandidate.prenom.charAt(0).toUpperCase() + selectedCandidate.prenom.slice(1)} ${selectedCandidate.nom.toUpperCase()}`}
-                </Text>
-                <Text style={styles.modalContactText}>{selectedCandidate.email}</Text>
-                <Text style={styles.modalContactText}>{selectedCandidate.tel}</Text>
-                {!!selectedCandidate.tel2 && <Text style={styles.modalContactText}>{selectedCandidate.tel2}</Text>}
-                <Text style={styles.modalLocation}>{selectedCandidate.ville} - {selectedCandidate.pays || 'France'}</Text>
+              return (
+                <ScrollView showsVerticalScrollIndicator={false}>
 
-                {/* 2. Métiers dans la modal */}
-                <Text style={styles.sectionTitle}>Secteur d’activité & Métiers</Text>
-                
-                {selectedCandidate.metiers && selectedCandidate.metiers.length > 0 ? (
-                  <Text style={styles.sectionItem}>
-                    {selectedCandidate.metiers.map((met, index) => {
-                      const titreMetier = met.titre || 'Métier non spécifié';
-                      return index === 0 ? `• ${titreMetier}` : ` • ${titreMetier}`;
-                    })}
-                  </Text>
-                ) : (
-                  <>
-                    <Text style={styles.sectionItem}>• {selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Non renseigné'}</Text>
-                    {!!selectedCandidate.secteur_activite && (
-                      <Text style={styles.sectionItem}>• {selectedCandidate.secteur_activite}</Text>
-                    )}
-                  </>
-                )}
+                  {/* Identité avec Photo Intégrée au CV */}
+                  <View style={styles.modalHeaderRow}>
+                    <View style={styles.modalAvatarContainer}>
+                      {modalPhotoUrl ? (
+                        <Image source={{ uri: modalPhotoUrl }} style={styles.modalAvatarImage} />
+                      ) : (
+                        <Ionicons name="person" size={32} color="#2b5bbb" />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.modalName}>
+                        {`${selectedCandidate.prenom.charAt(0).toUpperCase() + selectedCandidate.prenom.slice(1)} ${selectedCandidate.nom.toUpperCase()}`}
+                      </Text>
+                      <Text style={styles.modalLocation}>{selectedCandidate.ville} - {selectedCandidate.pays || 'France'}</Text>
+                    </View>
+                  </View>
 
-                {/* 3. Mobilité */}
-                <Text style={styles.sectionTitle}>Mobilité</Text>
-                <Text style={styles.sectionItem}>• Toute la France</Text>
+                  <Text style={styles.modalContactText}>{selectedCandidate.email}</Text>
+                  <Text style={styles.modalContactText}>{selectedCandidate.tel}</Text>
+                  {!!selectedCandidate.tel2 && <Text style={styles.modalContactText}>{selectedCandidate.tel2}</Text>}
 
-                {/* 4. Niveau d'études */}
-                <Text style={styles.sectionTitle}>Niveau d’études</Text>
-                <Text style={styles.sectionItem}>• {selectedCandidate.niveau_etude || 'Non spécifié'}</Text>
-
-                {/* 5. Expérience passée */}
-                <Text style={styles.sectionTitle}>Expérience</Text>
-                <View style={styles.blockItem}>
-                  <Text style={styles.blockTitle}>{selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Poste'}</Text>
-                  <Text style={styles.sectionItem}>L'entreprise : {selectedCandidate.commentaire_cmo || 'Non renseignée'}</Text>
-                  <Text style={styles.sectionItem}>Ville / Pays : {selectedCandidate.ville} - {selectedCandidate.pays || 'France'}</Text>
-                  <Text style={styles.sectionItem}>Période : {selectedCandidate.experience || 'Non spécifiée'}</Text>
-                </View>
-
-                {/* 6. Documents vérifiés */}
-                <Text style={styles.sectionTitle}>Attestation</Text>
-                <View style={styles.attestationList}>
-                  {selectedCandidate.verifier === 1 ? (
-                    <>
-                      <Text style={styles.sectionItem}>✅ certificat_travail</Text>
-                      <Text style={styles.sectionItem}>✅ Attestationdetravail</Text>
-                    </>
+                  {/* Métiers dans la modal */}
+                  <Text style={styles.sectionTitle}>Secteur d’activité & Métiers</Text>
+                  
+                  {selectedCandidate.metiers && selectedCandidate.metiers.length > 0 ? (
+                    <Text style={styles.sectionItem}>
+                      {selectedCandidate.metiers.map((met, index) => {
+                        const titreMetier = met.titre || 'Métier non spécifié';
+                        return index === 0 ? `• ${titreMetier}` : ` • ${titreMetier}`;
+                      })}
+                    </Text>
                   ) : (
-                    <Text style={styles.sectionItem}>Aucun document vérifié</Text>
+                    <>
+                      <Text style={styles.sectionItem}>• {selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Non renseigné'}</Text>
+                      {!!selectedCandidate.secteur_activite && (
+                        <Text style={styles.sectionItem}>• {selectedCandidate.secteur_activite}</Text>
+                      )}
+                    </>
                   )}
-                </View>
 
-              </ScrollView>
-            )}
+                  {/* Mobilité */}
+                  <Text style={styles.sectionTitle}>Mobilité</Text>
+                  <Text style={styles.sectionItem}>• Toute la France</Text>
+
+                  {/* Niveau d'études */}
+                  <Text style={styles.sectionTitle}>Niveau d’études</Text>
+                  <Text style={styles.sectionItem}>• {selectedCandidate.niveau_etude || 'Non spécifié'}</Text>
+
+                  {/* Expérience passée */}
+                  <Text style={styles.sectionTitle}>Expérience</Text>
+                  <View style={styles.blockItem}>
+                    <Text style={styles.blockTitle}>{selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Poste'}</Text>
+                    <Text style={styles.sectionItem}>L'entreprise : {selectedCandidate.commentaire_cmo || 'Non renseignée'}</Text>
+                    <Text style={styles.sectionItem}>Ville / Pays : {selectedCandidate.ville} - {selectedCandidate.pays || 'France'}</Text>
+                    <Text style={styles.sectionItem}>Période : {selectedCandidate.experience || 'Non spécifiée'}</Text>
+                  </View>
+
+                  {/* Documents vérifiés */}
+                  <Text style={styles.sectionTitle}>Attestation</Text>
+                  <View style={styles.attestationList}>
+                    {selectedCandidate.verifier === 1 ? (
+                      <>
+                        <Text style={styles.sectionItem}>✅ certificat_travail</Text>
+                        <Text style={styles.sectionItem}>✅ Attestationdetravail</Text>
+                      </>
+                    ) : (
+                      <Text style={styles.sectionItem}>Aucun document vérifié</Text>
+                    )}
+                  </View>
+
+                </ScrollView>
+              );
+            })()}
 
             <TouchableOpacity style={styles.modalClose} onPress={closeCvModal}>
               <Text style={styles.modalCloseText}>Fermer</Text>
@@ -398,7 +424,11 @@ const styles = StyleSheet.create({
   emptyText: { color: '#5f6f91', fontSize: 15 },
   card: { backgroundColor: '#ffffff', borderRadius: 22, padding: 18, marginBottom: 16, elevation: 3 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  avatar: { width: 50, height: 50, borderRadius: 15, backgroundColor: '#d9e4ff', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  
+  // Styles de l'avatar et de l'Image de la liste
+  avatar: { width: 50, height: 50, borderRadius: 15, backgroundColor: '#d9e4ff', alignItems: 'center', justifyContent: 'center', marginRight: 12, overflow: 'hidden' },
+  avatarImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  
   headerText: { flex: 1 },
   name: { color: '#1b2d5a', fontSize: 16, fontWeight: '800' },
   headerId: { color: '#2b5bbb', fontSize: 13, fontWeight: '600' },
@@ -422,11 +452,17 @@ const styles = StyleSheet.create({
   commentButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2b5bbb', borderRadius: 22, paddingVertical: 12 },
   commentIcon: { marginRight: 8 },
   commentText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
+  
+  // Styles de la modal et de l'image de profil de la modal
   cvModalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
   modalCard: { width: width * 0.9, maxHeight: '85%', backgroundColor: '#ffffff', borderRadius: 24, padding: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
-  modalName: { fontSize: 20, fontWeight: '800', color: '#1b2d5a', marginBottom: 4 },
+  modalHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 14 },
+  modalAvatarContainer: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#d9e4ff', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  modalAvatarImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  modalName: { fontSize: 18, fontWeight: '800', color: '#1b2d5a' },
   modalContactText: { fontSize: 13, color: '#4865a6', fontWeight: '500', marginBottom: 2 },
-  modalLocation: { marginTop: 4, marginBottom: 10, color: '#7a8ab8', fontSize: 13, fontWeight: '600' },
+  modalLocation: { color: '#7a8ab8', fontSize: 13, fontWeight: '600' },
+  
   sectionTitle: { marginTop: 18, fontSize: 13, fontWeight: '800', color: '#2b5bbb', textTransform: 'uppercase', letterSpacing: 0.6, borderBottomWidth: 1.5, borderBottomColor: '#eef3ff', paddingBottom: 4, marginBottom: 6 },
   sectionItem: { marginTop: 6, fontSize: 13, color: '#1b2d5a', lineHeight: 20, fontWeight: '500' },
   blockItem: { marginTop: 8, paddingLeft: 10, borderLeftWidth: 3, borderLeftColor: '#2b5bbb' },

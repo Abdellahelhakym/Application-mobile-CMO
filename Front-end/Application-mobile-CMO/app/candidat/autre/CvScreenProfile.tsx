@@ -13,12 +13,13 @@ import { getListFils } from '@/app/candidat/services/AttestationsScreen';
 import {
   getExperiences,
   getFormations,
-  getImage,
+  
   getInformations,
   getMobiliteUser
 } from "@/app/candidat/services/CVScreen";
 import url from "@/app/services/url";
 import { useFocusEffect } from "@react-navigation/native";
+import { getImage } from "../services/document";
 
 export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
@@ -53,7 +54,7 @@ export default function ProfileScreen() {
 
       const img = await getImage();
       const imageUrl = img?.image
-        ? url() + "files/img_user/" + img.image
+        ? url() + "documents/photos_candidats/" + img.image
         : "";
       setPhoto(imageUrl || i?.photo || "");
 

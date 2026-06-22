@@ -36,10 +36,10 @@ import {
   addFormation,
   deleteExperiences,
   deleteFormation,
-  DeleteImage,
+  
   getExperiences,
   getFormations,
-  getImage,
+ 
   getInformations,
   getLangues,
   getMobiliteUser,
@@ -48,7 +48,7 @@ import {
   getToutMobilite,
   updateExperiences,
   updateFormation,
-  updateImage,
+  
   updateInformations,
   updateLangues,
   updateMobilite,
@@ -56,6 +56,7 @@ import {
   updateSecteur
 } from "@/app/candidat/services/CVScreen";
 import url from "@/app/services/url.js";
+import { getImage , updateImage , DeleteImage} from "../services/document";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -316,7 +317,6 @@ const CheckItem = ({
 );
 
 // ─── Tab Screens ──────────────────────────────────────────────────────────────
-
 const IdentityTab = ({
   formData,
   setFormData,
@@ -328,14 +328,31 @@ const IdentityTab = ({
   photoUpload: { uri: string; name: string; type: string } | null;
   setPhotoUpload: React.Dispatch<React.SetStateAction<{ uri: string; name: string; type: string } | null>>;
 }) => {
-  const [photoLoading, setPhotoLoading] = useState(false);
+  // ─── Même logique d'états que ProfileScreen ──────────────────────────────
+  const [photo, setPhoto] = useState('');
+  const [avatarLoading, setAvatarLoading] = useState(false);
 
-  // 🎯 REJOUTE CETTE LIGNE ICI POUR CORRIGER L'ERREUR :
-  const [cacheBuster, setCacheBuster] = useState(Date.now());
-  
   const set = (key: string) => (v: string) =>
     setFormData((p: any) => ({ ...p, [key]: v }));
 
+  // ─── Même logique de chargement que ProfileScreen ────────────────────────
+  const fetchProfileImage = async () => {
+    try {
+      const imageData = await getImage();
+      const imageUrl = imageData?.image
+        ? url() + "documents/photos_candidats/" + imageData.image
+        : '';
+      setPhoto(imageUrl);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfileImage();
+  }, []);
+
+  // ─── Sélection d'une nouvelle photo locale ─────────────────────────────────
   const handlePickPhoto = async () => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -353,7 +370,9 @@ const IdentityTab = ({
       if (result.canceled || !result.assets?.length) return;
 
       const asset = result.assets[0];
-      setFormData((p: any) => ({ ...p, photo: asset.uri }));
+      
+      // On met directement l'URI locale dans l'état photo pour un affichage instantané
+      setPhoto(asset.uri);
 
       const image = {
         uri: asset.uri,
@@ -366,50 +385,43 @@ const IdentityTab = ({
     }
   };
 
- const handleSaveInformations = async () => {
-  try {
-    const codePostalValue = formData.postalCode ? Number(formData.postalCode) : 0;
+  // ─── Sauvegarde des données et envoi de l'image ──────────────────────────
+  const handleSaveInformations = async () => {
+    try {
+      const codePostalValue = formData.postalCode ? Number(formData.postalCode) : 0;
 
-    await updateInformations(
-      formData.civility,
-      formData.firstName,
-      formData.lastName,
-      formData.email,
-      formData.phone,
-      formData.phone2,
-      formData.address,
-      codePostalValue,
-      formData.city,
-      formData.country,
-      formData.socialSecurity
-    );
+      await updateInformations(
+        formData.civility,
+        formData.firstName,
+        formData.lastName,
+        formData.email,
+        formData.phone,
+        formData.phone2,
+        formData.address,
+        codePostalValue,
+        formData.city,
+        formData.country,
+        formData.socialSecurity
+      );
 
-    if (photoUpload) {
-      // 1. On active le loader avant l'upload pour être sûr
-      setPhotoLoading(true);
+      if (photoUpload) {
+        // On affiche l'indicateur uniquement pendant l'upload réseau vers le serveur
+        setAvatarLoading(true);
 
-      const response = await updateImage(photoUpload as any);
-      setPhotoUpload(null);
-
-      if (response && response.photo) {
-        setFormData((p: any) => ({ ...p, photo: response.photo }));
+        await updateImage(photoUpload as any);
+        setPhotoUpload(null);
+        
+        // Après l'upload réussi, on recharge l'URI officielle depuis le serveur
+        await fetchProfileImage();
+        setAvatarLoading(false);
       }
-      
-      // 2. On force le changement de cache
-      setCacheBuster(Date.now());
-      
-      // 3. 🎯 SÉCURITÉ : On coupe le loader ici au cas où l'événement natif onLoadEnd rate le coche
-      setTimeout(() => {
-        setPhotoLoading(false);
-      }, 500); 
-    }
 
-    Alert.alert('Enregistré', 'Informations enregistrées avec succès.');
-  } catch (error) {
-    setPhotoLoading(false); // On coupe aussi en cas d'erreur
-    Alert.alert('Erreur', 'Impossible de sauvegarder les informations.');
-  }
-};
+      Alert.alert('Enregistré', 'Informations enregistrées avec succès.');
+    } catch (error) {
+      setAvatarLoading(false); 
+      Alert.alert('Erreur', 'Impossible de sauvegarder les informations.');
+    }
+  };
 
   return (
     <View style={{ gap: 16 }}>
@@ -418,43 +430,42 @@ const IdentityTab = ({
           {'Photo de profil'}
         </SectionTitle>
         <View style={styles.photoContainer}>
+          
+          {/* 🎯 Même structure de boîte et de styles que ProfileScreen */}
           <View style={styles.photoBox}>
-            {formData.photo
-              ? (
-                <>
-                  <Image
-                    source={{ uri: formData.photo }}
-                    style={styles.photoImage}
-                    onLoadStart={() => setPhotoLoading(true)}
-                    onLoadEnd={() => setPhotoLoading(false)}
-                    onError={() => setPhotoLoading(false)}
-                  />
-                  {photoLoading ? (
-                    <View style={styles.photoLoading}>
-                      <ActivityIndicator size="small" color={C.blue} />
-                    </View>
-                  ) : null}
-                </>
-              )
-              : <Camera size={28} color={C.blue} />
-            }
+            {photo ? (
+              <>
+                <Image
+                  source={{ uri: photo }}
+                  style={styles.photoImage}
+                  onLoadStart={() => setAvatarLoading(true)}
+                  onLoadEnd={() => setAvatarLoading(false)}
+                  onError={() => setAvatarLoading(false)}
+                />
+                {avatarLoading ? (
+                  <View style={styles.photoLoading}>
+                    <ActivityIndicator size="small" color="#2b5bbb" />
+                  </View>
+                ) : null}
+              </>
+            ) : (
+              <Camera size={28} color={C.blue} />
+            )}
           </View>
+
           <Text style={styles.photoHint}>{'Télécharger votre photo'}</Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <TouchableOpacity
-              style={styles.btnImport}
-              onPress={handlePickPhoto}
-            >
+            <TouchableOpacity style={styles.btnImport} onPress={handlePickPhoto}>
               <Upload size={16} color={C.white} />
               <Text style={styles.btnImportText}>{'Importer'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.btnDelete}
-              onPress={() => {
-                setFormData((p: any) => ({ ...p, photo: '' }));
+              onPress={async () => {
+                setPhoto('');
                 setPhotoUpload(null);
-                setPhotoLoading(false);
-                DeleteImage();
+                setAvatarLoading(false);
+                await DeleteImage();
               }}
             >
               <Trash2 size={16} color={C.deleteText} />
@@ -464,6 +475,7 @@ const IdentityTab = ({
         </View>
       </Card>
 
+      {/* Reste du formulaire inchangé */}
       <Card>
         <SectionTitle icon={<User size={18} color={C.blue} />}>
           {'Informations'}
@@ -1167,7 +1179,7 @@ const [langues, setLangues] = useState<string[]>([]);
           photo: rawPhoto
             ? (rawPhoto.startsWith('http') || rawPhoto.startsWith('file:')
               ? rawPhoto
-              : url() + "files/img_user/" + rawPhoto)
+              : url() + "documents/photos_candidats/" + rawPhoto)
             : prev.photo,
           civility: info.civilite ?? prev.civility,
           firstName: info.prenom ?? prev.firstName,

@@ -24,15 +24,12 @@ import {
   User
 } from 'lucide-react-native';
 
+import { getImage } from "../services/document";
 
-import { getImage } from "@/app/candidat/services/CVScreen";
 import { deleteAccount, getProfile } from "@/app/candidat/services/ProfileScreen";
 import { Feather } from '@expo/vector-icons';
 
 import url from "@/app/services/url";
-
-
-
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
@@ -55,7 +52,7 @@ export default function ProfileScreen() {
       setProfileData(profile);
 
       const imageUrl = imageData?.image
-        ? url() + "files/img_user/" + imageData.image
+        ? url() + "documents/photos_candidats/" + imageData.image
         : '';
       setPhoto(imageUrl);
     } catch (error) {
@@ -69,26 +66,25 @@ export default function ProfileScreen() {
     }, [getData])
   );
 
-
- function handleLogout() {
-  Alert.alert(
-    'Déconnexion',
-    'Voulez-vous vraiment vous déconnecter ?',
-    [
-      {
-        text: 'Annuler',
-        style: 'cancel',
-      },
-      {
-        text: 'Déconnecter',
-        style: 'destructive',
-        onPress: () => {
-          router.replace('/loginCan');
+  function handleLogout() {
+    Alert.alert(
+      'Déconnexion',
+      'Voulez-vous vraiment vous déconnecter ?',
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel',
         },
-      },
-    ]
-  );
-}
+        {
+          text: 'Déconnecter',
+          style: 'destructive',
+          onPress: () => {
+            router.replace('/loginCan');
+          },
+        },
+      ]
+    );
+  }
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -124,6 +120,8 @@ export default function ProfileScreen() {
                   source={{ uri: photo }}
                   style={styles.avatarImage}
                   onLoadStart={() => setAvatarLoading(true)}
+                  // 🎯 Ajout de onLoad pour arrêter le chargement dès que les pixels sont disponibles
+                  onLoad={() => setAvatarLoading(false)}
                   onLoadEnd={() => setAvatarLoading(false)}
                   onError={() => setAvatarLoading(false)}
                 />
@@ -147,7 +145,6 @@ export default function ProfileScreen() {
 
       {/* INFO */}
       <View style={styles.card}>
-
         <View style={styles.item}>
           <Phone size={18} color="#2b5bbb" />
           <View>
@@ -163,14 +160,10 @@ export default function ProfileScreen() {
             <Text style={styles.value}>{profileData.pays}</Text>
           </View>
         </View>
-
-
-
       </View>
 
       {/* ACTIONS */}
       <View style={styles.card}>
-
         <TouchableOpacity
           style={styles.btn}
           onPress={() => router.push('/candidat/autre/CvScreenProfile')}
@@ -202,7 +195,7 @@ export default function ProfileScreen() {
           <Text style={styles.btnText}>Attestations</Text>
         </TouchableOpacity>
 
-         <TouchableOpacity
+        <TouchableOpacity
           style={styles.btn}
           onPress={() =>
             router.push('https://conceptmaindoeuvre.com/nos-offres-emploi#')
@@ -211,12 +204,7 @@ export default function ProfileScreen() {
           <Feather name="briefcase" size={20} color="#2b5bbb" />
           <Text style={styles.btnText}> Offres d’emploi</Text>
         </TouchableOpacity>
-
-
       </View>
-
-     
-
 
       {/* LOGOUT */}
       <TouchableOpacity
@@ -236,37 +224,31 @@ export default function ProfileScreen() {
         <Text style={styles.deleteText}>Supprimer mon compte</Text>
       </TouchableOpacity>
 
-
     </ScrollView>
   );
 }
 
 /* STYLE */
 const styles = StyleSheet.create({
-
   container: {
     flex: 1,
     backgroundColor: '#eef3ff',
   },
-
   content: {
     padding: 15,
-    paddingBottom: 80, // ✅ FIX ESPACE EN BAS
+    paddingBottom: 80,
     gap: 15,
   },
-
   card: {
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 15,
   },
-
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-
   avatarBig: {
     width: 70,
     height: 70,
@@ -287,33 +269,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(238, 243, 255, 0.7)',
   },
-
   name: {
     fontSize: 16,
     color: '#1b2d5a',
   },
-
   email: {
     fontSize: 12,
     color: '#5b6a8e',
   },
-
   item: {
     flexDirection: 'row',
     gap: 10,
     marginBottom: 15,
   },
-
   label: {
     fontSize: 11,
     color: '#5b6a8e',
   },
-
   value: {
     fontSize: 13,
     color: '#1b2d5a',
   },
-
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -322,11 +298,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eef3ff',
   },
-
   btnText: {
     color: '#1b2d5a',
   },
-
   deleteBtn: {
     flexDirection: 'row',
     gap: 8,
@@ -341,7 +315,6 @@ const styles = StyleSheet.create({
   deleteText: {
     color: 'red',
   },
-
   logoutBtn: {
     flexDirection: 'row',
     gap: 8,
@@ -351,7 +324,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginHorizontal: 15,
   },
-
   logoutText: {
     color: '#1b2d5a',
   },

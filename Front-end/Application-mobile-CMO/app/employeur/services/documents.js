@@ -60,3 +60,75 @@ export async function DeleteImage() {
         throw error;
     }
 }
+
+//-----------------------------------------------------------
+//---------------------documents-----------------------------
+//-----------------------------------------------------------
+
+export async function updateDocument(
+  document,
+  titre = "Sans titre",
+  typeDocument = "Autre"
+) {
+  try {
+    const token_id = await getTokenId();
+
+    const formData = new FormData();
+
+    formData.append("token_id", token_id);
+    formData.append("document", document);
+    formData.append("titre", titre);
+    formData.append("type_document", typeDocument);
+
+    const response = await fetch(
+      url() + "employeur/documents/updateDocument",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const data = await response.json();
+
+    return data;
+  } catch (error) {
+    console.error("Error uploading document:", error);
+    throw error;
+  }
+}
+
+export async function getDocument() {
+    try {
+        const token_id = await getTokenId();
+        const response = await fetch(url() + "employeur/documents/getDocument", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token_id }),
+        });
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error fetching document:", error);
+        throw error;
+    }
+}
+
+export async function DeleteDocument() {
+    try {
+        const token_id = await getTokenId();
+        const response = await fetch(url() + "employeur/documents/deleteDocument", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token_id }),
+        });
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error deleting document:", error);
+        throw error;
+    }
+}

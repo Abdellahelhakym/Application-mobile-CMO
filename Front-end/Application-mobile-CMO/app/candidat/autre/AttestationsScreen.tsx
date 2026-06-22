@@ -9,76 +9,82 @@ import {
   View,
 } from 'react-native';
 
-import { deletDocument, getCategorie, getFils, getListFils, updateFils } from '@/app/candidat/services/AttestationsScreen';
+import { updateDocument, getDocument, DeleteDocument, getCategorie, getListFils } from '@/app/candidat/services/AttestationsScreen';
 import url from '@/app/services/url';
 import * as DocumentPicker from 'expo-document-picker';
 import { Eye, Trash2, Upload } from 'lucide-react-native';
 
 type Category = { id: number; titre: string; deleted?: number };
+
 type AttestationItem = {
   id: number;
+  token_id_cand?: string;
+  etats?: number;
   id_attestation: number;
-  id_categorie: number;
   titre: string;
   titre2?: string;
-  etats?: number;
+  id_categorie: number;
+  categorie?: string;
 };
 
 export default function AttestationsScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<AttestationItem[]>([]);
-  const [filesByAttestation, setFilesByAttestation] = useState<Record<number, string>>({});
-  const [filesByTitle, setFilesByTitle] = useState<Record<string, string>>({});
+  // ✅ Stocker les VRAIS noms de fichiers (cvitae)
+  const [uploadedDocs, setUploadedDocs] = useState<Record<number, string>>({});
 
-  const normalizeTitle = (title: string) => title.trim().toLowerCase();
+  const loadFiles = async () => {
+    try {
+      // ✅ Appeler à la fois getCategorie(), getListFils() et getAttestations()
+      const [cats, list, attestations] = await Promise.all([
+        getCategorie(),
+        getListFils(),
+        getDocument(),  // ✅ Récupérer les vrais fichiers avec cvitae
+      ]);
 
-  useEffect(() => {
-    const loadFiles = async () => {
-      try {
-        const [cats, list, files] = await Promise.all([
-          getCategorie(),
-          getListFils(),
-          getFils(),
-        ]);
+      const catList = Array.isArray(cats) ? cats.filter((c) => c?.deleted !== 1) : [];
+      const itemList = Array.isArray(list) ? list : [];
 
-        const catList = Array.isArray(cats) ? cats.filter((c) => c?.deleted !== 1) : [];
-        const itemList = Array.isArray(list) ? list : [];
-
-        const nextFilesByTitle: Record<string, string> = {};
-        const nextFilesByAttestation: Record<number, string> = {};
-        const serverFiles = Array.isArray(files?.files) ? files.files : [];
-        serverFiles.forEach((file: any) => {
-          if (file?.titre && file?.cvitae) {
-            nextFilesByTitle[normalizeTitle(String(file.titre))] = String(file.cvitae);
-          }
-          if (file?.id != null && file?.cvitae) {
-            nextFilesByAttestation[Number(file.id)] = String(file.cvitae);
+      // ✅ Mapper par id_attestation avec les VRAIS noms de fichiers (cvitae)
+      const docsMap: Record<number, string> = {};
+      
+      // D'abord, récupérer les vrais fichiers uploadés depuis getAttestations()
+      if (attestations?.success && Array.isArray(attestations.files)) {
+        attestations.files.forEach((file: any) => {
+          if (file?.id_attestation != null && file?.cvitae) {
+            docsMap[Number(file.id_attestation)] = file.cvitae; // ✅ Utiliser cvitae réel
+            
           }
         });
-
-        setCategories(catList);
-        setItems(itemList);
-        setFilesByTitle(nextFilesByTitle);
-        setFilesByAttestation(nextFilesByAttestation);
-      } catch (error) {
-        console.log('Error loading files:', error);
       }
-    };
 
+      setCategories(catList);
+      setItems(itemList);
+      setUploadedDocs(docsMap);
+    } catch (error) {
+      console.log('Error loading files:', error);
+    }
+  };
+
+  useEffect(() => {
     loadFiles();
   }, []);
 
-  const buildFileUrl = (fileName: string) =>
-    url() + 'files/Document/' + fileName;
-
   const handleUpload = async (item: AttestationItem) => {
     try {
+      
+      
       const result = await DocumentPicker.getDocumentAsync({
         copyToCacheDirectory: true,
         multiple: false,
       });
 
-      if (result.canceled || !result.assets?.length) return;
+      
+
+      if (result.canceled || !result.assets?.length) {
+        console.log('❌ Sélection annulée ou pas de fichier');
+        return;
+      }
 
       const asset = result.assets[0];
       const fileName = asset.name ?? '';
@@ -86,8 +92,10 @@ export default function AttestationsScreen() {
         asset.mimeType === 'application/pdf' ||
         fileName.toLowerCase().endsWith('.pdf');
 
+   
+
       if (!isPdf) {
-        Alert.alert('Format invalide', 'Veuillez selectionner un fichier PDF.');
+        Alert.alert('Format invalide', 'Veuillez sélectionner un fichier PDF.');
         return;
       }
 
@@ -97,37 +105,44 @@ export default function AttestationsScreen() {
         type: asset.mimeType ?? 'application/octet-stream',
       };
 
-      const response = await updateFils(file as any, item.id_attestation, item.id);
-      const serverFile = response?.fichier ?? file.name;
+  
 
-      setFilesByAttestation((prev) => ({
-        ...prev,
-        [item.id_attestation]: serverFile,
-      }));
+      // ✅ Utiliser la vraie signature de l'API candidat
+      const response = await updateDocument(file as any, item.id_attestation);
+      
+      
+      
       Alert.alert('Enregistré', 'Document envoyé avec succès.');
+      loadFiles(); 
     } catch (error) {
-      console.log('Error uploading file:', error);
-      Alert.alert('Erreur', 'Impossible d\'envoyer le document.');
+      console.error('❌ Error uploading file:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      Alert.alert('Erreur', `Impossible d'envoyer le document.\n\nDétails: ${String(error)}`);
     }
   };
 
-  const handleView = (item: AttestationItem) => {
-    const fileName =
-      filesByAttestation[item.id_attestation] ||
-      filesByTitle[normalizeTitle(item.titre)];
+  const handleView = async (item: AttestationItem) => {
+    // ✅ Utiliser le VRAI nom de fichier (cvitae)
+    const fileName = uploadedDocs[item.id_attestation];
 
     if (!fileName) {
       Alert.alert('Aucun fichier', 'Aucun document pour ce type.');
       return;
     }
 
-    Linking.openURL(buildFileUrl(fileName));
+    // ✅ Construire l'URL avec le vrai nom de fichier
+    const currentPhotoUrl = url() + "documents/attestations/" + fileName + "?t=" + Date.now();
+   
+    
+    Linking.openURL(currentPhotoUrl).catch(() => {
+      Alert.alert("Erreur", "Impossible d'ouvrir le lien du document.");
+    });
   };
 
   const handleDelete = (item: AttestationItem) => {
     Alert.alert(
       'Confirmer la suppression',
-      'Etes-vous sur de vouloir supprimer ce document ? Cette action est irreversible.',
+      'Êtes-vous sûr de vouloir supprimer ce document ? Cette action est irréversible.',
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -135,20 +150,10 @@ export default function AttestationsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deletDocument(item.id_attestation);
-
-              setFilesByAttestation((prev) => {
-                const next = { ...prev };
-                delete next[item.id_attestation];
-                return next;
-              });
-              setFilesByTitle((prev) => {
-                const next = { ...prev };
-                delete next[normalizeTitle(item.titre)];
-                return next;
-              });
-
-              Alert.alert('Supprime', 'Document supprime avec succes.');
+   
+              await DeleteDocument(item.id_attestation);
+              Alert.alert('Supprimé', 'Document supprimé avec succès.');
+              loadFiles(); 
             } catch (error) {
               console.log('Error deleting document:', error);
               Alert.alert('Erreur', 'Impossible de supprimer le document.');
@@ -161,10 +166,6 @@ export default function AttestationsScreen() {
 
   return (
     <View style={styles.container}>
-
-    
-
-      {/* CONTENT */}
       <ScrollView contentContainerStyle={styles.content}>
 
         {categories.map((category) => (
@@ -181,52 +182,67 @@ export default function AttestationsScreen() {
             ) : (
               items
                 .filter((item) => item.id_categorie === category.id)
-                .map((item) => (
-                <View key={item.id} style={styles.itemRow}>
+                .map((item) => {
+                  // ✅ Vérifier si le document est uploadé par id_attestation
+                  const isUploaded = !!uploadedDocs[item.id_attestation];
+                  const fileName = uploadedDocs[item.id_attestation];
 
-                  <Text style={styles.itemText}>
-                    {item.titre}
-                  </Text>
+                  return (
+                    <View key={item.id} style={styles.itemRow}>
 
-                  {item.titre2 ? (
-                    <Text style={styles.itemSubtitle}>{item.titre2}</Text>
-                  ) : null}
+                      <Text style={styles.itemText}>
+                        {item.titre}
+                        {isUploaded && <Text style={{ color: 'green' }}> ✓</Text>}
+                      </Text>
 
-                  {filesByAttestation[item.id_attestation] || filesByTitle[normalizeTitle(item.titre)] ? (
-                    <Text style={styles.fileName}>
-                      {filesByAttestation[item.id_attestation] || filesByTitle[normalizeTitle(item.titre)]}
-                    </Text>
-                  ) : (
-                    <Text style={styles.fileNameEmpty}>Aucun fichier</Text>
-                  )}
+                      {item.titre2 ? (
+                        <Text style={styles.itemSubtitle}>{item.titre2}</Text>
+                      ) : null}
 
-                  <View style={styles.actions}>
+                      {isUploaded ? (
+                        <Text style={styles.fileName}>
+                          {fileName}
+                        </Text>
+                      ) : (
+                        <Text style={styles.fileNameEmpty}>Aucun fichier</Text>
+                      )}
 
-                    <TouchableOpacity
-                      style={styles.uploadBtn}
-                      onPress={() => handleUpload(item)}
-                    >
-                      <Text style={styles.uploadText}>Importer</Text>
-                      <Upload size={16} color="#fff" />
-                    </TouchableOpacity>
+                      <View style={styles.actions}>
 
-                    <TouchableOpacity
-                      style={styles.iconCircle}
-                      onPress={() => handleView(item)}
-                    >
-                      <Eye size={18} color="#2b5bbb" />
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.uploadBtn, isUploaded && styles.replaceBtn]}
+                          onPress={() => handleUpload(item)}
+                        >
+                          <Text style={styles.uploadText}>
+                            {isUploaded ? 'Remplacer' : 'Importer'}
+                          </Text>
+                          <Upload size={16} color="#fff" />
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                      style={styles.iconDanger}
-                      onPress={() => handleDelete(item)}
-                    >
-                      <Trash2 size={18} color="#b64a2f" />
-                    </TouchableOpacity>
+                        {/* Bouton voir - seulement si le document est uploadé */}
+                        {isUploaded && (
+                          <TouchableOpacity
+                            style={styles.iconCircle}
+                            onPress={() => handleView(item)}
+                          >
+                            <Eye size={18} color="#2b5bbb" />
+                          </TouchableOpacity>
+                        )}
 
-                  </View>
-                </View>
-              ))
+                        {/* Bouton supprimer - seulement si le document est uploadé */}
+                        {isUploaded && (
+                          <TouchableOpacity
+                            style={styles.iconDanger}
+                            onPress={() => handleDelete(item)}
+                          >
+                            <Trash2 size={18} color="#b64a2f" />
+                          </TouchableOpacity>
+                        )}
+
+                      </View>
+                    </View>
+                  );
+                })
             )}
 
           </View>
@@ -238,151 +254,22 @@ export default function AttestationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#eef3ff',
-  },
-
-  header: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e9fb',
-  },
-
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 10,
-  },
-
-  iconBtn: {
-    position: 'relative',
-    padding: 8,
-    borderRadius: 12,
-  },
-
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#f7b500',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-  },
-
-  avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#e7eeff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  title: {
-    fontSize: 20,
-    color: '#1b2d5a',
-    marginTop: 10,
-  },
-
-  content: {
-    padding: 15,
-    gap: 15,
-    paddingBottom: 60,
-  },
-
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 15,
-  },
-
-  sectionTitle: {
-    fontSize: 16,
-    color: '#1b2d5a',
-    marginBottom: 10,
-  },
-
-  empty: {
-    fontSize: 13,
-    color: '#7a8ab8',
-  },
-
-  itemRow: {
-    backgroundColor: '#f6f8ff',
-    borderWidth: 1,
-    borderColor: '#e1e9fb',
-    borderRadius: 16,
-    padding: 10,
-    marginBottom: 10,
-  },
-
-  itemText: {
-    color: '#1b2d5a',
-    marginBottom: 10,
-  },
-  itemSubtitle: {
-    fontSize: 12,
-    color: '#5b6a8e',
-    marginBottom: 8,
-  },
-  fileName: {
-    fontSize: 12,
-    color: '#2b5bbb',
-    marginBottom: 10,
-  },
-  fileNameEmpty: {
-    fontSize: 12,
-    color: '#7a8ab8',
-    marginBottom: 10,
-  },
-
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  uploadBtn: {
-    flexDirection: 'row',
-    gap: 5,
-    backgroundColor: '#2b5bbb',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-
-  uploadText: {
-    color: '#fff',
-    fontSize: 12,
-  },
-
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#dfe8ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  iconDanger: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#ffd9c9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#eef3ff' },
+  content: { padding: 15, gap: 15, paddingBottom: 60 },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 15 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1b2d5a', marginBottom: 12 },
+  
+  empty: { fontSize: 13, color: '#7a8ab8', fontStyle: 'italic' }, 
+  
+  itemRow: { backgroundColor: '#f6f8ff', borderWidth: 1, borderColor: '#e1e9fb', borderRadius: 16, padding: 12, marginBottom: 10 },
+  itemText: { color: '#1b2d5a', fontWeight: '600', fontSize: 14, marginBottom: 4 },
+  itemSubtitle: { fontSize: 12, color: '#5b6a8e', marginBottom: 8 },
+  fileName: { fontSize: 12, color: '#2b5bbb', fontWeight: '500', marginBottom: 10 },
+  fileNameEmpty: { fontSize: 12, color: '#7a8ab8', marginBottom: 10 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5 },
+  uploadBtn: { flexDirection: 'row', gap: 6, backgroundColor: '#2b5bbb', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, alignItems: 'center' },
+  replaceBtn: { backgroundColor: '#6c757d' },
+  uploadText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  iconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#dfe8ff', justifyContent: 'center', alignItems: 'center' },
+  iconDanger: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#ffd9c9', justifyContent: 'center', alignItems: 'center' },
 });
