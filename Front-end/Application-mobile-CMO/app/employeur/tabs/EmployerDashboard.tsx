@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from "react"; // 👈 Remplacement de useEffect par useCallback
+import React, { useState, useCallback } from "react"; 
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image } from "react-native";
-import { useFocusEffect , router} from "expo-router"; // 👈 Importation du hook de navigation d'Expo
+import { useFocusEffect, router } from "expo-router"; 
 
-import { Award, FileText, MessageSquare, Phone, Search, UserCheck } from "lucide-react-native";
+// 👈 Ajout de Bell ici
+import { Award, Bell, FileText, MessageSquare, Phone, Search, UserCheck } from "lucide-react-native";
 
 import { getPhase1, getPhase2, getPhase3, getPhase4, getPhase5, getPack } from "@/app/employeur/services/EmployerDashboard";
 import { getPsaudo } from "@/app/employeur/services/token_id";
@@ -53,7 +54,6 @@ export default function EmployerDashboard() {
     missionTermine: 0,
   });
 
-  // 👈 useFocusEffect s'exécute à CHAQUE FOIS que l'utilisateur entre sur la page
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
@@ -81,7 +81,6 @@ export default function EmployerDashboard() {
           if (!isMounted) return;
 
           if (imageData?.image) {
-            // 👈 Ajout de `?t=` avec le timestamp actuel (Date.now()) pour casser le cache de l'image
             const currentPhotoUrl = url() + "documents/photos_employeur/" + imageData.image + "?t=" + Date.now();
             setPhotoUrl(currentPhotoUrl);
           }
@@ -177,7 +176,6 @@ export default function EmployerDashboard() {
         }
       };
 
-      // Exécution de toutes les requêtes à l'entrée sur l'écran
       fetchPackData();
       fetchEmployerImage();
       fetchPhase1();
@@ -278,9 +276,15 @@ export default function EmployerDashboard() {
               <Text style={styles.btnText}>Conseiller</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.btnOutline}  onPress={() => router.push("/employeur/autre/Chat")}>
+            <TouchableOpacity style={styles.btnOutline} onPress={() => router.push("/employeur/autre/Chat")}>
               <MessageSquare size={16} color="#2b5bbb" />
               <Text style={styles.btnText}>Chat</Text>
+            </TouchableOpacity>
+
+            {/* 👈 Nouveau bouton Notification */}
+            <TouchableOpacity style={styles.btnOutline} onPress={() => router.push("/employeur/autre/Notification")}>
+              <Bell size={16} color="#2b5bbb" />
+              <Text style={styles.btnText}>Notification</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -343,7 +347,7 @@ const styles = StyleSheet.create({
   infoContent: { flex: 1 },
   company: { fontSize: 15, fontWeight: "600", color: "#1b2d5a" },
   sub: { color: "#2b5bbb", marginTop: 2, fontSize: 12 },
-  actions: { flexDirection: "row", gap: 10, marginTop: 12 },
+  actions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 }, // 👈 Ajout de flexWrap au cas où l'écran est petit
   btnOutline: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: "#cfd9ee", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 18 },
   btnText: { color: "#2b5bbb", fontSize: 12, fontWeight: "600" },
   card: { backgroundColor: '#fff', borderRadius: 18, padding: 15 },

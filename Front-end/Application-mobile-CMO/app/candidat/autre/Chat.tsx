@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMessages, getSousMessages, CreateMessage, sendMessage, ClotureMessage } from '../../candidat/services/messagerie'; // Ajustez le chemin selon votre projet
-import { getPsaudo } from "../../employeur/services/token_id"; // Ajustez le chemin selon votre projet
+import { getPsaudo } from "../../candidat/services/token_id"; // Ajustez le chemin selon votre projet
 
 interface MessageItem {
   id: number;
@@ -28,6 +28,7 @@ interface MessageItem {
   id_retour: number | null;
   deleted: number;
   last_message?: string;
+  last_message_statut?: number;
 }
 
 interface SousMessageItem {
@@ -94,7 +95,12 @@ export default function ChatScreen() {
             const replies: SousMessageItem[] = Array.isArray(subData) ? subData : subData?.data ?? [];
             const filtered = replies.filter(r => [1, 2, 3, 4, 10].includes(r.statut));
             if (filtered.length > 0) {
-              return { ...msg, last_message: filtered[filtered.length - 1].message };
+              const lastReply = filtered[filtered.length - 1];
+              return { 
+                ...msg, 
+                last_message: lastReply.message,
+                last_message_statut: lastReply.statut
+              };
             }
           } catch (e) {
             console.log("Erreur sous-message pour l'aperçu", e);
@@ -213,18 +219,20 @@ export default function ChatScreen() {
     return heureStr ? heureStr.substring(0, 5) : '';
   };
 
-  // --- Gestion du statut 4 (Clôturée) ---
-  const getStatusBadge = (statut: number) => {
-    switch (statut) {
+  // --- Gestion du statut : CLÔTURÉ EN VERT MAINTENANT ---
+  const getStatusBadge = (statut: number, lastMessageStatut?: number) => {
+    const statusToCheck = lastMessageStatut !== undefined ? lastMessageStatut : statut;
+    
+    switch (statusToCheck) {
       case 4:
-        return { text: 'Clôturé', color: '#ef4444', bg: '#fee2e2' }; // Rouge pour Clôturé
+        return { text: 'Clôturé', color: '#16a34a', bg: '#dcfce7' }; // Vert pour Clôturé
       case 2:
-        return { text: 'Reçu (CMO)', color: '#166534', bg: '#f0fdf4' };
+        return { text: 'Reçu', color: '#d97706', bg: '#fef3c7' }; // Orange pour Reçu (CMO)
       case 1: 
       case 3: 
       case 10:
       default:
-        return { text: 'Envoyé', color: '#2b5bbb', bg: '#eef2ff' };
+        return { text: 'Envoyé', color: '#2563eb', bg: '#dbeafe' }; // Bleu pour Envoyé
     }
   };
 
@@ -276,7 +284,6 @@ export default function ChatScreen() {
 
   // --- RENDU 2 : VUE CHAT DÉTAILLÉ (LECTURE / RÉPONSE) ---
   if (currentView === 'chat' && selectedRootMessage) {
-    // Variable pour savoir si la conversation est clôturée
     const isClosed = selectedRootMessage.statut === 4;
 
     return (
@@ -298,10 +305,9 @@ export default function ChatScreen() {
               <Text style={styles.chatHeaderTitle} numberOfLines={1}>{selectedRootMessage.sujet}</Text>
             </TouchableOpacity>
             
-            {/* Si la conversation est ouverte, on affiche le bouton Clôturer */}
             {!isClosed && (
               <TouchableOpacity style={styles.cloturerBtn} onPress={handleCloturer} disabled={isSending}>
-                <Text style={styles.cloturerBtnText}>À clôturer</Text>
+                <Text style={styles.cloturerBtnText}>Clôturer</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -338,7 +344,6 @@ export default function ChatScreen() {
             </ScrollView>
           )}
 
-          {/* Condition : Si pas clôturé on affiche l'input de réponse, sinon on bloque et on affiche un message */}
           {!isClosed ? (
             <View style={styles.chatInputContainer}>
               <Text style={styles.inputLabelSmall}>Le message (*) :</Text>
@@ -358,8 +363,9 @@ export default function ChatScreen() {
               </View>
             </View>
           ) : (
-            <View >
-            
+            <View style={styles.closedDiscussionBanner}>
+              <Ionicons name="lock-closed" size={16} color="#16a34a" style={{ marginRight: 8 }} />
+              <Text style={styles.closedDiscussionText}>Cette discussion est clôturée</Text>
             </View>
           )}
         </KeyboardAvoidingView>
@@ -396,11 +402,16 @@ export default function ChatScreen() {
             </View>
           ) : (
             mainMessages.map((msg) => {
-              const statusInfo = getStatusBadge(msg.statut);
+              const statusInfo = getStatusBadge(msg.statut, msg.last_message_statut);
               const texteApercu = msg.last_message || msg.description;
+              const isClosedCard = (msg.last_message_statut !== undefined ? msg.last_message_statut : msg.statut) === 4;
 
               return (
-                <TouchableOpacity key={msg.id} style={styles.messageCard} onPress={() => handleOpenDiscussion(msg)}>
+                <TouchableOpacity 
+                  key={msg.id} 
+                  style={[styles.messageCard, isClosedCard && { borderLeftColor: '#16a34a' }]} 
+                  onPress={() => handleOpenDiscussion(msg)}
+                >
                   <View style={styles.messageHeader}>
                     <View style={[styles.badgeType, { backgroundColor: statusInfo.bg }]}>
                       <Text style={[styles.badgeTypeText, { color: statusInfo.color }]}>{statusInfo.text}</Text>
@@ -462,13 +473,13 @@ const styles = StyleSheet.create({
   chatHeaderNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   chatBackBtn: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
   chatHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#1e293b', marginLeft: 6 },
-  cloturerBtn: { backgroundColor: '#ffdede', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 6 },
-  cloturerBtnText: { color: '#ef4444', fontWeight: '700', fontSize: 13 },
+  cloturerBtn: { flexDirection: 'row', backgroundColor: '#dcfce7', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, alignItems: 'center' }, // Fond vert clair
+  cloturerBtnText: { color: '#16a34a', fontWeight: '700', fontSize: 13 }, // Texte vert foncé
   chatScrollContent: { padding: 16, paddingBottom: 24 },
-  userBubbleWrapper: { width: '100%', marginBottom: 10 },
-  cmoBubbleWrapper: { width: '100%', marginBottom: 10 },
-  userBubble: { backgroundColor: '#fffbeb', paddingHorizontal: 16, paddingVertical: 16, borderRadius: 0, borderWidth: 1, borderColor: '#fef08a' },
-  cmoBubble: { backgroundColor: '#f0f9ff', paddingHorizontal: 16, paddingVertical: 16, borderRadius: 0, borderWidth: 1, borderColor: '#e0f2fe' },
+  userBubbleWrapper: { width: '100%', marginBottom: 10, justifyContent: 'flex-start' },
+  cmoBubbleWrapper: { width: '100%', marginBottom: 10, justifyContent: 'flex-end' },
+  userBubble: { backgroundColor: '#fffbeb', paddingHorizontal: 16, paddingVertical: 16, borderRadius: 0, borderWidth: 1, borderColor: '#fef08a', marginRight: 40 },
+  cmoBubble: { backgroundColor: '#f0f9ff', paddingHorizontal: 16, paddingVertical: 16, borderRadius: 0, borderWidth: 1, borderColor: '#e0f2fe', marginLeft: 40 },
   bubbleHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   userAuthor: { fontSize: 16, color: '#0ea5e9', fontWeight: '600' },
   cmoAuthor: { fontSize: 16, color: '#0ea5e9', fontWeight: '600' },
@@ -478,9 +489,9 @@ const styles = StyleSheet.create({
   chatInputContainer: { backgroundColor: '#fff', padding: 16, borderTopWidth: 1, borderTopColor: '#e2e8f0' },
   chatInputRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
   chatTextInput: { flex: 1, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#334155', maxHeight: 90, backgroundColor: '#fff' },
-  chatSendIconBtn: { backgroundColor: '#2b5bbb', width: 44, height: 44, borderRadius: 4, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
-  closedDiscussionBanner: { flexDirection: 'row', backgroundColor: '#fee2e2', padding: 16, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#fca5a5' },
-  closedDiscussionText: { color: '#b91c1c', fontWeight: '600', fontSize: 13, textAlign: 'center' },
+  chatSendIconBtn: { backgroundColor: '#2563eb', width: 44, height: 44, borderRadius: 4, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  closedDiscussionBanner: { flexDirection: 'row', backgroundColor: '#dcfce7', padding: 16, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#bbf7d0' }, // Bannière verte
+  closedDiscussionText: { color: '#16a34a', fontWeight: '600', fontSize: 13, textAlign: 'center' },
   formCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, minHeight: 300, borderWidth: 1, borderColor: '#e2e8f0' },
   inputLabel: { fontSize: 14, color: '#0f172a', fontWeight: '600', marginTop: 12, marginBottom: 6 },
   inputLabelSmall: { fontSize: 13, color: '#0f172a', fontWeight: '500' },

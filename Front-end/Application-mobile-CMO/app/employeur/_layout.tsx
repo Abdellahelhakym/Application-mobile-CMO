@@ -29,6 +29,10 @@ export default function EmployeurLayout() {
         name="autre/Chat"
         options={{ title: "Messagerie", headerShown: true }}
       />
+      <Stack.Screen
+        name="autre/Notification"
+        options={{ title: "Notifications", headerShown: true }}
+      />
 
     </Stack>
   );
