@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
+  TouchableOpacity,Linking,
   View,
 } from "react-native";
 import { changePassword } from "../services/PasswordChange";
@@ -230,7 +230,7 @@ const ChangePasswordScreen: React.FC = () => {
           </TouchableOpacity>
 
           {/* Forgot Password */}
-          <TouchableOpacity style={styles.forgotBtn}>
+          <TouchableOpacity style={styles.forgotBtn} onPress={() => Linking.openURL("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie")}>
             <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
           </TouchableOpacity>
         </View>

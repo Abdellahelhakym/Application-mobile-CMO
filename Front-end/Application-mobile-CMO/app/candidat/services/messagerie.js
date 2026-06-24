@@ -1,11 +1,11 @@
-import { getTokenId } from "../../employeur/services/token_id";
+import { getTokenId } from "./token_id";
 
 import url from "@/app/services/url.js";
 
 export async function getMessages(){
         try {
         const token_id = await getTokenId(); 
-        const response = await fetch(url() + "employeur/messagerie/getMessages", {
+        const response = await fetch(url() + "candidat/messagerie/getMessages", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -22,7 +22,7 @@ export async function getMessages(){
 export async function getSousMessages(id_msg){
         try {
         const token_id = await getTokenId(); 
-        const response = await fetch(url() + "employeur/messagerie/getSousMessages", {
+        const response = await fetch(url() + "candidat/messagerie/getSousMessages", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -42,7 +42,7 @@ export async function getSousMessages(id_msg){
 export async function CreateMessage(message , sujet ){
         try {
         const token_id = await getTokenId(); 
-        const response = await fetch(url() + "employeur/messagerie/CreateMessage", {
+        const response = await fetch(url() + "candidat/messagerie/CreateMessage", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -61,7 +61,7 @@ export async function CreateMessage(message , sujet ){
 export async function sendMessage(message , id_msg){
         try {
         const token_id = await getTokenId(); 
-        const response = await fetch(url() + "employeur/messagerie/sendMessage", {
+        const response = await fetch(url() + "candidat/messagerie/sendMessage", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -78,7 +78,7 @@ export async function sendMessage(message , id_msg){
 export async function ClotureMessage( id_msg){
         try {
         const token_id = await getTokenId(); 
-        const response = await fetch(url() + "employeur/messagerie/ClotureMessage", {
+        const response = await fetch(url() + "candidat/messagerie/ClotureMessage", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
