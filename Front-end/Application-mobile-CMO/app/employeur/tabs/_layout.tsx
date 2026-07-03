@@ -9,7 +9,6 @@ import { getPsaudo } from "@/app/employeur/services/token_id";
 
 export default function Layout() {
   const insets = useSafeAreaInsets();
-  const navBarInset = Platform.OS === "android" && insets.bottom >= 24 ? insets.bottom : 0;
   const [userName, setUserName] = useState("Utilisateur");
 
   const refreshPseudo = useCallback(() => {
@@ -62,10 +61,11 @@ export default function Layout() {
           </View>
         ),
 
-        // ⚪ Navigation Bar (reste blanche)
+        // ⚪ Navigation Bar (Corrigée pour s'aligner parfaitement sur Android et iOS)
         tabBarStyle: {
           backgroundColor: "#fff",
-          height: 70,
+          height: Platform.OS === "ios" ? 85 : 65,
+          paddingBottom: Platform.OS === "ios" ? insets.bottom : 10,
           borderTopWidth: 1,
           borderTopColor: "#e7edf7",
           elevation: 6,
@@ -75,8 +75,7 @@ export default function Layout() {
           shadowOffset: { width: 0, height: -2 },
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
-          position: "absolute",
-          bottom: navBarInset,
+          // L'affichage absolu a été retiré pour stopper la fuite du contenu sous la barre
         },
 
         tabBarLabelStyle: {
