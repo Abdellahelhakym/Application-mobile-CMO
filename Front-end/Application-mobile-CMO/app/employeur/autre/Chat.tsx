@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getMessages, getSousMessages, CreateMessage, sendMessage, ClotureMessage } from '../../employeur/services/messagerie'; 
+import { getMessages, getSousMessages, CreateMessage, sendMessage, ClotureMessage  } from '../../employeur/services/messagerie'; 
 import { getPsaudo } from "../../employeur/services/token_id"; 
 
 interface MessageItem {
@@ -231,7 +231,7 @@ export default function ChatScreen() {
         return { text: 'Envoyé', color: '#2563eb', bg: '#dbeafe' }; 
       case 10:
       case 1:
-        return { text: 'Envoyé', color: '#7c3aed', bg: '#f3e8ff' }; 
+        return { text: 'Envoyé', color: '#2563eb', bg: '#f3e8ff' }; 
       default:
         return { text: 'En cours', color: '#64748b', bg: '#f1f5f9' };
     }
@@ -309,7 +309,7 @@ export default function ChatScreen() {
             
             {!isClosed && (
               <TouchableOpacity style={styles.cloturerBtn} onPress={handleCloturer} disabled={isSending}>
-                <Text style={styles.cloturerBtnText}>Clôturer</Text>
+                <Text style={styles.cloturerBtnText}>À cloturer</Text>
               </TouchableOpacity>
             )}
           </View>

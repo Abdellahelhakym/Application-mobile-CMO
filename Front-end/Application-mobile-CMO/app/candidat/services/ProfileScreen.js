@@ -21,21 +21,3 @@ export async function getProfile() {
     }
 }
 
-export async function deleteAccount() {
-    try {
-        const token_id = await getTokenId();
-        const response = await fetch(url() + "signup/DeleteAccountCandidat", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ token_id }),
-        });
-        const data = await response.json();
-        return data;
-
-    } catch (error) {
-        console.error("Error deleting account:", error);
-        throw error;
-    }
-}

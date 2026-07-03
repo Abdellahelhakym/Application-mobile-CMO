@@ -26,7 +26,8 @@ import {
 
 import { getImage } from "../services/document";
 
-import { deleteAccount, getProfile } from "@/app/candidat/services/ProfileScreen";
+import {  getProfile } from "@/app/candidat/services/ProfileScreen";
+import { deleteAccount } from "@/app/candidat/services/deleteAccount";
 import { Feather } from '@expo/vector-icons';
 
 import url from "@/app/services/url";

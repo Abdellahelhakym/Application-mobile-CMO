@@ -13,12 +13,12 @@ import {
 } from "react-native";
 
 import { PieChart } from "react-native-chart-kit";
-import { MessageSquare, Phone} from "lucide-react-native";
+import { Bell, MessageSquare, Phone} from "lucide-react-native";
 import {
     getDashboardData,
     getSecteursActivite,
 } from "@/app/candidat/services/DashboardScreen";
-
+import { getNotification } from '../../candidat/services/messagerie'; 
 import { getListFils } from "@/app/candidat/services/AttestationsScreen";
 
 type DashboardDataType = {
@@ -129,13 +129,15 @@ export default function DashboardScreen() {
     );
     const [missingDocs, setMissingDocs] = useState<MissingDocument[]>([]);
     const [badgeLoading, setBadgeLoading] = useState(false);
+    const [notifCount, setNotifCount] = useState<number>(0);
 
     const loadDashboard = React.useCallback(async () => {
         try {
-            const [data, secteurs, docs] = await Promise.all([
+            const [data, secteurs, docs, notifRes] = await Promise.all([
                 getDashboardData(),
                 getSecteursActivite(),
                 getListFils(),
+                getNotification(),
             ]);
 
             setDashboardData(normalizeDashboardData(data));
@@ -146,6 +148,8 @@ export default function DashboardScreen() {
                     ? docs.data
                     : [];
             setMissingDocs(list as MissingDocument[]);
+            
+            if (notifRes?.success) setNotifCount(notifRes.nombre_msg ?? 0);
         } catch (error) {
             console.error("Error fetching dashboard:", error);
             setDashboardData(emptyDashboardData);
@@ -227,6 +231,17 @@ export default function DashboardScreen() {
                         <TouchableOpacity style={styles.btnOutline}   onPress={() => router.push('/candidat/autre/Chat')}>
                             <MessageSquare size={16} color="#2b5bbb" />
                             <Text style={styles.btnText}>Chat</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.btnOutline} onPress={() => router.push("/candidat/autre/Notification")}>
+                            <View>
+                                <Bell size={19} color="#2b5bbb" />
+                                {notifCount > 0 && (
+                                    <View style={styles.badge}>
+                                        <Text style={styles.badgeText}>{notifCount > 9 ? '9+' : notifCount}</Text>
+                                    </View>
+                                )}
+                            </View>
+                            <Text style={styles.btnText}>Notification</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -430,6 +445,8 @@ const styles = StyleSheet.create({
     },
     actions: { flexDirection: "row", gap: 10, marginTop: 12 },
     btnOutline: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: "#cfd9ee", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 18 },
+    badge: { position: 'absolute', right: -6, top: -6, backgroundColor: '#ff3b30', borderRadius: 10, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4, borderWidth: 1.5, borderColor: '#fff' },
+    badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
     badgeIcon: {
         width: 28,
         height: 28,

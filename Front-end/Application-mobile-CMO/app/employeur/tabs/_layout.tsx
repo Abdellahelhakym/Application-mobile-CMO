@@ -23,70 +23,46 @@ export default function Layout() {
     }, [refreshPseudo])
   );
 
-
-
   return (
     <Tabs
-          screenOptions={({ route }) => ({
-            headerShown: true,
-    
-            // ✅ Sur iOS : on vide le titre natif et on le met dans headerLeft
-            // ✅ Sur Android/Web : comportement normal
-            ...(Platform.OS === "ios" && {
-              headerTitle: () => null,
-              headerLeft: () => (
-                <Text
-                  style={{
-                    fontSize: 18,
-                    color: "#1b2d5a",
-                    fontWeight: "600",
-                    marginLeft: 15,
-                  }}
-                >
-                  {getTitle(route.name)}
-                </Text>
-              ),
-            }),
-    
-            // Sur Android et Web : titre aligné à gauche normalement
-            ...(Platform.OS !== "ios" && {
-              headerTitleAlign: "left",
-              headerTitleStyle: {
-                fontSize: 18,
-                color: "#1b2d5a",
-                fontWeight: "600",
-              },
-            }),
-    
-            // 👤 HEADER RIGHT
-            headerRight: () => (
-              <View
-                style={{
-                  marginRight: 15,
-                  flexDirection: "row",
-                  alignItems: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: "#1b2d5a",
-                    marginRight: 10,
-                    fontWeight: "500",
-                  }}
-                >
-                  {userName}
-                </Text>
+      screenOptions={({ route }) => ({
+        headerShown: true,
 
-                
-    
+        // 🔵 Fond bleu du Header
+        headerStyle: {
+          backgroundColor: "#122F78",
+        },
+
+        // ⚪ Titres en BLANC sur iOS
+        ...(Platform.OS === "ios" && {
+          headerTitle: () => null,
+          headerLeft: () => (
+            <Text style={{ fontSize: 18, color: "#ffffff", fontWeight: "600", marginLeft: 15 }}>
+              {getTitle(route.name)}
+            </Text>
+          ),
+        }),
+
+        // ⚪ Titres en BLANC sur Android/Web
+        ...(Platform.OS !== "ios" && {
+          headerTitleAlign: "left",
+          headerTitleStyle: {
+            fontSize: 18,
+            color: "#ffffff",
+            fontWeight: "600",
+          },
+        }),
+
+        // ⚪ Nom utilisateur en BLANC
+        headerRight: () => (
+          <View style={{ marginRight: 15, flexDirection: "row", alignItems: "center" }}>
+            <Text style={{ fontSize: 13, color: "#ffffff", marginRight: 10, fontWeight: "500" }}>
+              {userName}
+            </Text>
           </View>
         ),
 
-        headerStyle: {
-          backgroundColor: "#fff",
-        },
-
+        // ⚪ Navigation Bar (reste blanche)
         tabBarStyle: {
           backgroundColor: "#fff",
           height: 70,
@@ -112,104 +88,30 @@ export default function Layout() {
         tabBarInactiveTintColor: "#7a8ab8",
       })}
     >
-     {/* ACCUEIL */}
-<Tabs.Screen
-  name="EmployerDashboard"
-  options={{
-    title: "Accueil", 
-    
-
-    tabBarIcon: ({ color, focused }) => (
-      <View >
-        <Feather name="home" size={20} color={color} />
-      </View>
-    ),
-  }}
-/>
-
-<Tabs.Screen
-  name="MyOffersScreen"
-  options={{
-    title: "Commandes", 
-    
-
-    tabBarIcon: ({ color, focused }) => (
-      <View >
-       <Feather name="shopping-bag" size={20} color={color} />
-      </View>
-    ),
-  }}
-/>
-
-<Tabs.Screen
-  name="EmployeurCandidatures"
-  options={{
-    title: "Candidatures", 
-    
-
-    tabBarIcon: ({ color, focused }) => (
-      <View >
-       <Feather name="users" size={20} color={color} />
-      </View>
-    ),
-  }}
-/>
-
-
-<Tabs.Screen
-  name="CVDatabaseScreen"
-  options={{
-    title: "Park CV", 
-    tabBarLabel: ({ color }) => (
-      <Text style={[styles.tabLabel, { color }]} numberOfLines={2}>
-        Park CV CMO
-      </Text>
-    ),
-    tabBarIcon: ({ color }) => (
-      <View>
-       <Feather name="user-plus" size={20} color={color} />
-      </View>
-    ),
-  }}
-/>
-<Tabs.Screen
-  name="EmployerProfileScreen"
-  options={{
-    title: "Profil", 
-  
-
-    tabBarIcon: ({ color, focused }) => (
-      <View>
-       <Feather name="user" size={20} color={color} />
-      </View>
-    ),
-  }}
-/>
-   
-
-    
-    
+      <Tabs.Screen name="EmployerDashboard" options={{ title: "Accueil", tabBarIcon: ({ color }) => <Feather name="home" size={20} color={color} /> }} />
+      <Tabs.Screen name="MyOffersScreen" options={{ title: "Commandes", tabBarIcon: ({ color }) => <Feather name="shopping-bag" size={20} color={color} /> }} />
+      <Tabs.Screen name="EmployeurCandidatures" options={{ title: "Candidatures", tabBarIcon: ({ color }) => <Feather name="users" size={20} color={color} /> }} />
+      <Tabs.Screen 
+        name="CVDatabaseScreen" 
+        options={{ 
+          title: "Park CV", 
+          tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]} numberOfLines={2}>Park CV CMO</Text>,
+          tabBarIcon: ({ color }) => <Feather name="user-plus" size={20} color={color} /> 
+        }} 
+      />
+      <Tabs.Screen name="EmployerProfileScreen" options={{ title: "Profil", tabBarIcon: ({ color }) => <Feather name="user" size={20} color={color} /> }} />
     </Tabs>
   );
-
 }
 
-
-/* 🔥 TITRE PAR PAGE */
 function getTitle(name: string) {
   switch (name) {
-    case "EmployerDashboard":
-      return "Accueil";
-    case "MyOffersScreen":
-      return "Commandes";
-    case "CreateOfferScreen":
-      return "Ajouter";
-    case "CVDatabaseScreen":
-      return "Candidats";
-    case "EmployerProfileScreen":
-      return "Profil";
-    default:
-      return "";
+    case "EmployerDashboard": return "Accueil";
+    case "MyOffersScreen": return "Commandes";
+    case "EmployeurCandidatures": return "Candidatures";
+    case "CVDatabaseScreen": return "Candidats";
+    case "EmployerProfileScreen": return "Profil";
+    default: return "";
   }
 }
 

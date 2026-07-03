@@ -25,6 +25,7 @@ import {
 import { getEmployerInfo } from "@/app/employeur/services/EmployerInfoScreen";
 import { getImage } from '@/app/employeur/services/documents';
 import url from "@/app/services/url.js";
+import { deleteAccount } from "@/app/employeur/services/deleteAccount";
 
 export default function EmployerProfileScreen() {
 
@@ -96,6 +97,23 @@ export default function EmployerProfileScreen() {
       };
     }, [])
   );
+  const handleDeleteAccount = () => {
+      Alert.alert(
+        ' Suppression compte',
+        'Cette action est irréversible. Voulez-vous continuer ?',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Supprimer',
+            style: 'destructive',
+            onPress: async () => {
+              await deleteAccount();
+              router.replace('/loginEmp');
+            },
+          },
+        ]
+      );
+    };
 
   return (
     <View style={styles.container}>
@@ -166,7 +184,7 @@ export default function EmployerProfileScreen() {
         </TouchableOpacity>
 
         {/* ❌ DELETE */}
-        <TouchableOpacity style={styles.delete}>
+        <TouchableOpacity style={styles.delete} onPress={handleDeleteAccount}>
           <Trash2 size={20} color="red" />
           <Text style={styles.deleteText}>Supprimer le compte</Text>
         </TouchableOpacity>

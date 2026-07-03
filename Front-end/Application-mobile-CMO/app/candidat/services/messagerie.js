@@ -92,3 +92,21 @@ export async function ClotureMessage( id_msg){
         throw error;
     }
 }
+
+export async function getNotification(){
+        try {
+        const token_id = await getTokenId(); 
+        const response = await fetch(url() + "candidat/messagerie/Notification", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token_id }),
+        });
+        const data = await response.json();
+        return data;
+        } catch (error) {
+        console.error("Error fetching notifications:", error);
+        throw error;
+    }
+}

@@ -88,7 +88,25 @@ export async function ClotureMessage( id_msg){
         const data = await response.json();
         return data;
         } catch (error) {
-        console.error("Error sending message:", error);
+        console.error("Error clôturant le message:", error);
+        throw error;
+    }
+}
+
+export async function getNotification(){
+        try {
+        const token_id = await getTokenId(); 
+        const response = await fetch(url() + "employeur/messagerie/Notification", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token_id }),
+        });
+        const data = await response.json();
+        return data;
+        } catch (error) {
+        console.error("Error fetching notifications:", error);
         throw error;
     }
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator } from "react-native";
 import { Bell, Briefcase, MessageSquare, CheckCircle, Clock } from "lucide-react-native";
 import { useRouter } from "expo-router";
-import { getNotification } from '../../employeur/services/messagerie'; 
+import { getNotification } from '../../candidat/services/messagerie'; 
 
 interface NotificationItem {
   id: string;

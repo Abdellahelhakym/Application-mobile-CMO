@@ -26,6 +26,11 @@ export default function CandidatLayout() {
         name="autre/Chat"
         options={{ title: "Chat", headerShown: true }}
       />
+        <Stack.Screen
+        name="autre/Notification"
+        options={{ title: "Notifications", headerShown: true }}
+      />
+
      
     </Stack>
   );
