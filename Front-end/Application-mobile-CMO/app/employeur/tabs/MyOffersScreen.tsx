@@ -332,7 +332,8 @@ export default function MyOffersScreen() {
 
                       let displayValue = '-';
                       if (col.key === 'statut_fiche') {
-                        displayValue = row?.statut_titre || (value === '2' ? 'Actif' : 'Inactif');
+                        // FIX: Affiche le statut textuel ou l'état numérique brut sans forcer "Inactif"
+                        displayValue = row?.statut_titre || (value !== undefined && value !== null ? `État ${value}` : '-');
                       } else if (col.key === 'statut' && activeTab === 'quotes') {
                         displayValue = row?.statut_titre || (Number(value) === 1 ? 'Accepté' : Number(value) === 0 ? 'Refusé' : value ?? '-');
                       } else if (col.key === 'nbr_poste') {
@@ -359,7 +360,6 @@ export default function MyOffersScreen() {
                         const idFichePoste = row?.id_fiche_poste;
                         const currentStatut = Number(row?.statut);
 
-                        // Condition : Afficher les boutons SEULEMENT si statut est égal à 2
                         if (currentStatut === 2) {
                           return (
                             <View key={`${col.key}-${index}`} style={styles.verticalRow}>
@@ -368,25 +368,19 @@ export default function MyOffersScreen() {
                                 <ActivityIndicator size="small" color="#2b5bbb" />
                               ) : (
                                 <View style={styles.radioGroup}>
-                                  {/* Bouton Accepter (finaliser = 3) */}
                                   <TouchableOpacity 
                                     style={styles.radioButtonContainer}
                                     onPress={() => triggerActionConfirmation(3, idFichePoste, idDevis, row?.numero_devis)}
                                   >
-                                    <View style={styles.radioCircle}>
-                                      {/* Cercle vide par défaut, l'état initial étant en attente (statut 2) */}
-                                    </View>
+                                    <View style={styles.radioCircle}></View>
                                     <Text style={styles.radioLabel}>Accepter</Text>
                                   </TouchableOpacity>
 
-                                  {/* Bouton Refuser (finaliser = 4) */}
                                   <TouchableOpacity 
                                     style={styles.radioButtonContainer}
                                     onPress={() => triggerActionConfirmation(4, idFichePoste, idDevis)}
                                   >
-                                    <View style={styles.radioCircle}>
-                                      {/* Cercle vide par défaut */}
-                                    </View>
+                                    <View style={styles.radioCircle}></View>
                                     <Text style={styles.radioLabel}>Refuser</Text>
                                   </TouchableOpacity>
                                 </View>
@@ -394,7 +388,6 @@ export default function MyOffersScreen() {
                             </View>
                           );
                         } else {
-                          // Si le statut n'est pas 2, on masque les boutons d'action et on affiche la valeur par défaut ou rien
                           return (
                             <View key={`${col.key}-${index}`} style={styles.verticalRow}>
                               <Text style={styles.verticalLabel}>{col.label}</Text>
@@ -541,13 +534,10 @@ const styles = StyleSheet.create({
   verticalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
   verticalLabel: { fontSize: 11, color: '#2b5bbb', fontWeight: '600', flex: 0.35 },
   verticalValue: { fontSize: 12, color: '#1b2d5a', flex: 0.65, textAlign: 'right' },
-  
-  // 🔘 Styles des boutons Radio d'Action
   radioGroup: { flexDirection: 'row', gap: 12, flex: 0.65, justifyContent: 'flex-end' },
   radioButtonContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   radioCircle: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#94a3b8', alignItems: 'center', justifyContent: 'center' },
   radioLabel: { fontSize: 11, color: '#475569', fontWeight: '500' },
-
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.3)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalCard: { width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 16 },
   modalTitle: { fontSize: 16, color: '#1b2d5a', marginBottom: 10, fontWeight: '600' },
