@@ -1,21 +1,20 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  SafeAreaView,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ClotureMessage, CreateMessage, getMessages, getSousMessages, sendMessage } from '../../employeur/services/messagerie';
-import { getPsaudo } from "../../employeur/services/token_id";
+import { Ionicons } from '@expo/vector-icons';
+import { getMessages, getSousMessages, CreateMessage, sendMessage, ClotureMessage  } from '../../employeur/services/messagerie'; 
+import { getPsaudo } from "../../employeur/services/token_id"; 
 
 interface MessageItem {
   id: number;
@@ -46,17 +45,16 @@ interface SousMessageItem {
 }
 
 export default function ChatScreen() {
-  const insets = useSafeAreaInsets();
   const [currentView, setCurrentView] = useState<'home' | 'chat' | 'compose'>('home');
   const [selectedRootMessage, setSelectedRootMessage] = useState<MessageItem | null>(null);
-
+  
   const [sujet, setSujet] = useState('');
   const [message, setMessage] = useState('');
   const [userPseudo, setUserPseudo] = useState<string>('Moi');
 
   const [mainMessages, setMainMessages] = useState<MessageItem[]>([]);
   const [currentThreadReplies, setCurrentThreadReplies] = useState<SousMessageItem[]>([]);
-
+  
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingChat, setLoadingChat] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
@@ -82,12 +80,13 @@ export default function ChatScreen() {
     }
   };
 
+  // Récupérer les discussions principales
   const fetchMainMessages = async () => {
     try {
       setLoading(true);
       const data = await getMessages();
       const messagesList: MessageItem[] = Array.isArray(data) ? data : data?.data ?? [];
-
+      
       const messagesWithLastMsg = await Promise.all(
         messagesList.map(async (msg) => {
           try {
@@ -96,8 +95,8 @@ export default function ChatScreen() {
             const filtered = replies.filter(r => [1, 2, 3, 4, 10].includes(r.statut));
             if (filtered.length > 0) {
               const lastReply = filtered[filtered.length - 1];
-              return {
-                ...msg,
+              return { 
+                ...msg, 
                 last_message: lastReply.message,
                 last_message_statut: lastReply.statut
               };
@@ -108,6 +107,7 @@ export default function ChatScreen() {
           return msg;
         })
       );
+
       setMainMessages(messagesWithLastMsg);
     } catch (error) {
       console.error('Erreur lors de la récupération des messages principaux:', error);
@@ -116,12 +116,17 @@ export default function ChatScreen() {
     }
   };
 
+  // Récupérer l'historique des sous-messages
   const fetchReplies = async (id_msg: number) => {
     try {
       setLoadingChat(true);
       const data = await getSousMessages(id_msg);
       const repliesList: SousMessageItem[] = Array.isArray(data) ? data : data?.data ?? [];
-      const filteredReplies = repliesList.filter(reply => [1, 2, 3, 4, 10].includes(reply.statut));
+      
+      const filteredReplies = repliesList.filter(reply => 
+        [1, 2, 3, 4, 10].includes(reply.statut)
+      );
+
       setCurrentThreadReplies(filteredReplies);
     } catch (error) {
       console.error('Erreur lors de la récupération des sous-messages:', error);
@@ -152,6 +157,7 @@ export default function ChatScreen() {
 
     try {
       setIsSending(true);
+      
       if (currentView === 'compose') {
         await CreateMessage(message.trim(), sujet.trim());
         setSujet('');
@@ -164,6 +170,7 @@ export default function ChatScreen() {
         await fetchReplies(rootId);
         setSelectedRootMessage(prev => prev ? { ...prev, statut: 3 } : null);
       }
+
       Alert.alert('Succès', 'Votre message a bien été envoyé !');
     } catch (error) {
       console.error("Erreur lors de l'envoi du message:", error);
@@ -175,25 +182,29 @@ export default function ChatScreen() {
 
   const handleCloturer = () => {
     if (!selectedRootMessage) return;
+
     Alert.alert('Clôture', 'Voulez-vous clôturer cette discussion ?', [
       { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Oui, Clôturer',
+      { 
+        text: 'Oui, Clôturer', 
         onPress: async () => {
           try {
             setIsSending(true);
-            await ClotureMessage(selectedRootMessage.id);
+            const rootId = selectedRootMessage.id;
+            
+            await ClotureMessage(rootId);
+            
             Alert.alert('Succès', 'La discussion a été clôturée avec succès.');
             setMessage('');
             setCurrentView('home');
             await fetchMainMessages();
           } catch (error) {
-            console.error("Erreur lors de la clôture:", error);
+            console.error("Erreur lors de la clôture du message:", error);
             Alert.alert('Erreur', "Impossible de clôturer la discussion.");
           } finally {
             setIsSending(false);
           }
-        }
+        } 
       }
     ]);
   };
@@ -204,106 +215,128 @@ export default function ChatScreen() {
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  const formatHeure = (heureStr: string) => heureStr ? heureStr.substring(0, 5) : '';
+  const formatHeure = (heureStr: string) => {
+    return heureStr ? heureStr.substring(0, 5) : '';
+  };
 
   const getStatusBadge = (statut: number, lastMessageStatut?: number) => {
     const statusToCheck = lastMessageStatut !== undefined ? lastMessageStatut : statut;
+    
     switch (statusToCheck) {
-      case 4: return { text: 'Clôturé', color: '#16a34a', bg: '#dcfce7' };
-      case 2: return { text: 'reçu', color: '#d97706', bg: '#fef3c7' };
-      case 3: return { text: 'Envoyé', color: '#2563eb', bg: '#dbeafe' };
+      case 4:
+        return { text: 'Clôturé', color: '#16a34a', bg: '#dcfce7' };
+      case 2:
+        return { text: 'reçu', color: '#d97706', bg: '#fef3c7' }; 
+      case 3:
+        return { text: 'Envoyé', color: '#2563eb', bg: '#dbeafe' }; 
       case 10:
-      case 1: return { text: 'Envoyé', color: '#2563eb', bg: '#f3e8ff' };
-      default: return { text: 'En cours', color: '#64748b', bg: '#f1f5f9' };
+      case 1:
+        return { text: 'Envoyé', color: '#2563eb', bg: '#f3e8ff' }; 
+      default:
+        return { text: 'En cours', color: '#64748b', bg: '#f1f5f9' };
     }
   };
 
-  // --- RENDU 1 : COMPOSER ---
+  // --- RENDU 1 : CRÉER UN NOUVEAU SUJET ---
   if (currentView === 'compose') {
     return (
       <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-        >
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <TouchableOpacity style={styles.backBanner} onPress={() => { setCurrentView('home'); fetchMainMessages(); }}>
-              <Ionicons name="arrow-back" size={20} color="#2b5bbb" style={{ marginRight: 8 }} />
-              <Text style={styles.backBannerText}>Retour à l'historique</Text>
+        <ScrollView contentContainerStyle={styles.content}>
+          <TouchableOpacity 
+            style={styles.backBanner} 
+            onPress={() => {
+              setCurrentView('home');
+              fetchMainMessages();
+            }}
+          >
+            <Ionicons name="arrow-back" size={20} color="#2b5bbb" style={{ marginRight: 8 }} />
+            <Text style={styles.backBannerText}>Retour à l'historique</Text>
+          </TouchableOpacity>
+
+          <View style={styles.formCard}>
+            <Text style={styles.inputLabel}>Le sujet (*) :</Text>
+            <TextInput
+              style={styles.singleInput}
+              value={sujet}
+              onChangeText={setSujet}
+              placeholder="Entrez le sujet"
+              placeholderTextColor="#94a3b8"
+            />
+
+            <Text style={styles.inputLabel}>Le message (*) :</Text>
+            <TextInput
+              style={styles.multiInput}
+              value={message}
+              onChangeText={setMessage}
+              placeholder="Écrivez votre message ici..."
+              placeholderTextColor="#94a3b8"
+              multiline
+              textAlignVertical="top"
+            />
+
+            <TouchableOpacity style={[styles.sendBtn, isSending && styles.disabledBtn]} onPress={handleSendMessage} disabled={isSending}>
+              {isSending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.sendBtnText}>Envoyer le message</Text>}
             </TouchableOpacity>
-            <View style={styles.formCard}>
-              <Text style={styles.inputLabel}>Le sujet (*) :</Text>
-              <TextInput style={styles.singleInput} value={sujet} onChangeText={setSujet} placeholder="Entrez le sujet" placeholderTextColor="#94a3b8" />
-              <Text style={styles.inputLabel}>Le message (*) :</Text>
-              <TextInput style={styles.multiInput} value={message} onChangeText={setMessage} placeholder="Écrivez votre message ici..." placeholderTextColor="#94a3b8" multiline textAlignVertical="top" />
-              <TouchableOpacity style={[styles.sendBtn, isSending && styles.disabledBtn]} onPress={handleSendMessage} disabled={isSending}>
-                {isSending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.sendBtnText}>Envoyer le message</Text>}
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
-  // --- RENDU 2 : CHAT DÉTAILLÉ ---
+  // --- RENDU 2 : VUE CHAT DÉTAILLÉ (LECTURE / RÉPONSE) ---
   if (currentView === 'chat' && selectedRootMessage) {
-    const currentDiscussionStatut = selectedRootMessage.last_message_statut !== undefined
-      ? selectedRootMessage.last_message_statut
-      : selectedRootMessage.statut;
+    const currentDiscussionStatut = selectedRootMessage.last_message_statut !== undefined ? selectedRootMessage.last_message_statut : selectedRootMessage.statut;
     const isClosed = currentDiscussionStatut === 4;
 
     return (
-      <View style={styles.container}>
-        <View style={styles.chatHeaderNav}>
-          <TouchableOpacity style={styles.chatBackBtn} onPress={() => { setCurrentView('home'); fetchMainMessages(); }}>
-            <Ionicons name="arrow-back" size={22} color="#1b2d5a" />
-            <Text style={styles.chatHeaderTitle} numberOfLines={1}>{selectedRootMessage.sujet}</Text>
-          </TouchableOpacity>
-          {!isClosed && (
-            <TouchableOpacity style={styles.cloturerBtn} onPress={handleCloturer} disabled={isSending}>
-              <Text style={styles.cloturerBtnText}>À cloturer</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/*
-          IMPORTANT :
-          - Sur Android, app.json a "softwareKeyboardLayoutMode": "resize", donc la fenêtre
-            est déjà redimensionnée automatiquement par le système quand le clavier s'ouvre.
-            On NE met PAS de behavior ici pour Android (undefined) sinon ça décale deux fois.
-          - Sur iOS, on garde "padding" car iOS n'a pas d'équivalent au resize mode.
-          - Aucun position:'absolute' n'est utilisé pour l'input : il est en flux flex normal,
-            donc il reste toujours juste au-dessus du clavier ET au-dessus de la barre de
-            navigation Android (3 boutons / gestes), sur tous les téléphones.
-        */}
+      <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView
-          style={styles.chatBody}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 70}
         >
+          <View style={styles.chatHeaderNav}>
+            <TouchableOpacity 
+              style={styles.chatBackBtn} 
+              onPress={() => {
+                setCurrentView('home');
+                fetchMainMessages();
+              }}
+            >
+              <Ionicons name="arrow-back" size={22} color="#1b2d5a" />
+              <Text style={styles.chatHeaderTitle} numberOfLines={1}>{selectedRootMessage.sujet}</Text>
+            </TouchableOpacity>
+            
+            {!isClosed && (
+              <TouchableOpacity style={styles.cloturerBtn} onPress={handleCloturer} disabled={isSending}>
+                <Text style={styles.cloturerBtnText}>À cloturer</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           {loadingChat ? (
             <View style={[styles.container, styles.centerItem]}>
               <ActivityIndicator size="large" color="#2b5bbb" />
             </View>
           ) : (
-            <ScrollView
+            <ScrollView 
               ref={scrollViewRef}
-              style={styles.chatScrollView}
               contentContainerStyle={styles.chatScrollContent}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
               onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
             >
               {currentThreadReplies.map((subMsg) => {
                 const isCMO = subMsg.statut === 2 || subMsg.type_msg === 'Conseiller';
+
                 return (
                   <View key={subMsg.id} style={isCMO ? styles.cmoBubbleWrapper : styles.userBubbleWrapper}>
                     <View style={isCMO ? styles.cmoBubble : styles.userBubble}>
                       <View style={styles.bubbleHeaderRow}>
-                        <Text style={isCMO ? styles.cmoAuthor : styles.userAuthor}>{isCMO ? 'CMO' : userPseudo.toLowerCase()}</Text>
-                        <Text style={styles.bubbleDate}>{formatDate(subMsg.date_msg)} {formatHeure(subMsg.heure_msg)}</Text>
+                        <Text style={isCMO ? styles.cmoAuthor : styles.userAuthor}>
+                          {isCMO ? 'CMO' : userPseudo.toLowerCase()}
+                        </Text>
+                        <Text style={styles.bubbleDate}>
+                          {formatDate(subMsg.date_msg)} {formatHeure(subMsg.heure_msg)}
+                        </Text>
                       </View>
                       <Text style={isCMO ? styles.cmoText : styles.userText}>{subMsg.message}</Text>
                     </View>
@@ -314,7 +347,8 @@ export default function ChatScreen() {
           )}
 
           {!isClosed ? (
-            <View style={[styles.chatInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+            <View style={styles.chatInputContainer}>
+              <Text style={styles.inputLabelSmall}>Le message (*) :</Text>
               <View style={styles.chatInputRow}>
                 <TextInput
                   style={styles.chatTextInput}
@@ -324,7 +358,6 @@ export default function ChatScreen() {
                   placeholderTextColor="#94a3b8"
                   multiline
                   editable={!isSending}
-                  onFocus={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
                 />
                 <TouchableOpacity style={[styles.chatSendIconBtn, isSending && styles.disabledBtn]} onPress={handleSendMessage} disabled={isSending}>
                   {isSending ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="send" size={18} color="#fff" />}
@@ -332,17 +365,17 @@ export default function ChatScreen() {
               </View>
             </View>
           ) : (
-            <View style={[styles.closedDiscussionBanner, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+            <View style={styles.closedDiscussionBanner}>
               <Ionicons name="lock-closed" size={16} color="#16a34a" style={{ marginRight: 8 }} />
               <Text style={styles.closedDiscussionText}>Cette discussion est clôturée</Text>
             </View>
           )}
         </KeyboardAvoidingView>
-      </View>
+      </SafeAreaView>
     );
   }
 
-  // --- RENDU 3 : HOME ---
+  // --- RENDU 3 : HISTORIQUE PRINCIPAL (HOME) ---
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -351,6 +384,7 @@ export default function ChatScreen() {
             <Ionicons name="create-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
             <Text style={styles.composeBtnText}>Rédiger un message</Text>
           </TouchableOpacity>
+
           <View style={styles.inboxBanner}>
             <Ionicons name="mail" size={18} color="#2b5bbb" style={{ marginRight: 8 }} />
             <Text style={styles.inboxBannerText}>Boîte de réception</Text>
@@ -359,27 +393,46 @@ export default function ChatScreen() {
 
         <View style={styles.listContainer}>
           <Text style={styles.historyTitle}>Historique des échanges</Text>
+
           {loading ? (
-            <View style={styles.centerItem}><ActivityIndicator size="small" color="#1b2d5a" /></View>
+            <View style={styles.centerItem}>
+              <ActivityIndicator size="small" color="#1b2d5a" />
+            </View>
           ) : mainMessages.length === 0 ? (
-            <View style={styles.emptyCard}><Text style={styles.emptyText}>Aucune discussion ouverte.</Text></View>
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>Aucune discussion ouverte.</Text>
+            </View>
           ) : (
             mainMessages.map((msg) => {
               const statusInfo = getStatusBadge(msg.statut, msg.last_message_statut);
-              const isClosedCard = (msg.last_message_statut !== undefined ? msg.last_message_statut : msg.statut) === 4;
+              const texteApercu = msg.last_message || msg.description;
+              const currentStatut = msg.last_message_statut !== undefined ? msg.last_message_statut : msg.statut;
+              const isClosedCard = currentStatut === 4;
+
               return (
-                <TouchableOpacity key={msg.id} style={[styles.messageCard, isClosedCard && { borderLeftColor: '#16a34a' }]} onPress={() => handleOpenDiscussion(msg)}>
+                <TouchableOpacity 
+                  key={msg.id} 
+                  style={[styles.messageCard, isClosedCard && { borderLeftColor: '#16a34a' }]} 
+                  onPress={() => handleOpenDiscussion(msg)}
+                >
                   <View style={styles.messageHeader}>
                     <View style={[styles.badgeType, { backgroundColor: statusInfo.bg }]}>
                       <Text style={[styles.badgeTypeText, { color: statusInfo.color }]}>{statusInfo.text}</Text>
                     </View>
-                    <Text style={styles.messageDate}>{formatDate(msg.date_sujet)} à {formatHeure(msg.heure_sujet)}</Text>
+                    <Text style={styles.messageDate}>
+                      {formatDate(msg.date_sujet)} à {formatHeure(msg.heure_sujet)}
+                    </Text>
                   </View>
+
                   <View style={styles.sujetRow}>
                     <Text style={styles.sujetLabel}>Sujet : </Text>
                     <Text style={styles.sujetText} numberOfLines={1}>{msg.sujet}</Text>
                   </View>
-                  <Text style={styles.msgPreview} numberOfLines={2}>{msg.last_message || msg.description}</Text>
+
+                  <Text style={styles.msgPreview} numberOfLines={2}>
+                    {texteApercu}
+                  </Text>
+                  
                   <View style={styles.openDiscussionHint}>
                     <Text style={styles.openDiscussionHintText}>Ouvrir la discussion</Text>
                     <Ionicons name="chevron-forward" size={14} color="#2b5bbb" />
@@ -420,57 +473,36 @@ const styles = StyleSheet.create({
   msgPreview: { fontSize: 13, color: '#64748b', lineHeight: 18 },
   openDiscussionHint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 8 },
   openDiscussionHintText: { fontSize: 12, color: '#2b5bbb', fontWeight: '600', marginRight: 4 },
-
   chatHeaderNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   chatBackBtn: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
   chatHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#1e293b', marginLeft: 6 },
-  cloturerBtn: { flexDirection: 'row', backgroundColor: '#dcfce7', paddingVertical: 6, paddingHorizontal: 16, borderRadius: 6, alignItems: 'center' },
-  cloturerBtnText: { color: '#16a34a', fontWeight: '700', fontSize: 13 },
-
-  // Le corps du chat (scroll + input) est maintenant en flux flex normal,
-  // ce qui permet à l'input de toujours rester juste au-dessus du clavier
-  // ET au-dessus de la barre de navigation Android, sans calcul manuel.
-  chatBody: { flex: 1 },
-  chatScrollView: { flex: 1 },
-  chatScrollContent: { padding: 16, paddingBottom: 16 },
-
-  userBubbleWrapper: { width: '100%', marginBottom: 10, alignItems: 'flex-start' },
-  userBubble: { backgroundColor: '#fffbeb', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#fef08a', marginRight: 40 },
+  cloturerBtn: { flexDirection: 'row', backgroundColor: '#dcfce7', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, alignItems: 'center' }, 
+  cloturerBtnText: { color: '#16a34a', fontWeight: '700', fontSize: 13 }, 
+  chatScrollContent: { padding: 16, paddingBottom: 24 },
+  
+  // --- Changement ici : Moi (user) à gauche ---
+  userBubbleWrapper: { width: '100%', marginBottom: 10, alignItems: 'flex-start' }, 
+  userBubble: { backgroundColor: '#fffbeb', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#fef08a', marginRight: 40 }, 
   userAuthor: { fontSize: 13, color: '#d97706', fontWeight: '600' },
   userText: { fontSize: 14, color: '#0f172a', lineHeight: 20 },
-  cmoBubbleWrapper: { width: '100%', marginBottom: 10, alignItems: 'flex-end' },
-  cmoBubble: { backgroundColor: '#f0f9ff', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#bae6fd', marginLeft: 40 },
+
+  // --- Changement ici : CMO à droite ---
+  cmoBubbleWrapper: { width: '100%', marginBottom: 10, alignItems: 'flex-end' }, 
+  cmoBubble: { backgroundColor: '#f0f9ff', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#bae6fd', marginLeft: 40 }, 
   cmoAuthor: { fontSize: 13, color: '#0284c7', fontWeight: '600' },
   cmoText: { fontSize: 14, color: '#0f172a', lineHeight: 20 },
+
   bubbleHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 10 },
   bubbleDate: { fontSize: 11, color: '#64748b' },
-
-  // Plus de position: 'absolute' ici : cet input fait maintenant partie
-  // du flux normal, donc plus de conflit avec le resize mode d'Android.
-  chatInputContainer: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-  },
-  chatInputRow: { flexDirection: 'row', alignItems: 'center' },
+  chatInputContainer: { backgroundColor: '#fff', padding: 16, borderTopWidth: 1, borderTopColor: '#e2e8f0' },
+  chatInputRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
   chatTextInput: { flex: 1, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#334155', maxHeight: 90, backgroundColor: '#fff' },
   chatSendIconBtn: { backgroundColor: '#2563eb', width: 44, height: 44, borderRadius: 4, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
-
-  closedDiscussionBanner: {
-    flexDirection: 'row',
-    backgroundColor: '#dcfce7',
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#bbf7d0',
-  },
+  closedDiscussionBanner: { flexDirection: 'row', backgroundColor: '#dcfce7', padding: 16, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#bbf7d0' }, 
   closedDiscussionText: { color: '#16a34a', fontWeight: '600', fontSize: 13, textAlign: 'center' },
-
   formCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, minHeight: 300, borderWidth: 1, borderColor: '#e2e8f0' },
   inputLabel: { fontSize: 14, color: '#0f172a', fontWeight: '600', marginTop: 12, marginBottom: 6 },
+  inputLabelSmall: { fontSize: 13, color: '#0f172a', fontWeight: '500' },
   singleInput: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, backgroundColor: '#fff', color: '#334155' },
   multiInput: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, height: 140, backgroundColor: '#fff', color: '#334155' },
   sendBtn: { backgroundColor: '#1b2d5a', paddingVertical: 14, borderRadius: 4, alignItems: 'center', marginTop: 24 },

@@ -112,6 +112,10 @@ export default function EmployeurCandidatures() {
   const [selectedCandidate, setSelectedCandidate] = useState<ApiCandidate | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
+  // 👇 State pour le modal de commentaire CMO
+  const [isCommentModalVisible, setIsCommentModalVisible] = useState<boolean>(false);
+  const [selectedComment, setSelectedComment] = useState<string>('');
+
   useEffect(() => {
     const fetchCandidates = async () => {
       try {
@@ -165,6 +169,17 @@ export default function EmployeurCandidatures() {
   const closeCvModal = () => {
     setIsModalVisible(false);
     setSelectedCandidate(null);
+  };
+
+  // 👇 Ouvrir / fermer le modal de commentaire CMO
+  const openCommentModal = (candidate: ApiCandidate) => {
+    setSelectedComment(candidate.commentaire_cmo || '');
+    setIsCommentModalVisible(true);
+  };
+
+  const closeCommentModal = () => {
+    setIsCommentModalVisible(false);
+    setSelectedComment('');
   };
 
   return (
@@ -292,10 +307,13 @@ export default function EmployeurCandidatures() {
                   </View>
 
                   {/* Commentaire de l'agence */}
-                  <TouchableOpacity style={styles.commentButton}>
+                  <TouchableOpacity
+                    style={styles.commentButton}
+                    onPress={() => openCommentModal(candidate)}
+                  >
                     <Ionicons name="chatbubble-ellipses-outline" size={16} color="#ffffff" style={styles.commentIcon} />
                     <Text style={styles.commentText}>
-                      {candidate.commentaire_cand ? 'Voir le commentaire' : 'CMO commentaire'}
+                      {candidate.commentaire_cmo ? 'Voir le commentaire' : 'CMO commentaire'}
                     </Text>
                   </TouchableOpacity>
 
@@ -421,6 +439,31 @@ export default function EmployeurCandidatures() {
         </View>
       </Modal>
 
+      {/* ── MODAL COMMENTAIRE CMO ── */}
+      <Modal
+        visible={isCommentModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeCommentModal}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.commentCard}>
+            <View style={styles.cvHeader}>
+              <Text style={styles.cvTitle}>Commentaire CMO</Text>
+              <TouchableOpacity onPress={closeCommentModal}>
+                <Ionicons name="close-circle" size={26} color="#ff4d4d" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
+              <Text style={styles.commentBody}>
+                {selectedComment ? selectedComment : "Aucun commentaire disponible."}
+              </Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -488,5 +531,25 @@ const styles = StyleSheet.create({
   sectionItem: { marginTop: 6, fontSize: 13, color: '#1b2d5a', lineHeight: 20, fontWeight: '500' },
   blockItem: { marginTop: 8, paddingLeft: 10, borderLeftWidth: 3, borderLeftColor: '#2b5bbb' },
   blockTitle: { fontSize: 14, fontWeight: '700', color: '#1b2d5a', marginBottom: 4 },
+
+  // ── STYLES MODAL COMMENTAIRE CMO ──
+  commentCard: {
+    width: width * 0.85,
+    maxHeight: '60%',
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  commentBody: {
+    fontSize: 14,
+    color: '#1b2d5a',
+    lineHeight: 22,
+    fontWeight: '500',
+  },
   
-});
+});1

@@ -223,7 +223,7 @@ export default function DashboardScreen() {
                         </View>
                     </View>
                     <View style={styles.actions}>
-                        <TouchableOpacity style={styles.btnOutline} onPress={() => Linking.openURL("tel:+212788361923")}>
+                        <TouchableOpacity style={styles.btnOutline} onPress={() => Linking.openURL("tel:+33788361923")}>
                             <Phone size={16} color="#2b5bbb" />
                             <Text style={styles.btnText}>Conseiller</Text>
                         </TouchableOpacity>
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#eef3ff",
-        marginBottom: 80,
+        paddingBottom: 90,  
     },
     content: {
         padding: 15,

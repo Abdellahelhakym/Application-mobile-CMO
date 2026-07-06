@@ -9,6 +9,10 @@ import { getPsaudo } from "@/app/employeur/services/token_id";
 
 export default function Layout() {
   const insets = useSafeAreaInsets();
+  
+  // 🎯 Détection du mode 3 boutons UNIQUEMENT sur Android
+  const isAndroid3Button = Platform.OS === "android" && insets.bottom >= 24;
+
   const [userName, setUserName] = useState("Utilisateur");
 
   const refreshPseudo = useCallback(() => {
@@ -61,11 +65,16 @@ export default function Layout() {
           </View>
         ),
 
-        // ⚪ Navigation Bar (Corrigée pour s'aligner parfaitement sur Android et iOS)
+        // ⚪ Configuration de la Barre de Navigation
         tabBarStyle: {
           backgroundColor: "#fff",
-          height: Platform.OS === "ios" ? 85 : 65,
-          paddingBottom: Platform.OS === "ios" ? insets.bottom : 10,
+          
+          // 🛠️ Hauteur de 70 partout, SAUF sur Android en mode 3 boutons
+          height: isAndroid3Button ? 65 + insets.bottom : 70,
+          
+          // 🛠️ Padding de 10 partout (parfait pour iPhone), ajusté uniquement pour les 3 boutons Android
+          paddingBottom: isAndroid3Button ? insets.bottom - 4 : 10,
+            
           borderTopWidth: 1,
           borderTopColor: "#e7edf7",
           elevation: 6,
@@ -75,7 +84,6 @@ export default function Layout() {
           shadowOffset: { width: 0, height: -2 },
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
-          // L'affichage absolu a été retiré pour stopper la fuite du contenu sous la barre
         },
 
         tabBarLabelStyle: {
@@ -90,15 +98,9 @@ export default function Layout() {
       <Tabs.Screen name="EmployerDashboard" options={{ title: "Accueil", tabBarIcon: ({ color }) => <Feather name="home" size={20} color={color} /> }} />
       <Tabs.Screen name="MyOffersScreen" options={{ title: "Commandes", tabBarIcon: ({ color }) => <Feather name="shopping-bag" size={20} color={color} /> }} />
       <Tabs.Screen name="EmployeurCandidatures" options={{ title: "Candidatures", tabBarIcon: ({ color }) => <Feather name="users" size={20} color={color} /> }} />
-      <Tabs.Screen 
-        name="CVDatabaseScreen" 
-        options={{ 
-          title: "Park CV", 
-          tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]} numberOfLines={2}>Park CV CMO</Text>,
-          tabBarIcon: ({ color }) => <Feather name="user-plus" size={20} color={color} /> 
-        }} 
-      />
-      <Tabs.Screen name="EmployerProfileScreen" options={{ title: "Profil", tabBarIcon: ({ color }) => <Feather name="user" size={20} color={color} /> }} />
+ 
+      <Tabs.Screen name="CVDatabaseScreen" options={{ title: "Park CV", tabBarIcon: ({ color }) => <Feather name="user-plus" size={20} color={color} /> }} />
+      <Tabs.Screen name="EmployerProfileScreen" options={{ title: "Plus", tabBarIcon: ({ color }) => <Feather name="menu" size={20} color={color} /> }} />
     </Tabs>
   );
 }

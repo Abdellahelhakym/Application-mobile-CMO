@@ -17,7 +17,9 @@ const TITLES: Record<string, string> = {
 export default function Layout() {
   const [userName, setUserName] = useState("Utilisateur");
   const insets = useSafeAreaInsets();
-  const navBarInset = Platform.OS === "android" && insets.bottom >= 24 ? insets.bottom : 0;
+  
+  // 🎯 Détection du mode 3 boutons sur Android uniquement
+  const isAndroid3Button = Platform.OS === "android" && insets.bottom >= 24;
 
   useEffect(() => {
     let isMounted = true;
@@ -42,7 +44,7 @@ export default function Layout() {
           backgroundColor: "#122F78",
         },
 
-        // ⚪ Titres et Texte du Header en BLANC
+        // ⚪ Titres et Texte du Header en BLANC sur iOS
         ...(Platform.OS === "ios" && {
           headerTitle: () => null,
           headerLeft: () => (
@@ -52,11 +54,12 @@ export default function Layout() {
           ),
         }),
 
+        // ⚪ Titres en BLANC sur Android
         ...(Platform.OS !== "ios" && {
           headerTitleAlign: "left",
           headerTitleStyle: {
             fontSize: 18,
-            color: "#ffffff", // Texte blanc
+            color: "#ffffff",
             fontWeight: "600",
           },
         }),
@@ -71,10 +74,20 @@ export default function Layout() {
 
         headerShadowVisible: false,
 
-        // ⚪ Navigation Bar (reste blanche)
+        // ⚪ Configuration de la Barre de Navigation
         tabBarStyle: {
           backgroundColor: "#fff",
-          height: 70,
+          
+          // 📱 Hauteur fixe de 70 pour iPhone (pas de grand vide) et Android classique
+          height: Platform.OS === "ios" 
+            ? 70 
+            : (isAndroid3Button ? 65 + insets.bottom : 70),
+          
+          // 📱 Alignement ajusté des icônes (sans l'espace safe area d'iOS)
+          paddingBottom: Platform.OS === "ios" 
+            ? 12 
+            : (isAndroid3Button ? insets.bottom - 4 : 10),
+            
           borderTopWidth: 1,
           borderTopColor: "#e7edf7",
           elevation: 6,
@@ -84,8 +97,6 @@ export default function Layout() {
           shadowOffset: { width: 0, height: -2 },
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
-          position: "absolute",
-          bottom: navBarInset,
         },
         tabBarActiveTintColor: "#2b5bbb",
         tabBarInactiveTintColor: "#7a8ab8",
