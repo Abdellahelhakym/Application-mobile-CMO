@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet,
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, RefreshControl,
   ActivityIndicator, Modal, Dimensions, Alert, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getCandidat, getCandidatValides, setCandidatValides } from '@/app/employeur/services/EmployeurCandidatures';
+import { getCandidat, getCandidatValides, setCandidatValides, setCandidatNonValide } from '@/app/employeur/services/EmployeurCandidatures';
 import url from "@/app/services/url.js"; 
 
 const { width } = Dimensions.get('window');
@@ -26,6 +26,7 @@ interface ApiCandidate {
   id: number;
   candidat_id?: number;
   id_agent: number;
+  id_aff: number;
   id_agent_digital: number;
   photo: string;
   civilite: string;
@@ -104,6 +105,8 @@ interface ApiCandidate {
 }
 
 export default function EmployeurCandidatures() {
+  const [refreshing, setRefreshing] = useState(false);
+  
   const [activeTab, setActiveTab] = useState<TabKey>('propose');
   const [apiCandidates, setApiCandidates] = useState<ApiCandidate[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -112,46 +115,62 @@ export default function EmployeurCandidatures() {
   const [selectedCandidate, setSelectedCandidate] = useState<ApiCandidate | null>(null);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
-  // 👇 State pour le modal de commentaire CMO
   const [isCommentModalVisible, setIsCommentModalVisible] = useState<boolean>(false);
   const [selectedComment, setSelectedComment] = useState<string>('');
 
-  useEffect(() => {
-    const fetchCandidates = async () => {
-      try {
-        setLoading(true);
-        let response;
+  const fetchCandidates = async () => {
+    try {
+      let response;
 
-        if (activeTab === 'propose') {
-          response = await getCandidat();
-        } else if (activeTab === 'valide') {
-          response = await getCandidatValides();
-        } else {
-          response = [];
-        }
-
-        if (Array.isArray(response)) {
-          setApiCandidates(response);
-        } else {
-          setApiCandidates([]);
-        }
-      } catch (error) {
-        console.error('Erreur lors de la récupération des candidats:', error);
-        setApiCandidates([]);
-      } finally {
-        setLoading(false);
+      if (activeTab === 'propose') {
+        response = await getCandidat();
+      } else if (activeTab === 'valide') {
+        response = await getCandidatValides();
+      } else {
+        response = [];
       }
+
+      if (Array.isArray(response)) {
+        setApiCandidates(response);
+      } else {
+        setApiCandidates([]);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des candidats:', error);
+      setApiCandidates([]);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchCandidates();
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setLoading(true);
+      await fetchCandidates();
+      setLoading(false);
     };
 
-    fetchCandidates();
+    loadInitialData();
   }, [activeTab, refreshTrigger]); 
 
   const handleValidate = async (candidate: ApiCandidate) => {
-    const targetId = candidate.candidat_id ?? candidate.id;
+    const id_candidat = candidate.candidat_id ?? candidate.id;
+    const id_aff = candidate.id_aff;
+    const id_fiche_post = candidate.id_fiche_poste;
+    const tokenid_cand = candidate.token_id;
+
+    if (!id_candidat || !id_fiche_post) {
+      Alert.alert('Erreur', 'Données du candidat incomplètes pour la validation.');
+      return;
+    }
 
     try {
       setLoading(true);
-      await setCandidatValides(targetId);
+      await setCandidatValides(id_candidat, id_aff, id_fiche_post, tokenid_cand);
       Alert.alert('Succès', 'Le candidat a été validé avec succès.');
       setRefreshTrigger(prev => !prev);
     } catch (error) {
@@ -159,6 +178,46 @@ export default function EmployeurCandidatures() {
       Alert.alert('Erreur', 'Impossible de valider le candidat pour le moment.');
       setLoading(false);
     }
+  };
+
+  // ── Nouvelle fonction de refus ──
+  const handleReject = async (candidate: ApiCandidate) => {
+    const id_candidat = candidate.candidat_id ?? candidate.id;
+    const id_aff = candidate.id_aff;
+    const id_fiche_post = candidate.id_fiche_poste;
+    const tokenid_cand = candidate.token_id;
+
+    if (!id_candidat || !id_fiche_post) {
+      Alert.alert('Erreur', 'Données du candidat incomplètes pour le refus.');
+      return;
+    }
+
+    // Demande de confirmation avant de rejeter
+    Alert.alert(
+      'Confirmation',
+      `Êtes-vous sûr de vouloir refuser la candidature de ${candidate.prenom} ${candidate.nom} ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Oui, refuser',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              // Appel de l'API avec les 4 arguments requis
+              await setCandidatNonValide(id_candidat, id_aff, id_fiche_post, tokenid_cand);
+              
+              Alert.alert('Succès', 'Le candidat a été refusé et archivé.');
+              setRefreshTrigger(prev => !prev);
+            } catch (error) {
+              console.error('Erreur lors du refus du candidat:', error);
+              Alert.alert('Erreur', 'Impossible de refuser le candidat pour le moment.');
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const openCvModal = (candidate: ApiCandidate) => {
@@ -171,7 +230,6 @@ export default function EmployeurCandidatures() {
     setSelectedCandidate(null);
   };
 
-  // 👇 Ouvrir / fermer le modal de commentaire CMO
   const openCommentModal = (candidate: ApiCandidate) => {
     setSelectedComment(candidate.commentaire_cmo || '');
     setIsCommentModalVisible(true);
@@ -211,6 +269,14 @@ export default function EmployeurCandidatures() {
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+              colors={["#2b5bbb"]}
+              tintColor="#2b5bbb"
+            />
+          }
         >
           {apiCandidates.length === 0 ? (
             <View style={styles.emptyState}>
@@ -292,7 +358,11 @@ export default function EmployeurCandidatures() {
                           <Text style={[styles.actionText, styles.actionTextOutline]}>Oui</Text>
                         </TouchableOpacity>
                         
-                        <TouchableOpacity style={[styles.actionButton, styles.actionButtonOutline]}>
+                        {/* Bouton "Non" mis à jour */}
+                        <TouchableOpacity 
+                          style={[styles.actionButton, styles.actionButtonOutline]}
+                          onPress={() => handleReject(candidate)}
+                        >
                           <Text style={[styles.actionText, styles.actionTextOutline]}>Non</Text>
                         </TouchableOpacity>
                       </>
@@ -324,7 +394,7 @@ export default function EmployeurCandidatures() {
         </ScrollView>
       )}
 
-      {/* ── MODAL VISUALISATION CV (DESIGN NOIR ET DESIGN PACK CV INTEGRÉ) ── */}
+      {/* ── MODAL VISUALISATION CV ── */}
       <Modal
         visible={isModalVisible}
         transparent
@@ -342,8 +412,6 @@ export default function EmployeurCandidatures() {
 
             {selectedCandidate && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                
-                {/* HEADER AVEC AVATAR ET NOM CENTRÉ */}
                 <View style={styles.cvCenterAvatar}>
                   <View style={styles.cvAvatarLarge}>
                     {selectedCandidate.photo ? (
@@ -363,14 +431,12 @@ export default function EmployeurCandidatures() {
 
                 <View style={styles.divider} />
 
-                {/* INFOS DE CONTACT ET LOCALISATION */}
                 <Text style={styles.sectionTitle}>Coordonnées</Text>
                 <Text style={styles.sectionItem}>• {selectedCandidate.email}</Text>
                 <Text style={styles.sectionItem}>• {selectedCandidate.tel}</Text>
                 {!!selectedCandidate.tel2 && <Text style={styles.sectionItem}>• {selectedCandidate.tel2}</Text>}
                 <Text style={styles.sectionItem}>• Ville : {selectedCandidate.ville} - {selectedCandidate.pays || 'France'}</Text>
 
-                {/* SECTEUR D'ACTIVITÉ & MÉTIERS */}
                 <Text style={styles.sectionTitle}>Secteur d’activité & Métiers</Text>
                 {selectedCandidate.metiers && selectedCandidate.metiers.length > 0 ? (
                   <Text style={styles.sectionItem}>
@@ -388,15 +454,12 @@ export default function EmployeurCandidatures() {
                   </>
                 )}
 
-                {/* MOBILITÉ */}
                 <Text style={styles.sectionTitle}>Mobilité</Text>
                 <Text style={styles.sectionItem}>• Toute la France</Text>
 
-                {/* NIVEAU D'ÉTUDES */}
                 <Text style={styles.sectionTitle}>Niveau d’études</Text>
                 <Text style={styles.sectionItem}>• {selectedCandidate.niveau_etude || 'Non spécifié'}</Text>
 
-                {/* EXPÉRIENCE PASSÉE */}
                 <Text style={styles.sectionTitle}>Expérience</Text>
                 <View style={styles.blockItem}>
                   <Text style={styles.blockTitle}>{selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Poste'}</Text>
@@ -404,34 +467,31 @@ export default function EmployeurCandidatures() {
                   <Text style={styles.sectionItem}>Période : {selectedCandidate.experience || 'Non spécifiée'}</Text>
                 </View>
 
-              {/* DOCUMENTS / ATTESTATION */}
-        <Text style={styles.sectionTitle}>Attestation </Text>
+                <Text style={styles.sectionTitle}>Attestation </Text>
 
-        <View style={styles.attestationList}>
-          {selectedCandidate.documents_manquants && selectedCandidate.documents_manquants.length > 0 ? (
-            selectedCandidate.documents_manquants.map((doc, index) => {
-              // Formater le texte pour remplacer les underscores par des espaces et mettre une majuscule
-              const formattedDoc = doc.replace(/_/g, ' ');
-              const cleanDoc = formattedDoc.charAt(0).toUpperCase() + formattedDoc.slice(1);
+                <View style={styles.attestationList}>
+                  {selectedCandidate.documents_manquants && selectedCandidate.documents_manquants.length > 0 ? (
+                    selectedCandidate.documents_manquants.map((doc, index) => {
+                      const formattedDoc = doc.replace(/_/g, ' ');
+                      const cleanDoc = formattedDoc.charAt(0).toUpperCase() + formattedDoc.slice(1);
 
-              return (
-                <View key={index} style={styles.documentMissingRow}>
-                  
-                  <Text style={[styles.sectionItem, {fontWeight: '600' }]}>
-                    {cleanDoc} manquant
-                  </Text>
+                      return (
+                        <View key={index} style={styles.documentMissingRow}>
+                          <Text style={[styles.sectionItem, {fontWeight: '600' }]}>
+                            {cleanDoc} manquant
+                          </Text>
+                        </View>
+                      );
+                    })
+                  ) : (
+                    <View style={styles.documentMissingRow}>
+                      <Ionicons name="checkmark-circle-outline" size={14} color="#2e7d32" style={{ marginRight: 6 }} />
+                      <Text style={[styles.sectionItem, { marginTop: 0, color: '#2e7d32', fontWeight: '600' }]}>
+                        Aucun document manquant
+                      </Text>
+                    </View>
+                  )}
                 </View>
-              );
-            })
-          ) : (
-            <View style={styles.documentMissingRow}>
-              <Ionicons name="checkmark-circle-outline" size={14} color="#2e7d32" style={{ marginRight: 6 }} />
-              <Text style={[styles.sectionItem, { marginTop: 0, color: '#2e7d32', fontWeight: '600' }]}>
-                Aucun document manquant
-              </Text>
-            </View>
-          )}
-        </View>
 
               </ScrollView>
             )}
@@ -467,6 +527,8 @@ export default function EmployeurCandidatures() {
     </View>
   );
 }
+
+// Les styles restent inchangés...
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#eef4ff', paddingHorizontal: 16, paddingTop: 20 },
@@ -517,7 +579,6 @@ const styles = StyleSheet.create({
   commentIcon: { marginRight: 8 },
   commentText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
   
-  // ── STYLES IMPORTÉS DE L'AUTRE MODAL (PAGE PACK CV) ──
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
   cvCard: { width: width * 0.9, maxHeight: '85%', backgroundColor: '#ffffff', borderRadius: 24, padding: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
   cvHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
@@ -532,7 +593,6 @@ const styles = StyleSheet.create({
   blockItem: { marginTop: 8, paddingLeft: 10, borderLeftWidth: 3, borderLeftColor: '#2b5bbb' },
   blockTitle: { fontSize: 14, fontWeight: '700', color: '#1b2d5a', marginBottom: 4 },
 
-  // ── STYLES MODAL COMMENTAIRE CMO ──
   commentCard: {
     width: width * 0.85,
     maxHeight: '60%',
@@ -551,5 +611,4 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '500',
   },
-  
-});1
+});

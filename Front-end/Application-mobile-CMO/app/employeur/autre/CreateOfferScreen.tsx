@@ -13,16 +13,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { getSecteur, getToutMobilite } from "@/app/candidat/services/CVScreen";
 import { createCommande } from '@/app/employeur/services/CreatOffesScreen';
 
-// 🔧 Fonction mise à jour pour décoder AUSSI les entités numériques comme &#039;
+// 🔧 Décodage des entités HTML
 const decodeHTML = (str: string): string => {
   if (!str) return '';
   return str
-    // 1. Décodage des entités numériques (ex: &#039; -> ', &#233; -> é)
     .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
-    // 2. Décodage des entités nommées classiques
     .replace(/&eacute;/g, 'é')
     .replace(/&egrave;/g, 'è')
     .replace(/&ecirc;/g, 'ê')
@@ -40,6 +39,22 @@ const decodeHTML = (str: string): string => {
     .replace(/&apos;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>');
+};
+
+// 📅 Formate un objet Date en chaîne "MM/DD/YYYY" pour l'affichage
+const formatDate = (date: Date): string => {
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${mm}/${dd}/${yyyy}`;
+};
+
+// 📅 Parse une chaîne "MM/DD/YYYY" en objet Date
+const parseDate = (str: string): Date => {
+  if (!str) return new Date();
+  const [mm, dd, yyyy] = str.split('/').map(Number);
+  if (!mm || !dd || !yyyy) return new Date();
+  return new Date(yyyy, mm - 1, dd);
 };
 
 const SelectPicker = ({
@@ -192,28 +207,19 @@ export default function CreateOfferScreen() {
   const [mobilites, setMobilites] = useState<any[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
   const drivingLicenseOptions = [
-    { label: 'AM', value: 'AM' },
-    { label: 'A1', value: 'A1' },
-    { label: 'A2', value: 'A2' },
-    { label: 'A', value: 'A' },
-    { label: 'B1', value: 'B1' },
-    { label: 'B', value: 'B' },
-    { label: 'C1', value: 'C1' },
-    { label: 'C', value: 'C' },
-    { label: 'D1', value: 'D1' },
-    { label: 'BE', value: 'BE' },
-    { label: 'C1E', value: 'C1E' },
-    { label: 'CE', value: 'CE' },
-    { label: 'D1E', value: 'D1E' },
-    { label: 'DE', value: 'DE' },
+    { label: 'AM', value: 'AM' }, { label: 'A1', value: 'A1' }, { label: 'A2', value: 'A2' },
+    { label: 'A', value: 'A' }, { label: 'B1', value: 'B1' }, { label: 'B', value: 'B' },
+    { label: 'C1', value: 'C1' }, { label: 'C', value: 'C' }, { label: 'D1', value: 'D1' },
+    { label: 'BE', value: 'BE' }, { label: 'C1E', value: 'C1E' }, { label: 'CE', value: 'CE' },
+    { label: 'D1E', value: 'D1E' }, { label: 'DE', value: 'DE' },
   ];
 
   const handleChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleCategorySelect = (categoryId: string) => {
@@ -222,10 +228,7 @@ export default function CreateOfferScreen() {
       ...prev,
       categoryId: categoryId,
       category: category?.titre ?? '',
-      subcategoryId: '',
-      subcategory: '',
-      jobId: '',
-      jobTitle: ''
+      subcategoryId: '', subcategory: '', jobId: '', jobTitle: ''
     }));
   };
 
@@ -235,18 +238,13 @@ export default function CreateOfferScreen() {
       ...prev,
       subcategoryId: subcategoryId,
       subcategory: subcategory?.titre ?? '',
-      jobId: '',
-      jobTitle: ''
+      jobId: '', jobTitle: ''
     }));
   };
 
   const handleJobSelect = (jobId: string) => {
     const job = sectorData.jobs.find(j => String(j.id_metier ?? j.id) === String(jobId));
-    setFormData(prev => ({
-      ...prev,
-      jobId: jobId,
-      jobTitle: job?.titre ?? ''
-    }));
+    setFormData(prev => ({ ...prev, jobId: jobId, jobTitle: job?.titre ?? '' }));
   };
 
   const handleSubmit = async () => {
@@ -265,6 +263,7 @@ export default function CreateOfferScreen() {
 
     const nextErrors: Record<string, string> = {};
     const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+    
     requiredFields.forEach((field) => {
       if (!String(formData[field.key]).trim()) {
         nextErrors[field.key] = `Le champ ${field.label} est obligatoire`;
@@ -287,7 +286,14 @@ export default function CreateOfferScreen() {
     setErrors({});
 
     try {
-      const result = await createCommande({ ...formData });
+      // 🚀 Transformation à la volée des chaînes en vrais types Date JavaScript avant l'envoi
+      const payload = {
+        ...formData,
+        startDate: formData.startDate ? parseDate(formData.startDate) : null,
+        endDate: formData.endDate ? parseDate(formData.endDate) : null,
+      };
+
+      const result = await createCommande(payload);
       const message = result?.message || 'Offre soumise pour validation CMO';
       Alert.alert('Resultat', message);
       setFormData(initialFormData);
@@ -352,12 +358,7 @@ export default function CreateOfferScreen() {
               <Ionicons name="chevron-down" size={18} color="#7a8ab8" />
             </TouchableOpacity>
 
-            <Modal
-              visible={showCategoryPicker}
-              transparent
-              animationType="slide"
-              onRequestClose={() => setShowCategoryPicker(false)}
-            >
+            <Modal visible={showCategoryPicker} transparent animationType="slide" onRequestClose={() => setShowCategoryPicker(false)}>
               <Pressable style={styles.modalOverlay} onPress={() => setShowCategoryPicker(false)} />
               <View style={styles.modalSheet}>
                 <View style={styles.modalHeader}>
@@ -365,12 +366,7 @@ export default function CreateOfferScreen() {
                     <Text style={styles.modalDone}>Terminer</Text>
                   </TouchableOpacity>
                 </View>
-                <Picker
-                  selectedValue={formData.categoryId}
-                  onValueChange={(value) => handleCategorySelect(String(value))}
-                  style={styles.picker}
-                  itemStyle={styles.pickerItem}
-                >
+                <Picker selectedValue={formData.categoryId} onValueChange={(value) => handleCategorySelect(String(value))} style={styles.picker} itemStyle={styles.pickerItem}>
                   <Picker.Item label="Categorie" value="" />
                   {sectorData.categories.map((c) => (
                     <Picker.Item key={c.id_categorie ?? c.id} label={decodeHTML(c.titre)} value={String(c.id_categorie ?? c.id)} />
@@ -382,13 +378,7 @@ export default function CreateOfferScreen() {
           </View>
         ) : (
           <View style={styles.pickerWrapper}>
-            <Picker
-              selectedValue={formData.categoryId}
-              onValueChange={(value) => handleCategorySelect(String(value))}
-              style={styles.picker}
-              mode="dropdown"
-              itemStyle={styles.pickerItem}
-            >
+            <Picker selectedValue={formData.categoryId} onValueChange={(value) => handleCategorySelect(String(value))} style={styles.picker} mode="dropdown" itemStyle={styles.pickerItem}>
               <Picker.Item label="Categorie" value="" />
               {sectorData.categories.map((c) => (
                 <Picker.Item key={c.id_categorie ?? c.id} label={decodeHTML(c.titre)} value={String(c.id_categorie ?? c.id)} />
@@ -427,101 +417,113 @@ export default function CreateOfferScreen() {
           error={errors.jobType}
         />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Date debut (MM/DD/YYYY)"
-          placeholderTextColor="#7a8ab8"
-          value={formData.startDate}
-          onChangeText={(v) => handleChange('startDate', v)}
-        />
+        {/* 📅 Date début avec calendrier */}
+        <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowStartPicker(true)}>
+          <Text style={[styles.pickerTriggerText, !formData.startDate && styles.pickerPlaceholder]}>
+            {formData.startDate || 'Date debut (MM/DD/YYYY)'}
+          </Text>
+          <Ionicons name="calendar-outline" size={18} color="#7a8ab8" />
+        </TouchableOpacity>
         {errors.startDate ? <Text style={styles.errorText}>{errors.startDate}</Text> : null}
 
-        <TextInput
-          style={styles.input}
-          placeholder="Date fin (MM/DD/YYYY)"
-          placeholderTextColor="#7a8ab8"
-          value={formData.endDate}
-          onChangeText={(v) => handleChange('endDate', v)}
-        />
+        {showStartPicker && Platform.OS === 'android' && (
+          <DateTimePicker
+            value={parseDate(formData.startDate)}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowStartPicker(false);
+              if (event.type === 'dismissed') return;
+              if (selectedDate) handleChange('startDate', formatDate(selectedDate));
+            }}
+          />
+        )}
+
+        {Platform.OS === 'ios' && (
+          <Modal visible={showStartPicker} transparent animationType="slide" onRequestClose={() => setShowStartPicker(false)}>
+            <Pressable style={styles.modalOverlay} onPress={() => setShowStartPicker(false)} />
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={() => setShowStartPicker(false)}>
+                  <Text style={styles.modalDone}>Terminer</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker value={parseDate(formData.startDate)} mode="date" display="inline" onChange={(event, selectedDate) => {
+                if (selectedDate) handleChange('startDate', formatDate(selectedDate));
+              }} />
+            </View>
+          </Modal>
+        )}
+
+        {/* 📅 Date fin avec calendrier */}
+        <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowEndPicker(true)}>
+          <Text style={[styles.pickerTriggerText, !formData.endDate && styles.pickerPlaceholder]}>
+            {formData.endDate || 'Date fin (MM/DD/YYYY)'}
+          </Text>
+          <Ionicons name="calendar-outline" size={18} color="#7a8ab8" />
+        </TouchableOpacity>
         {errors.endDate ? <Text style={styles.errorText}>{errors.endDate}</Text> : null}
 
-        <TextInput
-          style={styles.input}
-          placeholder="Adresse"
-          placeholderTextColor="#7a8ab8"
-          value={formData.address}
-          onChangeText={(v) => handleChange('address', v)}
-        />
+        {showEndPicker && Platform.OS === 'android' && (
+          <DateTimePicker
+            value={parseDate(formData.endDate)}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowEndPicker(false);
+              if (event.type === 'dismissed') return;
+              if (selectedDate) handleChange('endDate', formatDate(selectedDate));
+            }}
+          />
+        )}
+
+        {Platform.OS === 'ios' && (
+          <Modal visible={showEndPicker} transparent animationType="slide" onRequestClose={() => setShowEndPicker(false)}>
+            <Pressable style={styles.modalOverlay} onPress={() => setShowEndPicker(false)} />
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={() => setShowEndPicker(false)}>
+                  <Text style={styles.modalDone}>Terminer</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker value={parseDate(formData.endDate)} mode="date" display="inline" onChange={(event, selectedDate) => {
+                if (selectedDate) handleChange('endDate', formatDate(selectedDate));
+              }} />
+            </View>
+          </Modal>
+        )}
+
+        <TextInput style={styles.input} placeholder="Adresse" placeholderTextColor="#7a8ab8" value={formData.address} onChangeText={(v) => handleChange('address', v)} />
         {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
 
         <SelectPicker
           value={formData.mobility}
-          options={[
-            { label: 'Mobilité', value: '' },
-            ...mobilites.map((item) => ({ label: item.titre, value: String(item.id) })),
-          ]}
+          options={[{ label: 'Mobilité', value: '' }, ...mobilites.map((item) => ({ label: item.titre, value: String(item.id) }))]}
           onChange={(v) => handleChange('mobility', v)}
           placeholder="Mobilité"
           error={errors.mobility}
         />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Nombre de poste"
-          placeholderTextColor="#7a8ab8"
-          value={formData.positions}
-          onChangeText={(v) => handleChange('positions', v)}
-          keyboardType="numeric"
-        />
+        <TextInput style={styles.input} placeholder="Nombre de poste" placeholderTextColor="#7a8ab8" value={formData.positions} onChangeText={(v) => handleChange('positions', v)} keyboardType="numeric" />
         {errors.positions ? <Text style={styles.errorText}>{errors.positions}</Text> : null}
 
-        <TextInput
-          style={styles.input}
-          placeholder="Salaire"
-          placeholderTextColor="#7a8ab8"
-          value={formData.salary}
-          onChangeText={(v) => handleChange('salary', v)}
-          keyboardType="numeric"
-        />
+        <TextInput style={styles.input} placeholder="Salaire" placeholderTextColor="#7a8ab8" value={formData.salary} onChangeText={(v) => handleChange('salary', v)} keyboardType="numeric" />
         {errors.salary ? <Text style={styles.errorText}>{errors.salary}</Text> : null}
 
         <SelectPicker
           value={formData.housing}
-          options={[
-            { label: 'Logement', value: '' },
-            { label: 'Oui', value: 'oui' },
-            { label: 'Non', value: 'non' },
-          ]}
+          options={[{ label: 'Logement', value: '' }, { label: 'Oui', value: 'oui' }, { label: 'Non', value: 'non' }]}
           onChange={(v) => handleChange('housing', v)}
           placeholder="Logement"
           error={errors.housing}
         />
 
-        <MultiSelectPicker
-          value={formData.drivingLicense}
-          options={drivingLicenseOptions}
-          onChange={(v) => handleChange('drivingLicense', v)}
-          placeholder="permis"
-          error={errors.drivingLicense}
-        />
+        <MultiSelectPicker value={formData.drivingLicense} options={drivingLicenseOptions} onChange={(v) => handleChange('drivingLicense', v)} placeholder="permis" error={errors.drivingLicense} />
 
-        <TextInput
-          style={styles.textarea}
-          placeholder="Description"
-          placeholderTextColor="#7a8ab8"
-          multiline
-          value={formData.description}
-          onChangeText={(v) => handleChange('description', v)}
-        />
+        <TextInput style={styles.textarea} placeholder="Description" placeholderTextColor="#7a8ab8" multiline value={formData.description} onChangeText={(v) => handleChange('description', v)} />
         {errors.description ? <Text style={styles.errorText}>{errors.description}</Text> : null}
 
-        <TextInput
-          style={styles.input}
-          placeholder="Commentaires (optionnel)"
-          placeholderTextColor="#7a8ab8"
-          value={formData.comments}
-          onChangeText={(v) => handleChange('comments', v)}
-        />
+        <TextInput style={styles.input} placeholder="Commentaires (optionnel)" placeholderTextColor="#7a8ab8" value={formData.comments} onChangeText={(v) => handleChange('comments', v)} />
 
         <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
           <Text style={styles.submitText}>Créer la commande</Text>
@@ -554,10 +556,6 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 120 },
   card: { backgroundColor: '#fff', margin: 10, padding: 15, borderRadius: 20 },
   subtitle: { fontSize: 16, fontWeight: 'bold', color: '#1b2d5a' },
-  row: { flexDirection: 'row', marginTop: 10 },
-  outlineBtn: { flexDirection: 'row', borderWidth: 1, borderColor: '#cfd9ee', padding: 8, borderRadius: 20, marginRight: 10 },
-  btnText: { marginLeft: 5 },
-  notice: { marginTop: 10, backgroundColor: '#fff1dc', padding: 10, borderRadius: 10 },
   pickerTrigger: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 16, marginTop: 10, backgroundColor: '#f6f8ff', minHeight: 56, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pickerTriggerText: { color: '#1b2d5a' },
   pickerPlaceholder: { color: '#9ca3af' },

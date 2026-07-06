@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,8 @@ import {
   StatusBar,
   Dimensions,
   ActivityIndicator,
-  Linking, // 1. Ajout de l'import Linking
+  Linking,
+  RefreshControl, // 👈 Importation de RefreshControl
 } from 'react-native';
 import { getHestory } from '@/app/employeur/services/SubscriptionScreen';
 
@@ -38,7 +39,7 @@ const plans = [
     features: ['Accompagnement essentiel'],
     note: 'Vous gérez encore une partie du recrutement',
     buttonColor: '#1e4e2a',
-    stripeUrl: 'https://buy.stripe.com/cNicN66Vp2XRcop2jjg3600', // Ajout du lien
+    stripeUrl: 'https://buy.stripe.com/cNicN66Vp2XRcop2jjg3600',
   },
   {
     id: 'pro',
@@ -49,7 +50,7 @@ const plans = [
     features: ['Délégation maîtrisée'],
     note: 'Recommandé pour un recrutement fiable et sécurisé',
     buttonColor: '#2b5bbb',
-    stripeUrl: 'https://buy.stripe.com/00w9AU7Ztbundst1ffg3601', // Ajout du lien
+    stripeUrl: 'https://buy.stripe.com/00w9AU7Ztbundst1ffg3601',
   },
   {
     id: 'full',
@@ -60,7 +61,7 @@ const plans = [
     features: ['Délégation totale'],
     note: 'La solution privilégiée par les employeurs exigeants',
     buttonColor: '#3a4f8f',
-    stripeUrl: 'https://buy.stripe.com/8x200k5RlgOHbkl2jjg3602', // Ajout du lien
+    stripeUrl: 'https://buy.stripe.com/8x200k5RlgOHbkl2jjg3602',
   },
   {
     id: 'custom',
@@ -74,6 +75,250 @@ const plans = [
     stripeUrl: null,
   },
 ];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function StatusBadge({ statut }: { statut: number }) {
+  const isAccepted = statut === 1; 
+  return (
+    <View style={[styles.badge, isAccepted ? styles.badgeGreen : styles.badgeOrange]}>
+      <Text style={[styles.badgeText, isAccepted ? styles.badgeTextGreen : styles.badgeTextOrange]}>
+        {isAccepted ? 'Accepté' : 'En attente'}
+      </Text>
+    </View>
+  );
+}
+
+function ActionBtn() {
+  return (
+    <TouchableOpacity style={styles.actionBtn}>
+      <Text style={styles.actionBtnText}>Télécharger ⬇</Text>
+    </TouchableOpacity>
+  );
+}
+
+function formatDate(dateString: string) {
+  if (!dateString) return '-';
+  try {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    return dateString;
+  }
+}
+
+function getPackNameByIdFormule(id_formule: number): string {
+  switch (id_formule) {
+    case 1: return 'START RECRUT';
+    case 2: return 'PRO RECRUT';
+    case 3: return 'FULL RECRUT';
+    case 4: return 'DEVIS PERSONNALISÉ';
+    default: return 'PACK INCONNU';
+  }
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
+export default function SubscriptionScreen() {
+  const [view, setView] = useState<'dashboard' | 'plans'>('dashboard');
+  const [currentPack, setCurrentPack] = useState<string>('DEVIS PERSONNALISÉ');
+  const [historyList, setHistoryList] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false); // 👈 État pour le rafraîchissement mécanique
+
+  // 1. Isoler le chargement des données
+  const loadSubscriptionData = async (showGlobalLoader = true) => {
+    try {
+      if (showGlobalLoader) setLoading(true);
+      const response = await getHestory();
+      if (response) {
+        if (response.id_formule !== undefined) {
+          const packName = getPackNameByIdFormule(response.id_formule);
+          setCurrentPack(packName);
+        } else if (response.pack) {
+          setCurrentPack(response.pack);
+        }
+        
+        if (Array.isArray(response.historique)) {
+          setHistoryList(response.historique);
+        }
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération de l'historique:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false); // Arrête le spinner du RefreshControl
+    }
+  };
+
+  useEffect(() => {
+    loadSubscriptionData(true);
+  }, []);
+
+  // 2. Gestionnaire du Pull-to-Refresh
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadSubscriptionData(false); // On passe false pour ne pas ré-afficher le gros ActivityIndicator central
+  }, []);
+
+  // Fonction pour gérer la redirection vers Stripe
+  const handlePlanSelection = async (plan: typeof plans[0]) => {
+    if (currentPack === plan.name) return;
+    if (plan.isCustom) return;
+
+    if (plan.stripeUrl) {
+      try {
+        const supported = await Linking.canOpenURL(plan.stripeUrl);
+        if (supported) {
+          await Linking.openURL(plan.stripeUrl);
+        } else {
+          console.error("Impossible d'ouvrir ce lien : " + plan.stripeUrl);
+        }
+      } catch (error) {
+        console.error("Erreur lors de l'ouverture du lien Stripe:", error);
+      }
+    }
+  };
+
+  if (view === 'plans') {
+    const sortedPlans = [...plans].sort((a, b) => {
+      if (a.name === currentPack) return -1;
+      if (b.name === currentPack) return 1;
+      return 0;
+    });
+
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#eef3ff" />
+        <View style={styles.plansHeader}>
+          <TouchableOpacity onPress={() => setView('dashboard')} style={styles.backBtn}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.plansTitle}>Choisir un pack</Text>
+          <View style={{ width: 38 }} />
+        </View>
+        <ScrollView contentContainerStyle={styles.plansContent}>
+          {sortedPlans.map((plan) => {
+            const isCurrent = currentPack === plan.name;
+
+            return (
+              <View 
+                key={plan.id} 
+                style={[
+                  styles.planCard, 
+                  plan.isCustom && styles.planCardCustom,
+                  isCurrent && { borderColor: '#2b5bbb', borderWidth: 2 }
+                ]}
+              >
+                <View style={styles.planCardTop}>
+                  <Text style={styles.planName}>
+                    {plan.name} {isCurrent && <Text style={{ fontSize: 12, color: '#2b5bbb' }}> (Actuel)</Text>}
+                  </Text>
+                  <Text style={styles.planSubtitle}>{plan.subtitle}</Text>
+                  {plan.price !== '' && (
+                    <Text style={styles.planPrice}>
+                      {plan.price} <Text style={styles.planPeriod}>{plan.period}</Text>
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.planCardBottom}>
+                  {plan.features.map((f, i) => <Text key={i} style={styles.planFeature}>{f}</Text>)}
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.planBtn, 
+                      { backgroundColor: plan.buttonColor },
+                      isCurrent && styles.disabledBtn
+                    ]}
+                    onPress={() => handlePlanSelection(plan)}
+                    disabled={isCurrent}
+                  >
+                    <Text style={styles.planBtnText}>
+                      {isCurrent ? 'VOTRE PACK ACTUEL' : 'CHOISIR'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {!plan.isCustom && <Text style={styles.planNote}>{plan.note}</Text>}
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#eef3ff" />
+      <View style={styles.topBar}>
+        <View style={styles.packBadge}>
+          <Text style={styles.packBadgeText}>Pack {currentPack}</Text>
+        </View>
+      </View>
+
+      {loading ? (
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color="#2b5bbb" />
+          <Text style={styles.loadingText}>Chargement de vos données...</Text>
+        </View>
+      ) : (
+        <ScrollView 
+          style={styles.scroll} 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+              colors={["#2b5bbb"]} // Android
+              tintColor="#2b5bbb"  // iOS
+            />
+          }
+        >
+          <View style={styles.activeCard}>
+            <View style={styles.activeCardLeft}>
+              <View style={styles.activeDot} />
+              <View>
+                <Text style={styles.activeLabel}>Pack actif</Text>
+                <Text style={styles.activeName}>{currentPack}</Text>
+                <Text style={styles.activeSub}>Mis à jour dynamiquement</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.changeBtn} onPress={() => setView('plans')}>
+              <Text style={styles.changeBtnText}>Changer{'\n'}de pack</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.historyTitle}>Historique de facturation</Text>
+
+          {historyList.length === 0 ? (
+            <Text style={styles.emptyText}>Aucun historique de paiement disponible.</Text>
+          ) : (
+            historyList.map((inv) => (
+              <View key={inv.id.toString()} style={styles.invoiceCard}>
+                <View style={styles.invoiceTop}>
+                  <View>
+                    <Text style={styles.invoicePackName}>
+                      {getPackNameByIdFormule(inv.id_formule)}
+                    </Text>
+                    <Text style={styles.invoiceDate}>{formatDate(inv.date_paiement)}</Text>
+                  </View>
+                  <StatusBadge statut={inv.statut} />
+                </View>
+                <View style={styles.invoiceBottom}>
+                  <Text style={styles.invoiceAmount}>{inv.montant} € HT</Text>
+                  <ActionBtn />
+                </View>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      )}
+    </SafeAreaView>
+  );
+}
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
@@ -126,196 +371,5 @@ const styles = StyleSheet.create({
   planBtn: { marginTop: 10, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 22 },
   planBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   planNote: { marginTop: 10, fontSize: 12, color: '#5b6a8e', textAlign: 'center' },
+  disabledBtn: { backgroundColor: '#a1a1aa', opacity: 0.7 },
 });
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function StatusBadge({ statut }: { statut: number }) {
-  const isAccepted = statut === 1; 
-  return (
-    <View style={[styles.badge, isAccepted ? styles.badgeGreen : styles.badgeOrange]}>
-      <Text style={[styles.badgeText, isAccepted ? styles.badgeTextGreen : styles.badgeTextOrange]}>
-        {isAccepted ? 'Accepté' : 'En attente'}
-      </Text>
-    </View>
-  );
-}
-
-function ActionBtn() {
-  return (
-    <TouchableOpacity style={styles.actionBtn}>
-      <Text style={styles.actionBtnText}>Télécharger ⬇</Text>
-    </TouchableOpacity>
-  );
-}
-
-function formatDate(dateString: string) {
-  if (!dateString) return '-';
-  try {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  } catch (error) {
-    return dateString;
-  }
-}
-
-function getPackNameByIdFormule(id_formule: number): string {
-  switch (id_formule) {
-    case 1: return 'START RECRUT';
-    case 2: return 'PRO RECRUT';
-    case 3: return 'FULL RECRUT';
-    case 4: return 'DEVIS PERSONNALISÉ';
-    default: return 'PACK INCONNU';
-  }
-}
-
-// ── Main Component ────────────────────────────────────────────────────────────
-export default function SubscriptionScreen() {
-  const [view, setView] = useState<'dashboard' | 'plans'>('dashboard');
-  const [currentPack, setCurrentPack] = useState<string>('DEVIS PERSONNALISÉ');
-  const [historyList, setHistoryList] = useState<HistoryItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    const fetchSubscriptionData = async () => {
-      try {
-        setLoading(true);
-        const response = await getHestory();
-        if (response) {
-          if (response.pack) setCurrentPack(response.pack);
-          if (Array.isArray(response.historique)) setHistoryList(response.historique);
-        }
-      } catch (error) {
-        console.error("Erreur lors de la récupération de l'historique:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSubscriptionData();
-  }, []);
-
-  // Fonction pour gérer la redirection vers Stripe
-  const handlePlanSelection = async (plan: typeof plans[0]) => {
-    if (plan.isCustom) {
-      // Optionnel : Gérer l'action pour le devis personnalisé (ex: ouvrir mail ou formulaire)
-      return;
-    }
-
-    if (plan.stripeUrl) {
-      try {
-        const supported = await Linking.canOpenURL(plan.stripeUrl);
-        if (supported) {
-          await Linking.openURL(plan.stripeUrl);
-        } else {
-          console.error("Impossible d'ouvrir ce lien : " + plan.stripeUrl);
-        }
-      } catch (error) {
-        console.error("Erreur lors de l'ouverture du lien Stripe:", error);
-      }
-    }
-  };
-
-  if (view === 'plans') {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#eef3ff" />
-        <View style={styles.plansHeader}>
-          <TouchableOpacity onPress={() => setView('dashboard')} style={styles.backBtn}>
-            <Text style={styles.backArrow}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.plansTitle}>Choisir un pack</Text>
-          <View style={{ width: 38 }} />
-        </View>
-        <ScrollView contentContainerStyle={styles.plansContent}>
-          {plans.map((plan) => (
-            <View key={plan.id} style={[styles.planCard, plan.isCustom && styles.planCardCustom]}>
-              <View style={styles.planCardTop}>
-                <Text style={styles.planName}>{plan.name}</Text>
-                <Text style={styles.planSubtitle}>{plan.subtitle}</Text>
-                {plan.price !== '' && (
-                  <Text style={styles.planPrice}>
-                    {plan.price} <Text style={styles.planPeriod}>{plan.period}</Text>
-                  </Text>
-                )}
-              </View>
-              <View style={styles.planCardBottom}>
-                {plan.features.map((f, i) => <Text key={i} style={styles.planFeature}>{f}</Text>)}
-                
-                <TouchableOpacity
-                  style={[styles.planBtn, { backgroundColor: plan.buttonColor }]}
-                  onPress={() => handlePlanSelection(plan)} // Redirection Stripe au clic
-                >
-                  <Text style={styles.planBtnText}>
-                    {plan.isCustom || currentPack === plan.name ? 'VOTRE PACK ACTUEL' : 'CHOISIR'}
-                  </Text>
-                </TouchableOpacity>
-
-                {!plan.isCustom && <Text style={styles.planNote}>{plan.note}</Text>}
-              </View>
-            </View>
-          ))}
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#eef3ff" />
-      <View style={styles.topBar}>
-        <View style={styles.packBadge}>
-          <Text style={styles.packBadgeText}>Pack {currentPack}</Text>
-        </View>
-      </View>
-
-      {loading ? (
-        <View style={styles.centerState}>
-          <ActivityIndicator size="large" color="#2b5bbb" />
-          <Text style={styles.loadingText}>Chargement de vos données...</Text>
-        </View>
-      ) : (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.activeCard}>
-            <View style={styles.activeCardLeft}>
-              <View style={styles.activeDot} />
-              <View>
-                <Text style={styles.activeLabel}>Pack actif</Text>
-                <Text style={styles.activeName}>{currentPack}</Text>
-                <Text style={styles.activeSub}>Mis à jour dynamiquement</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.changeBtn} onPress={() => setView('plans')}>
-              <Text style={styles.changeBtnText}>Changer{'\n'}de pack</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.historyTitle}>Historique de facturation</Text>
-
-          {historyList.length === 0 ? (
-            <Text style={styles.emptyText}>Aucun historique de paiement disponible.</Text>
-          ) : (
-            historyList.map((inv) => (
-              <View key={inv.id.toString()} style={styles.invoiceCard}>
-                <View style={styles.invoiceTop}>
-                  <View>
-                    <Text style={styles.invoicePackName}>
-                      {getPackNameByIdFormule(inv.id_formule)}
-                    </Text>
-                    <Text style={styles.invoiceDate}>{formatDate(inv.date_paiement)}</Text>
-                  </View>
-                  <StatusBadge statut={inv.statut} />
-                </View>
-                <View style={styles.invoiceBottom}>
-                  <Text style={styles.invoiceAmount}>{inv.montant} € HT</Text>
-                  <ActionBtn />
-                </View>
-              </View>
-            ))
-          )}
-        </ScrollView>
-      )}
-    </SafeAreaView>
-  );
-}

@@ -1,11 +1,11 @@
-import { getTokenId, getPsaudo } from "../../employeur/services/token_id";
+import { getTokenId } from "../../employeur/services/token_id";
 import url from "@/app/services/url.js";
 
 export async function createCommande(data) {
     const token_id = getTokenId();
-    const psaudo = getPsaudo();
+   
 
-    if (!token_id || !psaudo) {
+    if (!token_id ) {
         throw new Error("Informations utilisateur manquantes");
     }
 
@@ -14,7 +14,7 @@ export async function createCommande(data) {
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ token_id, psaudo, data }),
+        body: JSON.stringify({ token_id, data }),
     });
 
     const result = await response.json();

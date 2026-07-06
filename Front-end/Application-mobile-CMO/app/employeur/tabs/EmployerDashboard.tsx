@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from "react"; 
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image, RefreshControl } from "react-native"; // <-- Importation de RefreshControl
 import { useFocusEffect, router } from "expo-router"; 
 import { Award, Bell, FileText, MessageSquare, Phone, Search, UserCheck } from "lucide-react-native";
 
 import { getPhase1, getPhase2, getPhase3, getPhase4, getPhase5, getPack } from "@/app/employeur/services/EmployerDashboard";
-import { getPsaudo } from "@/app/employeur/services/token_id";
+import { getRaison } from "@/app/employeur/services/token_id";
 import { getImage } from '@/app/employeur/services/documents';
 import { getNotification } from '../../employeur/services/messagerie'; 
 import url from "@/app/services/url.js";
@@ -20,6 +20,7 @@ export default function EmployerDashboard() {
   const [packName, setPackName] = useState<string>("Chargement du pack...");
   const [photoUrl, setPhotoUrl] = useState<string>(""); 
   const [notifCount, setNotifCount] = useState<number>(0);
+  const [refreshing, setRefreshing] = useState<boolean>(false); // <-- État pour le Pull-to-Refresh
   
   const [phase1Stats, setPhase1Stats] = useState({ nouvelleCommande: 0, nombrePoste: 0, enCours: 0, commandeValidee: 0, commandesRefusees: 0, commandesAnnulees: 0 });
   const [phase2Stats, setPhase2Stats] = useState({ candidatsProposes: 0, candidatsContactes: 0, candidatsInteresses: 0, candidatsAcceptes: 0, preselectionValidee: 0, preselectionNonValidee: 0 });
@@ -27,43 +28,50 @@ export default function EmployerDashboard() {
   const [phase4Stats, setPhase4Stats] = useState({ contratEnCours: 0, contratSigne: 0, salarieIntegre: 0, periodeEssai: 0 });
   const [phase5Stats, setPhase5Stats] = useState({ retenu: 0, nonRetenu: 0, missionTermine: 0 });
 
+  // Séparation de la fonction de chargement pour pouvoir la réutiliser au refresh
+  const loadDashboardData = async (isMounted = true) => {
+    try {
+      const [packRes, imgRes, ph1, ph2, ph3, ph4, ph5, notifRes] = await Promise.all([
+        getPack(), getImage(), getPhase1(), getPhase2(), getPhase3(), getPhase4(), getPhase5(), getNotification()
+      ]);
+
+      if (!isMounted) return;
+
+      // Pack
+      if (packRes?.id_formule && PACK_NAMES[packRes.id_formule]) setPackName(PACK_NAMES[packRes.id_formule]);
+      else setPackName("AUCUN PACK ACTIF");
+
+      // Image
+      if (imgRes?.image) setPhotoUrl(`${url()}documents/photos_employeur/${imgRes.image}?t=${Date.now()}`);
+
+      // Stats & Notifications
+      if (ph1?.success) setPhase1Stats({ nouvelleCommande: ph1.nouvelle_commande ?? 0, nombrePoste: ph1.nombre_poste ?? 0, enCours: ph1["En_cours"] ?? 0, commandeValidee: ph1["commande_validée"] ?? 0, commandesRefusees: ph1["commandes_refusées"] ?? 0, commandesAnnulees: ph1["commandes_annulées"] ?? 0 });
+      if (ph2?.success) setPhase2Stats({ candidatsProposes: ph2.phase2_1 ?? 0, candidatsContactes: ph2.phase2_2 ?? 0, candidatsInteresses: ph2.phase2_3 ?? 0, candidatsAcceptes: ph2.phase2_4 ?? 0, preselectionValidee: ph2.phase2_5 ?? 0, preselectionNonValidee: ph2.phase2_6 ?? 0 });
+      if (ph3?.success) setPhase3Stats({ entretienProgramme: ph3.phase3_1 ?? 0, candidatRetenu: ph3.phase3_2 ?? 0, candidatNonRetenu: ph3.phase3_3 ?? 0 });
+      if (ph4?.success) setPhase4Stats({ contratEnCours: ph4.phase4_1 ?? 0, contratSigne: ph4.phase4_2 ?? 0, salarieIntegre: ph4.phase4_3 ?? 0, periodeEssai: ph4.phase4_4 ?? 0 });
+      if (ph5?.success) setPhase5Stats({ retenu: ph5.phase5_1 ?? 0, nonRetenu: ph5.phase5_2 ?? 0, missionTermine: ph5.phase5_3 ?? 0 });
+      
+      if (notifRes?.success) setNotifCount(notifRes.nombre_msg ?? 0);
+
+    } catch (error) {
+      console.log("Erreur chargement dashboard:", error);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
-
-      const fetchData = async () => {
-        try {
-          const [packRes, imgRes, ph1, ph2, ph3, ph4, ph5, notifRes] = await Promise.all([
-            getPack(), getImage(), getPhase1(), getPhase2(), getPhase3(), getPhase4(), getPhase5(), getNotification()
-          ]);
-
-          if (!isMounted) return;
-
-          // Pack
-          if (packRes?.id_formule && PACK_NAMES[packRes.id_formule]) setPackName(PACK_NAMES[packRes.id_formule]);
-          else setPackName("AUCUN PACK ACTIF");
-
-          // Image
-          if (imgRes?.image) setPhotoUrl(`${url()}documents/photos_employeur/${imgRes.image}?t=${Date.now()}`);
-
-          // Stats & Notifications
-          if (ph1?.success) setPhase1Stats({ nouvelleCommande: ph1.nouvelle_commande ?? 0, nombrePoste: ph1.nombre_poste ?? 0, enCours: ph1["En_cours"] ?? 0, commandeValidee: ph1["commande_validée"] ?? 0, commandesRefusees: ph1["commandes_refusées"] ?? 0, commandesAnnulees: ph1["commandes_annulées"] ?? 0 });
-          if (ph2?.success) setPhase2Stats({ candidatsProposes: ph2.phase2_1 ?? 0, candidatsContactes: ph2.phase2_2 ?? 0, candidatsInteresses: ph2.phase2_3 ?? 0, candidatsAcceptes: ph2.phase2_4 ?? 0, preselectionValidee: ph2.phase2_5 ?? 0, preselectionNonValidee: ph2.phase2_6 ?? 0 });
-          if (ph3?.success) setPhase3Stats({ entretienProgramme: ph3.phase3_1 ?? 0, candidatRetenu: ph3.phase3_2 ?? 0, candidatNonRetenu: ph3.phase3_3 ?? 0 });
-          if (ph4?.success) setPhase4Stats({ contratEnCours: ph4.phase4_1 ?? 0, contratSigne: ph4.phase4_2 ?? 0, salarieIntegre: ph4.phase4_3 ?? 0, periodeEssai: ph4.phase4_4 ?? 0 });
-          if (ph5?.success) setPhase5Stats({ retenu: ph5.phase5_1 ?? 0, nonRetenu: ph5.phase5_2 ?? 0, missionTermine: ph5.phase5_3 ?? 0 });
-          
-          if (notifRes?.success) setNotifCount(notifRes.nombre_msg ?? 0);
-
-        } catch (error) {
-          console.log("Erreur chargement dashboard:", error);
-        }
-      };
-
-      fetchData();
+      loadDashboardData(isMounted);
       return () => { isMounted = false; };
     }, [])
   );
+
+  // Fonction déclenchée lors du geste de glissement vers le bas
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadDashboardData(true);
+    setRefreshing(false);
+  };
 
   const recruitmentPhases = [
     { id: 1, title: 'PHASE 1 : Traitement de la commande', icon: Search, stats: [{ label: 'Nouvelle commande', value: phase1Stats.nouvelleCommande, color: '#e8f0ff', text: '#1e3c76' }, { label: 'Nombre de poste', value: phase1Stats.nombrePoste, color: '#dff1ff', text: '#1e3c76' }, { label: "En cours d'analyse", value: phase1Stats.enCours, color: '#ffe9cf', text: '#1e3c76' }, { label: 'Commande validée', value: phase1Stats.commandeValidee, color: '#dfeee2', text: '#1e3c76' }, { label: 'Commandes refusées', value: phase1Stats.commandesRefusees, color: '#dfeee2', text: '#1e3c76' }, { label: 'Commandes annulées', value: phase1Stats.commandesAnnulees, color: '#dfeee2', text: '#1e3c76' }] },
@@ -75,12 +83,23 @@ export default function EmployerDashboard() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        // 🔄 Injection du composant RefreshControl
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={["#2b5bbb"]} // Android
+            tintColor="#2b5bbb"  // iOS
+          />
+        }
+      >
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
             <View style={styles.logoBox}>{photoUrl ? <Image source={{ uri: photoUrl }} style={styles.avatarImage} /> : <Text style={styles.logoText}>Logo</Text>}</View>
             <View style={styles.infoContent}>
-              <Text style={styles.company}>{getPsaudo()}</Text>
+              <Text style={styles.company}>{getRaison()}</Text>
               <Text style={styles.sub}>Pack {packName}</Text>
             </View>
           </View>

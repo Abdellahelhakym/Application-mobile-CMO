@@ -1,5 +1,5 @@
 let tokenId = null;
-let psaudo = null;
+let Raison= null;
 
 
 function setTokenId(token) {
@@ -10,11 +10,11 @@ function getTokenId() {
   return tokenId;
 }
 
-function setPsaudo(pseudo) {
-  psaudo = pseudo;
+function setRaison(pseudo) {
+  Raison = pseudo;
 }
-function getPsaudo() {
-  return psaudo;
+function getRaison() {
+  return Raison;
 }
 
-export { setTokenId, getTokenId, setPsaudo, getPsaudo };
+export { setTokenId, getTokenId, setRaison, getRaison };

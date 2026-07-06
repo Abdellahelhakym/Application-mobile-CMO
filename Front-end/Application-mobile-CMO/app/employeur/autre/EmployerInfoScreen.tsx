@@ -10,9 +10,9 @@ import {
   Alert,
   Image
 } from 'react-native';
-import { Phone, MessageSquare, Edit2, Trash2, Upload } from 'lucide-react-native';
+import { Edit2, Trash2, Upload } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import url from "@/app/services/url.js"; // Importation de votre service d'URL
+import url from "@/app/services/url.js";
 import { getEmployerInfo, updateEmployerInfo } from '@/app/employeur/services/EmployerInfoScreen';
 import { getImage, updateImage, DeleteImage } from '@/app/employeur/services/documents';
 
@@ -36,8 +36,8 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
         try {
           const imageData = await getImage();
           if (imageData?.image) {
-            // Utilisation de url() importé pour construire le chemin complet de l'image
-            currentPhotoUrl = url() + "documents/photos_employeur/" + imageData.image;
+            // 👈 Ajout du paramètre unique ?t= pour bypasser le cache au premier chargement
+            currentPhotoUrl = url() + "documents/photos_employeur/" + imageData.image + "?t=" + Date.now();
           }
         } catch (imgError) {
           console.log("Pas d'image ou erreur de récupération :", imgError);
@@ -125,64 +125,71 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
     setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
-const handleSubmit = async () => {
-  if (!formData) return;
+  const handleSubmit = async () => {
+    if (!formData) return;
 
-  setLoading(true);
-  try {
-    // 1. On tente d'uploader l'image si elle existe
-    if (photoUpload) {
-      try {
-        console.log("Envoi de l'image en cours...", photoUpload);
-        const imgResponse = await updateImage(photoUpload as any);
-        console.log("Réponse serveur upload image :", imgResponse);
-        setPhotoUpload(null);
-      } catch (imgError: any) {
-        console.error("❌ Erreur spécifique à updateImage :", imgError);
-        // Si l'erreur vient du serveur (Axios/Fetch), on affiche son contenu s'il existe
-        const serverMsg = imgError?.response?.data?.message || imgError?.message || JSON.stringify(imgError);
-        Alert.alert('Erreur Upload Image', `Le serveur a rejeté l'image :\n${serverMsg}`);
-        setLoading(false);
-        return; // On arrête l'exécution ici pour ne pas envoyer le reste
+    setLoading(true);
+    try {
+      // 1. On tente d'uploader l'image si elle existe
+      if (photoUpload) {
+        try {
+          console.log("Envoi de l'image en cours...", photoUpload);
+          const imgResponse = await updateImage(photoUpload as any);
+          console.log("Réponse serveur upload image :", imgResponse);
+          
+          // Après un upload réussi, on force la mise à jour de l'URL affichée pour inclure le timestamp
+          if (imgResponse?.image || formData.photo) {
+            const freshImageName = imgResponse?.image || formData.photo.split('/').pop().split('?')[0];
+            setFormData((prev: any) => ({
+              ...prev,
+              photo: url() + "documents/photos_employeur/" + freshImageName + "?t=" + Date.now()
+            }));
+          }
+          
+          setPhotoUpload(null);
+        } catch (imgError: any) {
+          console.error("❌ Erreur spécifique à updateImage :", imgError);
+          const serverMsg = imgError?.response?.data?.message || imgError?.message || JSON.stringify(imgError);
+          Alert.alert('Erreur Upload Image', `Le serveur a rejeté l'image :\n${serverMsg}`);
+          setLoading(false);
+          return;
+        }
       }
-    }
 
-    // 2. On tente de mettre à jour le reste des informations textuelles
-    console.log("Envoi des informations de l'employeur...", formData);
-    const result = await updateEmployerInfo(formData);
-    console.log("Réponse serveur updateEmployerInfo :", result);
-    
-    if (
-      result && 
-      (result.success === true || 
-       result.status === 'success' || 
-       result.status === 200 || 
-       result.message === 'success')
-    ) {
-      Alert.alert('Succès', 'Vos informations ont bien été modifiées.');
-    } else if (result && (result.success === false || result.status === 'error')) {
-      Alert.alert('Erreur', result?.message || "Le serveur a renvoyé un statut d'erreur.");
-    } else {
-      Alert.alert('Succès', 'Vos informations ont bien été modifiées.');
-    }
-  } catch (error: any) {
-    // 3. Capture des erreurs globales du serveur
-    console.error('❌ Erreur globale de mise à jour :', error);
-    
-    // On extrait le message le plus précis possible venant du serveur Node.js (souvent dans error.response.data)
-    const exactServerError = error?.response?.data?.message 
-      || error?.response?.data 
-      || error?.message 
-      || "Erreur inconnue";
+      // 2. On tente de mettre à jour le reste des informations textuelles
+      console.log("Envoi des informations de l'employeur...", formData);
+      const result = await updateEmployerInfo(formData);
+      console.log("Réponse serveur updateEmployerInfo :", result);
+      
+      if (
+        result && 
+        (result.success === true || 
+         result.status === 'success' || 
+         result.status === 200 || 
+         result.message === 'success')
+      ) {
+        Alert.alert('Succès', 'Vos informations ont bien été modifiées.');
+      } else if (result && (result.success === false || result.status === 'error')) {
+        Alert.alert('Erreur', result?.message || "Le serveur a renvoyé un statut d'erreur.");
+      } else {
+        Alert.alert('Succès', 'Vos informations ont bien été modifiées.');
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur globale de mise à jour :', error);
+      
+      const exactServerError = error?.response?.data?.message 
+        || error?.response?.data 
+        || error?.message 
+        || "Erreur inconnue";
 
-    Alert.alert(
-      'Erreur Serveur', 
-      `Détails du problème :\n${typeof exactServerError === 'object' ? JSON.stringify(exactServerError) : exactServerError}`
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+      Alert.alert(
+        'Erreur Serveur', 
+        `Détails du problème :\n${typeof exactServerError === 'object' ? JSON.stringify(exactServerError) : exactServerError}`
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -197,11 +204,8 @@ const handleSubmit = async () => {
       <ScrollView contentContainerStyle={styles.content}>
         
         <View style={styles.card}>
-          <Text style={styles.label}>
-            votre logo : <Text style={{ color: 'red' }}>(*)</Text>
-          </Text>
+          <Text style={styles.label}>votre logo :</Text>
 
-          {/* Section Logo carrée */}
           <View style={styles.imageContainer}>
             {formData?.photo ? (
               <View style={styles.logoBlock}>
@@ -209,7 +213,6 @@ const handleSubmit = async () => {
                   <Image source={{ uri: formData.photo }} style={styles.logoPreview} />
                 </View>
                 
-                {/* Boutons Modifier et Supprimer côte à côte */}
                 <View style={styles.actionButtonsRow}>
                   <TouchableOpacity style={[styles.inlineBtn, styles.editInlineBtn]} onPress={pickImage}>
                     <Edit2 size={14} color="#fff" style={{ marginRight: 4 }} />
@@ -230,30 +233,10 @@ const handleSubmit = async () => {
             )}
           </View>
 
-          <Text style={styles.label}>
-            Raison social : <Text style={{ color: 'red' }}>(*)</Text>
-          </Text>
+          <Text style={styles.label}>Raison sociale :</Text>
           <TextInput
             value={formData?.raison_social || ''}
             onChangeText={(v) => handleChange('raison_social', v)}
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>
-            Prenom du responsable : <Text style={{ color: 'red' }}>(*)</Text>
-          </Text>
-          <TextInput
-            value={formData?.prenom_responsable || ''}
-            onChangeText={(v) => handleChange('prenom_responsable', v)}
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>
-            Nom du responsable : <Text style={{ color: 'red' }}>(*)</Text>
-          </Text>
-          <TextInput
-            value={formData?.responsable || ''}
-            onChangeText={(v) => handleChange('responsable', v)}
             style={styles.input}
           />
 
@@ -275,7 +258,21 @@ const handleSubmit = async () => {
             placeholderTextColor="#7a8ab8"
           />
 
-          <Text style={styles.label}>N° de téléphone 1 : <Text style={{ color: 'red' }}>(*)</Text></Text>
+          <Text style={styles.label}>Prénom du dirigeant :</Text>
+          <TextInput
+            value={formData?.prenom_responsable || ''}
+            onChangeText={(v) => handleChange('prenom_responsable', v)}
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>Nom du dirigeant :</Text>
+          <TextInput
+            value={formData?.responsable || ''}
+            onChangeText={(v) => handleChange('responsable', v)}
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>N° de téléphone 1 :</Text>
           <TextInput
             value={formData?.num_tel || ''}
             onChangeText={(v) => handleChange('num_tel', v)}
@@ -295,7 +292,7 @@ const handleSubmit = async () => {
             keyboardType="phone-pad"
           />
 
-          <Text style={styles.label}>Adresse email 1 : <Text style={{ color: 'red' }}>(*)</Text></Text>
+          <Text style={styles.label}>Adresse email 1 :</Text>
           <TextInput
             value={formData?.email || ''}
             onChangeText={(v) => handleChange('email', v)}
@@ -315,7 +312,7 @@ const handleSubmit = async () => {
             keyboardType="email-address"
           />
 
-          <Text style={styles.label}>Adresse Postale:</Text>
+          <Text style={styles.label}>Adresse Postale :</Text>
           <TextInput
             value={formData?.adresse || ''}
             onChangeText={(v) => handleChange('adresse', v)}

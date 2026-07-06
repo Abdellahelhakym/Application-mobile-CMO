@@ -5,7 +5,7 @@ import React, { useCallback, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { getPsaudo } from "@/app/employeur/services/token_id";
+import { getRaison } from "@/app/employeur/services/token_id";
 
 export default function Layout() {
   const insets = useSafeAreaInsets();
@@ -16,8 +16,8 @@ export default function Layout() {
   const [userName, setUserName] = useState("Utilisateur");
 
   const refreshPseudo = useCallback(() => {
-    const pseudo = getPsaudo();
-    setUserName(pseudo || "Utilisateur");
+    const raison = getRaison();
+    setUserName(raison || "Utilisateur");
   }, []);
 
   useFocusEffect(
@@ -59,7 +59,7 @@ export default function Layout() {
         // ⚪ Nom utilisateur en BLANC
         headerRight: () => (
           <View style={{ marginRight: 15, flexDirection: "row", alignItems: "center" }}>
-            <Text style={{ fontSize: 13, color: "#ffffff", marginRight: 10, fontWeight: "500" }}>
+            <Text style={{ fontSize: 18, color: "#ffffff", marginRight: 10, fontWeight: "500" }}>
               {userName}
             </Text>
           </View>
@@ -111,7 +111,7 @@ function getTitle(name: string) {
     case "MyOffersScreen": return "Commandes";
     case "EmployeurCandidatures": return "Candidatures";
     case "CVDatabaseScreen": return "Candidats";
-    case "EmployerProfileScreen": return "Profil";
+    case "EmployerProfileScreen": return "Plus";
     default: return "";
   }
 }

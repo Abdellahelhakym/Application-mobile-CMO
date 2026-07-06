@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
 import { updateDocument, getDocument, DeleteDocument, getCategorie, getListFils } from '@/app/candidat/services/AttestationsScreen';
 import url from '@/app/services/url';
 import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser'; // <-- Importation d'Expo WebBrowser
 import { Eye, Trash2, Upload } from 'lucide-react-native';
 
 // 🔧 Fonction pour décoder les entités HTML courantes
@@ -127,6 +127,7 @@ export default function AttestationsScreen() {
     }
   };
 
+  // 🔧 Remplacement de Linking par WebBrowser pour ouvrir le document dans l'application
   const handleView = async (item: AttestationItem) => {
     const fileName = uploadedDocs[item.id_attestation];
     if (!fileName) {
@@ -136,9 +137,17 @@ export default function AttestationsScreen() {
 
     const currentPhotoUrl = url() + "documents/attestations/" + fileName + "?t=" + Date.now();
     
-    Linking.openURL(currentPhotoUrl).catch(() => {
-      Alert.alert("Erreur", "Impossible d'ouvrir le lien du document.");
-    });
+    try {
+      await WebBrowser.openBrowserAsync(currentPhotoUrl, {
+        toolbarColor: "#2b5bbb", // Couleur assortie à tes boutons
+        controlsColor: "#ffffff",
+        showTitle: true,
+        enableBarCollapsing: true,
+      });
+    } catch (error) {
+      console.log("Erreur lors de l'ouverture du document :", error);
+      Alert.alert("Erreur", "Impossible d'ouvrir le document.");
+    }
   };
 
   const handleDelete = (item: AttestationItem) => {

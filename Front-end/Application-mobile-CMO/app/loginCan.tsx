@@ -9,10 +9,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,Linking,
+  TextInput,
   TouchableOpacity,
-  View
+  Alert, // Ajouté pour intercepter les erreurs éventuelles du navigateur
+  View,
 } from "react-native";
+import * as WebBrowser from "expo-web-browser"; // <-- Importation d'Expo WebBrowser
 import { setTokenId } from "./candidat/services/token_id";
 import { loginCan } from "./services/login";
 
@@ -27,6 +29,21 @@ export default function LoginScreen() {
 
   const isEmailValid = (value: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
+
+  // 🔧 Fonction utilitaire pour ouvrir un lien dans le navigateur in-app
+  const openInternalLink = async (url: string) => {
+    try {
+      await WebBrowser.openBrowserAsync(url, {
+        toolbarColor: "#122F78", // Couleur assortie à ton bouton principal
+        controlsColor: "#ffffff",
+        showTitle: true,
+        enableBarCollapsing: true,
+      });
+    } catch (error) {
+      console.log("Erreur lors de l'ouverture du lien :", error);
+      Alert.alert("Erreur", "Impossible d'ouvrir la page.");
+    }
+  };
 
   const handleLogin = async () => {
     if (isLoading) {
@@ -123,7 +140,7 @@ export default function LoginScreen() {
 
             {/* Forgot */}
             <TouchableOpacity
-              onPress={() => Linking.openURL("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie")}
+              onPress={() => openInternalLink("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie")}
             >
               <Text style={styles.forgot}>Mot de passe oublié ?</Text>
             </TouchableOpacity>
@@ -144,7 +161,7 @@ export default function LoginScreen() {
 
               <TouchableOpacity
                 style={styles.secondaryBtn}
-                onPress={() => Linking.openURL("https://conceptmaindoeuvre.com/creer-compte")}
+                onPress={() => openInternalLink("https://conceptmaindoeuvre.com/creer-compte")}
               >
                 <Text style={styles.secondaryText}>Créer un compte</Text>
               </TouchableOpacity>

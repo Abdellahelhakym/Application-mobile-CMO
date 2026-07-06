@@ -13,8 +13,9 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router'; // <-- Ajout pour récupérer l'id de la notification
 import { getMessages, getSousMessages, CreateMessage, sendMessage, ClotureMessage  } from '../../employeur/services/messagerie'; 
-import { getPsaudo } from "../../employeur/services/token_id"; 
+import { getRaison } from "../../employeur/services/token_id"; 
 
 interface MessageItem {
   id: number;
@@ -45,6 +46,9 @@ interface SousMessageItem {
 }
 
 export default function ChatScreen() {
+  const params = useLocalSearchParams(); // <-- Récupération des paramètres de navigation
+  const { id_msg } = params;
+
   const [currentView, setCurrentView] = useState<'home' | 'chat' | 'compose'>('home');
   const [selectedRootMessage, setSelectedRootMessage] = useState<MessageItem | null>(null);
   
@@ -61,29 +65,61 @@ export default function ChatScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // Gestion de l'initialisation et de la redirection automatique
   useEffect(() => {
-    loadInitialData();
-  }, []);
+    const loadInitialData = async () => {
+      try {
+        setLoading(true);
+        if (typeof getRaison === 'function') {
+          const raison = await getRaison();
+          if (raison) setUserPseudo(raison);
+        }
+        
+        // Charger les messages et récupérer la liste à jour
+        const messages = await fetchMainMessages();
 
-  const loadInitialData = async () => {
-    try {
-      setLoading(true);
-      if (typeof getPsaudo === 'function') {
-        const pseudo = await getPsaudo();
-        if (pseudo) setUserPseudo(pseudo);
+        // Si l'id_msg est présent dans les paramètres, on ouvre automatiquement la discussion
+        if (id_msg) {
+          const targetId = parseInt(id_msg as string, 10);
+          const foundMessage = messages.find(m => m.id === targetId);
+          
+          if (foundMessage) {
+            setSelectedRootMessage(foundMessage);
+            setSujet(foundMessage.sujet);
+            setCurrentView('chat');
+            await fetchReplies(targetId);
+          } else {
+            // Fallback : Si le message n'est pas encore synchronisé dans la liste principale
+            const mockRootMessage: MessageItem = {
+              id: targetId,
+              id_user: "",
+              type_message: "",
+              sujet: "Discussion", 
+              description: "",
+              date_sujet: "",
+              heure_sujet: "",
+              statut: 1,
+              id_retour: null,
+              deleted: 0
+            };
+            setSelectedRootMessage(mockRootMessage);
+            setCurrentView('chat');
+            await fetchReplies(targetId);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement initial:', error);
+      } finally {
+        setLoading(false);
       }
-      await fetchMainMessages();
-    } catch (error) {
-      console.error('Erreur lors du chargement des données:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  // Récupérer les discussions principales
-  const fetchMainMessages = async () => {
+    loadInitialData();
+  }, [id_msg]); // Se déclenche à chaque fois que l'id du message reçu change
+
+  // Récupérer les discussions principales (modifié pour retourner la liste de données)
+  const fetchMainMessages = async (): Promise<MessageItem[]> => {
     try {
-      setLoading(true);
       const data = await getMessages();
       const messagesList: MessageItem[] = Array.isArray(data) ? data : data?.data ?? [];
       
@@ -109,10 +145,10 @@ export default function ChatScreen() {
       );
 
       setMainMessages(messagesWithLastMsg);
+      return messagesWithLastMsg;
     } catch (error) {
       console.error('Erreur lors de la récupération des messages principaux:', error);
-    } finally {
-      setLoading(false);
+      return [];
     }
   };
 
@@ -480,13 +516,11 @@ const styles = StyleSheet.create({
   cloturerBtnText: { color: '#16a34a', fontWeight: '700', fontSize: 13 }, 
   chatScrollContent: { padding: 16, paddingBottom: 24 },
   
-  // --- Changement ici : Moi (user) à gauche ---
   userBubbleWrapper: { width: '100%', marginBottom: 10, alignItems: 'flex-start' }, 
   userBubble: { backgroundColor: '#fffbeb', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#fef08a', marginRight: 40 }, 
   userAuthor: { fontSize: 13, color: '#d97706', fontWeight: '600' },
   userText: { fontSize: 14, color: '#0f172a', lineHeight: 20 },
 
-  // --- Changement ici : CMO à droite ---
   cmoBubbleWrapper: { width: '100%', marginBottom: 10, alignItems: 'flex-end' }, 
   cmoBubble: { backgroundColor: '#f0f9ff', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#bae6fd', marginLeft: 40 }, 
   cmoAuthor: { fontSize: 13, color: '#0284c7', fontWeight: '600' },

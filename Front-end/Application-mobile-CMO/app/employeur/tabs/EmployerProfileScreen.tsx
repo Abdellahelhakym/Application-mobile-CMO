@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from "react"; // 👈 Utilisation de useState et useCallback
-import { router, useFocusEffect } from "expo-router"; // 👈 Importation de useFocusEffect
+import React, { useState, useCallback } from "react";
+import { router, useFocusEffect } from "expo-router";
 import {
   View,
   Alert,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ScrollView,
   Image,
+  RefreshControl, // 👈 Ajout de l'import RefreshControl
 } from "react-native";
 
 import {
@@ -28,6 +29,7 @@ import url from "@/app/services/url.js";
 import { deleteAccount } from "@/app/employeur/services/deleteAccount";
 
 export default function EmployerProfileScreen() {
+  const [refreshing, setRefreshing] = useState(false); // 👈 État pour l'animation de rafraîchissement
 
   const [employerInfo, setEmployerInfo] = useState({
     companyName: "",
@@ -51,73 +53,89 @@ export default function EmployerProfileScreen() {
     );
   }
 
-  // 👈 Remplacement de useEffect par useFocusEffect pour s'exécuter à chaque fois qu'on entre sur la page
+  // 1. Isoler la logique de récupération des données
+  const fetchEmployerData = async (isMounted = true) => {
+    try {
+      // Récupération des infos textuelles
+      const response = await getEmployerInfo();
+      if (!isMounted) return;
+
+      setEmployerInfo({
+        companyName: response.raison_social || "",
+        city: response.ville || "",
+        email: response.email || "",
+        phone: response.num_tel || "",
+        firstName: response.prenom_responsable || "",
+        lastName: response.responsable || "",
+      });
+
+      // Récupération de l'image
+      try {
+        const imageData = await getImage();
+        if (!isMounted) return;
+
+        if (imageData?.image) {
+          const currentPhotoUrl = url() + "documents/photos_employeur/" + imageData.image + "?t=" + Date.now();
+          setPhotoUrl(currentPhotoUrl); 
+        }
+      } catch (imgError) {
+        console.log("Pas d'image ou erreur de récupération :", imgError);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  // 2. Gestionnaire du Pull-to-Refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchEmployerData(true);
+    setRefreshing(false);
+  };
+
+  // 3. Exécution automatique à l'affichage de l'écran
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
-
-      const loadEmployerInfo = async () => {
-        try {
-          // 1. Récupération des infos textuelles
-          const response = await getEmployerInfo();
-          if (!isMounted) return;
-
-          setEmployerInfo({
-            companyName: response.raison_social || "",
-            city: response.ville || "",
-            email: response.email || "",
-            phone: response.num_tel || "",
-            firstName: response.prenom_responsable || "",
-            lastName: response.responsable || "",
-          });
-
-          // 2. Récupération de l'image avec bypass du cache
-          try {
-            const imageData = await getImage();
-            if (!isMounted) return;
-
-            if (imageData?.image) {
-              // 👈 Ajout du paramètre unique ?t= pour forcer le rafraîchissement de l'image
-              const currentPhotoUrl = url() + "documents/photos_employeur/" + imageData.image + "?t=" + Date.now();
-              setPhotoUrl(currentPhotoUrl); 
-            }
-          } catch (imgError) {
-            console.log("Pas d'image ou erreur de récupération :", imgError);
-          }
-
-        } catch (error) {
-          console.log(error);
-        }
-      };
-
-      loadEmployerInfo();
+      fetchEmployerData(isMounted);
 
       return () => {
         isMounted = false;
       };
     }, [])
   );
+
   const handleDeleteAccount = () => {
-      Alert.alert(
-        ' Suppression compte',
-        'Cette action est irréversible. Voulez-vous continuer ?',
-        [
-          { text: 'Annuler', style: 'cancel' },
-          {
-            text: 'Supprimer',
-            style: 'destructive',
-            onPress: async () => {
-              await deleteAccount();
-              router.replace('/loginEmp');
-            },
+    Alert.alert(
+      ' Suppression compte',
+      'Cette action est irréversible. Voulez-vous continuer ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteAccount();
+            router.replace('/loginEmp');
           },
-        ]
-      );
-    };
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={["#2b5bbb"]} // Android spinner color
+            tintColor="#2b5bbb"  // iOS spinner color
+          />
+        }
+      >
         
         {/* 🏢 ENTREPRISE */}
         <View style={styles.card}>
@@ -168,7 +186,7 @@ export default function EmployerProfileScreen() {
 
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/employeur/autre/EmployerInfoScreen")}>
             <Settings size={20} color="#2b5bbb" />
-            <Text style={styles.menuText}>Mes informations</Text>
+            <Text style={styles.menuText}>Information de l'Entreprise</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/employeur/autre/PasswordChange")}>

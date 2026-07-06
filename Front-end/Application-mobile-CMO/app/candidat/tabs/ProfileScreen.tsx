@@ -157,7 +157,7 @@ export default function ProfileScreen() {
         <View style={styles.item}>
           <MapPin size={18} color="#2b5bbb" />
           <View>
-            <Text style={styles.label}>Localisation</Text>
+            <Text style={styles.label}>Pays</Text>
             <Text style={styles.value}>{profileData.pays}</Text>
           </View>
         </View>

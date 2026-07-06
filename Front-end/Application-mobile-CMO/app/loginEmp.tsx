@@ -10,10 +10,12 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,Linking ,
+  TouchableOpacity,
+  Alert, // Ajouté pour gérer les erreurs éventuelles du navigateur
   View,
 } from "react-native";
-import { setPsaudo, setTokenId } from "./employeur/services/token_id";
+import * as WebBrowser from "expo-web-browser"; // <-- Importation du navigateur intégré d'Expo
+import { setRaison, setTokenId } from "./employeur/services/token_id";
 import { loginEmp } from "./services/login";
 
 export default function LoginScreen() {
@@ -25,6 +27,21 @@ export default function LoginScreen() {
 
   const isEmailValid = (value: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
+
+  // Fonction utilitaire pour ouvrir un lien dans le navigateur interne de l'application
+  const openInternalLink = async (url: string) => {
+    try {
+      await WebBrowser.openBrowserAsync(url, {
+        toolbarColor: "#122F78", // Couleur de l'en-tête (assortie à tes boutons)
+        controlsColor: "#ffffff",
+        showTitle: true,
+        enableBarCollapsing: true,
+      });
+    } catch (error) {
+      console.log("Erreur lors de l'ouverture du lien :", error);
+      Alert.alert("Erreur", "Impossible d'ouvrir la page.");
+    }
+  };
 
   const handleLogin = async () => {
     if (isLoading) {
@@ -49,9 +66,9 @@ export default function LoginScreen() {
 
       if (response.success) {
         await setTokenId(response.token_id);
-        const pseudo = response.user?.pseudo ?? response.pseudo;
-        if (pseudo) {
-          await setPsaudo(pseudo);
+        const raison_social = response.user?.raison_social ?? response.raison_social;
+        if (raison_social) {
+          await setRaison(raison_social);
         }
         router.replace("/employeur/tabs/EmployerDashboard");
       } else {
@@ -125,9 +142,9 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Forgot */}
+            {/* Mot de passe oublié */}
             <TouchableOpacity
-              onPress={() => Linking.openURL("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie")}
+              onPress={() => openInternalLink("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie")}
             >
               <Text style={styles.forgot}>Mot de passe oublié ?</Text>
             </TouchableOpacity>
@@ -146,15 +163,14 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
+              {/* Créer un compte */}
               <TouchableOpacity
                 style={styles.secondaryBtn}
-                onPress={() => Linking.openURL("https://conceptmaindoeuvre.com/compte-employeur")}
+                onPress={() => openInternalLink("https://conceptmaindoeuvre.com/compte-employeur")}
               >
                 <Text style={styles.secondaryText}>Créer un compte</Text>
               </TouchableOpacity>
             </View>
-
-          
           </View>
         </View>
       </ScrollView>
@@ -167,30 +183,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f3f6ff",
   },
-
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
     padding: 20,
   },
-
   wrapper: {
     maxWidth: 380,
     width: "100%",
     alignSelf: "center",
   },
-
   logoContainer: {
     alignItems: "center",
     marginBottom: 20,
   },
-
   logo: {
     width: 140,
     height: 60,
     resizeMode: "contain",
   },
-
   card: {
     backgroundColor: "#fff",
     borderRadius: 24,
@@ -198,13 +209,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e1e9fb",
   },
-
   label: {
     fontSize: 13,
     color: "#2b5bbb",
     marginBottom: 6,
   },
-
   input: {
     backgroundColor: "#fff",
     borderWidth: 1,
@@ -225,14 +234,12 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontWeight: "500",
   },
-
   inputFlex: {
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
     color: "#000",
   },
-
   passwordBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -242,20 +249,17 @@ const styles = StyleSheet.create({
     paddingRight: 12,
     marginBottom: 14,
   },
-
   forgot: {
     textAlign: "right",
     color: "#4c6bd6",
     fontSize: 12,
     marginBottom: 10,
   },
-
   row: {
     flexDirection: "row",
     gap: 10,
     marginTop: 10,
   },
-
   primaryBtn: {
     flex: 1,
     backgroundColor: "#122F78",
@@ -266,12 +270,10 @@ const styles = StyleSheet.create({
   primaryBtnDisabled: {
     opacity: 0.7,
   },
-
   primaryText: {
     color: "#fff",
     fontWeight: "600",
   },
-
   secondaryBtn: {
     flex: 1,
     backgroundColor: "#e8efff",
@@ -279,12 +281,10 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: "center",
   },
-
   secondaryText: {
     color: "#122F78",
     fontWeight: "600",
   },
-
   backBtn: {
     marginTop: 12,
     borderWidth: 1,
@@ -293,7 +293,6 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: "center",
   },
-
   backText: {
     color: "#2b5bbb",
     fontWeight: "600",

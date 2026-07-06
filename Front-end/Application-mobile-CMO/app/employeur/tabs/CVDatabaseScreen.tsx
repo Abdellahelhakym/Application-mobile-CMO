@@ -51,6 +51,12 @@ export default function CVDatabaseScreen() {
   const [selectedContrats, setSelectedContrats] = useState<string[]>([]);
   const [selectedPays, setSelectedPays] = useState<string>('');
 
+  const [tempCategory, setTempCategory] = useState<string>('');
+  const [tempSubCategory, setTempSubCategory] = useState<string>('');
+  const [tempMetier, setTempMetier] = useState<string>('');
+  const [tempContrats, setTempContrats] = useState<string[]>([]);
+  const [tempPays, setTempPays] = useState<string>('');
+
   const [catOpen, setCatOpen] = useState(false);
   const [subCatOpen, setSubCatOpen] = useState(false);
   const [metierOpen, setMetierOpen] = useState(false);
@@ -106,10 +112,32 @@ export default function CVDatabaseScreen() {
     setSelectedCandidate(null);
   };
 
-  const toggleContrat = (contrat: string) => {
-    setSelectedContrats((prev) =>
+  const openFilterModal = () => {
+    setTempCategory(selectedCategory);
+    setTempSubCategory(selectedSubCategory);
+    setTempMetier(selectedMetier);
+    setTempPays(selectedPays);
+    setTempContrats(selectedContrats);
+    setCatOpen(false);
+    setSubCatOpen(false);
+    setMetierOpen(false);
+    setPaysOpen(false);
+    setFilterVisible(true);
+  };
+
+  const toggleTempContrat = (contrat: string) => {
+    setTempContrats((prev) =>
       prev.includes(contrat) ? prev.filter((c) => c !== contrat) : [...prev, contrat]
     );
+  };
+
+  const handleApplyFilters = () => {
+    setSelectedCategory(tempCategory);
+    setSelectedSubCategory(tempSubCategory);
+    setSelectedMetier(tempMetier);
+    setSelectedPays(tempPays);
+    setSelectedContrats(tempContrats);
+    setFilterVisible(false);
   };
 
   const filteredSubCategories = secteurData.subCategories.filter(
@@ -119,11 +147,18 @@ export default function CVDatabaseScreen() {
     (item) => String(item.id_sous) === String(selectedSubCategory)
   );
 
+  const tempFilteredSubCategories = secteurData.subCategories.filter(
+    (item) => String(item.id_categorie) === String(tempCategory)
+  );
+  const tempFilteredMetiers = secteurData.metiers.filter(
+    (item) => String(item.id_sous) === String(tempSubCategory)
+  );
+
   const filteredCandidats = candidats
     .filter((cand) => {
       const secteurs = Array.isArray(cand?.secteur_activite) ? cand.secteur_activite : [];
 
-      if (selectedCategory || selectedSubCategory || selectedMetier) {
+      if (selectedCategory || selectedSubCategory || selectedMetier || selectedContrats.length > 0) {
         const matchSecteur = secteurs.some((s: any) => {
           const matchCategory = selectedCategory ? String(s.id_categorie) === String(selectedCategory) : true;
           const matchSub = selectedSubCategory ? String(s.id_sous) === String(selectedSubCategory) : true;
@@ -144,16 +179,8 @@ export default function CVDatabaseScreen() {
     .sort((a, b) => {
       const idA = a.id || a.id_candidat || 0;
       const idB = b.id || b.id_candidat || 0;
-      return Number(idB) - Number(idA); 
+      return Number(idB) - Number(idA);
     });
-
-  const activeFilterCount = [
-    selectedCategory,
-    selectedSubCategory,
-    selectedMetier,
-    selectedPays,
-    ...selectedContrats,
-  ].filter(Boolean).length;
 
   const getCategoryLabel = () =>
     secteurData.categories.find((c) => String(c.id_categorie) === selectedCategory)?.titre || 'Catégorie';
@@ -173,14 +200,9 @@ export default function CVDatabaseScreen() {
 
         {/* FILTER BUTTON */}
         <View style={styles.center}>
-          <TouchableOpacity style={styles.filterBtn} onPress={() => setFilterVisible(true)}>
+          <TouchableOpacity style={styles.filterBtn} onPress={openFilterModal}>
             <Ionicons name="filter-outline" size={16} color="#fff" />
             <Text style={styles.filterText}> Filtrer</Text>
-            {activeFilterCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{activeFilterCount}</Text>
-              </View>
-            )}
           </TouchableOpacity>
         </View>
 
@@ -409,8 +431,8 @@ export default function CVDatabaseScreen() {
                   setPaysOpen(false);
                 }}
               >
-                <Text style={[styles.dropdownText, selectedCategory ? styles.dropdownTextActive : null]}>
-                  {getCategoryLabel()}
+                <Text style={[styles.dropdownText, tempCategory ? styles.dropdownTextActive : null]}>
+                  {tempCategory ? secteurData.categories.find((c) => String(c.id_categorie) === tempCategory)?.titre || 'Catégorie' : 'Catégorie'}
                 </Text>
                 <Ionicons name={catOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
               </TouchableOpacity>
@@ -420,9 +442,9 @@ export default function CVDatabaseScreen() {
                     <TouchableOpacity
                       style={styles.dropdownItem}
                       onPress={() => {
-                        setSelectedCategory('');
-                        setSelectedSubCategory('');
-                        setSelectedMetier('');
+                        setTempCategory('');
+                        setTempSubCategory('');
+                        setTempMetier('');
                         setCatOpen(false);
                       }}
                     >
@@ -433,19 +455,19 @@ export default function CVDatabaseScreen() {
                         key={item.id_categorie}
                         style={[
                           styles.dropdownItem,
-                          String(item.id_categorie) === selectedCategory ? styles.dropdownItemActive : null,
+                          String(item.id_categorie) === tempCategory ? styles.dropdownItemActive : null,
                         ]}
                         onPress={() => {
-                          setSelectedCategory(String(item.id_categorie));
-                          setSelectedSubCategory('');
-                          setSelectedMetier('');
+                          setTempCategory(String(item.id_categorie));
+                          setTempSubCategory('');
+                          setTempMetier('');
                           setCatOpen(false);
                         }}
                       >
                         <Text
                           style={[
                             styles.dropdownItemText,
-                            String(item.id_categorie) === selectedCategory ? styles.dropdownItemTextActive : null,
+                            String(item.id_categorie) === tempCategory ? styles.dropdownItemTextActive : null,
                           ]}
                         >
                           {item.titre}
@@ -459,50 +481,52 @@ export default function CVDatabaseScreen() {
               {/* SOUS CATEGORIE */}
               <Text style={styles.filterLabel}>Sous catégorie :</Text>
               <TouchableOpacity
-                style={[styles.dropdownBtn, !selectedCategory ? styles.dropdownDisabled : null]}
+                style={[styles.dropdownBtn, !tempCategory ? styles.dropdownDisabled : null]}
                 onPress={() => {
-                  if (!selectedCategory) return;
+                  if (!tempCategory) return;
                   setSubCatOpen(!subCatOpen);
                   setCatOpen(false);
                   setMetierOpen(false);
                   setPaysOpen(false);
                 }}
               >
-                <Text style={[styles.dropdownText, selectedSubCategory ? styles.dropdownTextActive : null]}>
-                  {selectedCategory ? getSubCategoryLabel() : 'Sous-catégorie'}
+                <Text style={[styles.dropdownText, tempSubCategory ? styles.dropdownTextActive : null]}>
+                  {tempCategory
+                    ? tempFilteredSubCategories.find((c) => String(c.id_sous) === tempSubCategory)?.titre || 'Sous-catégorie'
+                    : 'Sous-catégorie'}
                 </Text>
                 <Ionicons name={subCatOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
               </TouchableOpacity>
-              {subCatOpen && filteredSubCategories.length > 0 && (
+              {subCatOpen && tempFilteredSubCategories.length > 0 && (
                 <View style={styles.dropdownList}>
                   <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
                     <TouchableOpacity
                       style={styles.dropdownItem}
                       onPress={() => {
-                        setSelectedSubCategory('');
-                        setSelectedMetier('');
+                        setTempSubCategory('');
+                        setTempMetier('');
                         setSubCatOpen(false);
                       }}
                     >
                       <Text style={styles.dropdownItemText}>-- Toutes les sous-catégories --</Text>
                     </TouchableOpacity>
-                    {filteredSubCategories.map((item) => (
+                    {tempFilteredSubCategories.map((item) => (
                       <TouchableOpacity
                         key={item.id_sous}
                         style={[
                           styles.dropdownItem,
-                          String(item.id_sous) === selectedSubCategory ? styles.dropdownItemActive : null,
+                          String(item.id_sous) === tempSubCategory ? styles.dropdownItemActive : null,
                         ]}
                         onPress={() => {
-                          setSelectedSubCategory(String(item.id_sous));
-                          setSelectedMetier('');
+                          setTempSubCategory(String(item.id_sous));
+                          setTempMetier('');
                           setSubCatOpen(false);
                         }}
                       >
                         <Text
                           style={[
                             styles.dropdownItemText,
-                            String(item.id_sous) === selectedSubCategory ? styles.dropdownItemTextActive : null,
+                            String(item.id_sous) === tempSubCategory ? styles.dropdownItemTextActive : null,
                           ]}
                         >
                           {item.titre}
@@ -516,48 +540,50 @@ export default function CVDatabaseScreen() {
               {/* METIER */}
               <Text style={styles.filterLabel}>Métier :</Text>
               <TouchableOpacity
-                style={[styles.dropdownBtn, !selectedSubCategory ? styles.dropdownDisabled : null]}
+                style={[styles.dropdownBtn, !tempSubCategory ? styles.dropdownDisabled : null]}
                 onPress={() => {
-                  if (!selectedSubCategory) return;
+                  if (!tempSubCategory) return;
                   setMetierOpen(!metierOpen);
                   setCatOpen(false);
                   setSubCatOpen(false);
                   setPaysOpen(false);
                 }}
               >
-                <Text style={[styles.dropdownText, selectedMetier ? styles.dropdownTextActive : null]}>
-                  {selectedSubCategory ? getMetierLabel() : 'Métier'}
+                <Text style={[styles.dropdownText, tempMetier ? styles.dropdownTextActive : null]}>
+                  {tempSubCategory
+                    ? tempFilteredMetiers.find((c) => String(c.id_metier) === tempMetier)?.titre || 'Métier'
+                    : 'Métier'}
                 </Text>
                 <Ionicons name={metierOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
               </TouchableOpacity>
-              {metierOpen && filteredMetiers.length > 0 && (
+              {metierOpen && tempFilteredMetiers.length > 0 && (
                 <View style={styles.dropdownList}>
                   <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
                     <TouchableOpacity
                       style={styles.dropdownItem}
                       onPress={() => {
-                        setSelectedMetier('');
+                        setTempMetier('');
                         setMetierOpen(false);
                       }}
                     >
                       <Text style={styles.dropdownItemText}>-- Tous les métiers --</Text>
                     </TouchableOpacity>
-                    {filteredMetiers.map((item) => (
+                    {tempFilteredMetiers.map((item) => (
                       <TouchableOpacity
                         key={item.id_metier}
                         style={[
                           styles.dropdownItem,
-                          String(item.id_metier) === selectedMetier ? styles.dropdownItemActive : null,
+                          String(item.id_metier) === tempMetier ? styles.dropdownItemActive : null,
                         ]}
                         onPress={() => {
-                          setSelectedMetier(String(item.id_metier));
+                          setTempMetier(String(item.id_metier));
                           setMetierOpen(false);
                         }}
                       >
                         <Text
                           style={[
                             styles.dropdownItemText,
-                            String(item.id_metier) === selectedMetier ? styles.dropdownItemTextActive : null,
+                            String(item.id_metier) === tempMetier ? styles.dropdownItemTextActive : null,
                           ]}
                         >
                           {item.titre}
@@ -572,12 +598,12 @@ export default function CVDatabaseScreen() {
               <Text style={styles.filterLabel}>Contrat :</Text>
               <View style={styles.checkboxGrid}>
                 {CONTRATS.map((contrat) => {
-                  const checked = selectedContrats.includes(contrat);
+                  const checked = tempContrats.includes(contrat);
                   return (
                     <TouchableOpacity
                       key={contrat}
                       style={styles.checkboxRow}
-                      onPress={() => toggleContrat(contrat)}
+                      onPress={() => toggleTempContrat(contrat)}
                     >
                       <View style={[styles.checkbox, checked ? styles.checkboxChecked : null]}>
                         {checked && <Ionicons name="checkmark" size={12} color="#fff" />}
@@ -599,8 +625,8 @@ export default function CVDatabaseScreen() {
                   setMetierOpen(false);
                 }}
               >
-                <Text style={[styles.dropdownText, selectedPays ? styles.dropdownTextActive : null]}>
-                  {getPaysLabel()}
+                <Text style={[styles.dropdownText, tempPays ? styles.dropdownTextActive : null]}>
+                  {PAYS.find((p) => p.value === tempPays)?.label || 'Tout ...'}
                 </Text>
                 <Ionicons name={paysOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
               </TouchableOpacity>
@@ -612,17 +638,17 @@ export default function CVDatabaseScreen() {
                         key={item.value}
                         style={[
                           styles.dropdownItem,
-                          item.value === selectedPays ? styles.dropdownItemActive : null,
+                          item.value === tempPays ? styles.dropdownItemActive : null,
                         ]}
                         onPress={() => {
-                          setSelectedPays(item.value);
+                          setTempPays(item.value);
                           setPaysOpen(false);
                         }}
                       >
                         <Text
                           style={[
                             styles.dropdownItemText,
-                            item.value === selectedPays ? styles.dropdownItemTextActive : null,
+                            item.value === tempPays ? styles.dropdownItemTextActive : null,
                           ]}
                         >
                           {item.label}
@@ -634,6 +660,10 @@ export default function CVDatabaseScreen() {
               )}
 
             </ScrollView>
+
+            <TouchableOpacity style={styles.applyButton} onPress={handleApplyFilters}>
+              <Text style={styles.applyButtonText}>Filtrer</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -647,8 +677,6 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', marginBottom: 15 },
   filterBtn: { flexDirection: 'row', backgroundColor: '#2b5bbb', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25, alignItems: 'center' },
   filterText: { color: '#fff', fontWeight: 'bold' },
-  badge: { backgroundColor: '#ff4d4d', borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
-  badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   emptyText: { textAlign: 'center', marginTop: 40, color: '#7a8ab8' },
   card: { backgroundColor: '#fff', borderRadius: 10, padding: 15, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1.41 },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
@@ -743,4 +771,6 @@ const styles = StyleSheet.create({
   checkbox: { width: 18, height: 18, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, marginRight: 8, justifyContent: 'center', alignItems: 'center' },
   checkboxChecked: { backgroundColor: '#2b5bbb', borderColor: '#2b5bbb' },
   checkboxLabel: { fontSize: 14, color: '#4a5568' },
+  applyButton: { marginTop: 15, backgroundColor: '#2b5bbb', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  applyButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
 });

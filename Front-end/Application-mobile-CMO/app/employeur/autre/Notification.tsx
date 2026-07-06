@@ -23,26 +23,24 @@ export default function NotificationScreen() {
   }, []);
 
   const fetchData = async () => {
-    try {
-      const response = await getNotification();
-      if (response && response.success) {
-        // Transformation des données API en format utilisable
-        const formattedData: NotificationItem[] = response.ids_msg.map((id: number, index: number) => ({
-          id: id.toString(),
-          title: "Nouveau notification",
-          description: response.messages[index] || "Vous avez reçu un nouveau message.",
-      
-          type: "message",
-          isRead: false,
-        }));
-        setNotifications(formattedData);
-      }
-    } catch (error) {
-      console.error("Erreur lors de la récupération des notifications:", error);
-    } finally {
-      setLoading(false);
+  try {
+    const response = await getNotification();
+    if (response && response.success) {
+      const formattedData: NotificationItem[] = response.ids_msg.map((id: number, index: number) => ({
+        id: id.toString(), // Garde l'ID sous forme de chaîne pour la FlatList
+        title: "Nouvelle notification",
+        description: response.messages[index] || "Vous avez reçu un nouveau message.",
+        type: "message",
+        isRead: false,
+      }));
+      setNotifications(formattedData);
     }
-  };
+  } catch (error) {
+    console.error("Erreur lors de la récupération des notifications:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const renderIcon = (type: string) => {
     switch (type) {
@@ -53,11 +51,15 @@ export default function NotificationScreen() {
     }
   };
 
-  const handlePress = (item: NotificationItem) => {
-    if (item.type === 'message') {
-      router.push("/employeur/autre/Chat");
-    }
-  };
+const handlePress = (item: NotificationItem) => {
+  if (item.type === 'message') {
+    // On passe l'id du message en paramètre de recherche (query param)
+    router.push({
+      pathname: "/employeur/autre/Chat",
+      params: { id_msg: item.id }
+    });
+  }
+};
 
   if (loading) {
     return (

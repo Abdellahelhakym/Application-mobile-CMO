@@ -37,7 +37,7 @@ export async function getCandidatValides() {
     }
 }
 
-export async function setCandidatValides(id_candidat) {
+export async function setCandidatValides( id_candidat, id_aff, id_fiche_post, tokenid_cand ) {
     try {
         const token_id = await getTokenId(); 
         const response = await fetch(url() + "employeur/candidatures/setCandidaturesValide", {
@@ -45,7 +45,24 @@ export async function setCandidatValides(id_candidat) {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ token_id, id_candidat }),
+            body: JSON.stringify({ token_id, id_candidat, id_aff, id_fiche_post, tokenid_cand }),
+        });
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error fetching employer candidatures:", error);
+        throw error;
+    }
+}
+export async function setCandidatNonValide( id_candidat, id_aff, id_fiche_post, tokenid_cand ) {
+    try {
+        const token_id = await getTokenId(); 
+        const response = await fetch(url() + "employeur/candidatures/setCandidatNonValide", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token_id, id_candidat, id_aff, id_fiche_post, tokenid_cand }),
         });
         const data = await response.json();
         return data;

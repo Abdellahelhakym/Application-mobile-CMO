@@ -44,14 +44,15 @@
         }
       ],
       "expo-font",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-web-browser"
     ],
     "updates": {
-  "url": "https://u.expo.dev/33c0754e-86e4-40b9-ba7c-060d4ab91442"
-},
-"runtimeVersion": {
-  "policy": "appVersion"
-},
+      "url": "https://u.expo.dev/33c0754e-86e4-40b9-ba7c-060d4ab91442"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "router": {},
       "eas": {

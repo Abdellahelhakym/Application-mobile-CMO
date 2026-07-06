@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,20 +9,19 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  RefreshControl,
 } from 'react-native';
 
-import { Phone, MessageSquare, ChevronDown } from 'lucide-react-native';
+import { Phone, MessageSquare, ChevronDown, Eye } from 'lucide-react-native';
 import { Feather } from '@expo/vector-icons'; 
 import { useRouter } from 'expo-router'; 
-import { getCommandes, getDevis } from '@/app/employeur/services/MyOffers';
+import { getCommandes, getDevis, AccepterRefuserDevis } from '@/app/employeur/services/MyOffers';
 
 // 🔧 Fonction globale de décodage des entités HTML (nommées et numériques)
 const decodeHTML = (str: string): string => {
   if (!str) return '';
   return str
-    // 1. Décodage des entités numériques (ex: &#039; -> ', &#233; -> é)
     .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
-    // 2. Décodage des entités nommées classiques
     .replace(/&eacute;/g, 'é')
     .replace(/&egrave;/g, 'è')
     .replace(/&ecirc;/g, 'ê')
@@ -38,55 +37,152 @@ const decodeHTML = (str: string): string => {
     .replace(/&gt;/g, '>');
 };
 
+// 🔧 Fonction corrigée pour format les dates MySQL (YYYY-MM-DD...) en (DD/MM/YYYY)
+const formatDate = (dateString: string | undefined | null): string => {
+  if (!dateString) return '-';
+  
+  try {
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+      return dateString;
+    }
+    
+    let dateOnly = dateString.includes('T') 
+      ? dateString.split('T')[0] 
+      : dateString.includes('Z')
+      ? dateString.split('Z')[0]
+      : dateString;
+    
+    if (/^\d{4}-\d{2}-\d{2}/.test(dateOnly)) {
+      const parts = dateOnly.split('-');
+      if (parts.length >= 3) {
+        const [year, month, day] = parts;
+        return `${day}/${month}/${year}`;
+      }
+    }
+    
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+    
+    return dateString;
+  } catch (error) {
+    return dateString;
+  }
+};
+
 export default function MyOffersScreen() {
   const router = useRouter(); 
   const [activeTab, setActiveTab] = useState<'commands' | 'quotes' | 'archive'>('commands');
   const [commandes, setCommandes] = useState<any[]>([]);
   const [devis, setDevis] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); 
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null); // Loader local pour les boutons d'action
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [selectedCommande, setSelectedCommande] = useState<any | null>(null);
   const [entriesOpen, setEntriesOpen] = useState(false);
   const [entriesValue, setEntriesValue] = useState<'10' | '20' | '30' | '40' | 'all'>('10');
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        if (activeTab === 'commands') {
-          const res = await getCommandes();
-          const cleanData = Array.isArray(res) ? res : (res?.data || []);
-          setCommandes(cleanData);
-        } else if (activeTab === 'quotes') {
-          const res = await getDevis();
-          const cleanData = Array.isArray(res) ? res : (res?.data || []);
-          setDevis(cleanData);
-        }
-      } catch (error) {
-        const message =
-          activeTab === 'quotes'
-            ? 'Impossible de charger les devis'
-            : 'Impossible de charger les commandes';
-        Alert.alert('Erreur', message);
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  // 🔄 Fonction centralisée de chargement des données
+  const fetchData = async (showLoadingIndicator = true) => {
     if (activeTab === 'archive') {
       setLoading(false);
       return;
     }
 
-    loadData();
+    if (showLoadingIndicator) setLoading(true);
+
+    try {
+      if (activeTab === 'commands') {
+        const res = await getCommandes();
+        const cleanData = Array.isArray(res) ? res : (res?.data || []);
+        setCommandes(cleanData);
+      } else if (activeTab === 'quotes') {
+        const res = await getDevis();
+        const cleanData = Array.isArray(res) ? res : (res?.data || []);
+        setDevis(cleanData);
+      }
+    } catch (error) {
+      const message =
+        activeTab === 'quotes'
+          ? 'Impossible de charger les devis'
+          : 'Impossible de charger les commandes';
+      Alert.alert('Erreur', message);
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData(true);
   }, [activeTab]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchData(false); 
+    setRefreshing(false);
+  };
+
+  // 🚀 Fonction de traitement du clic avec boîte de dialogue d'alerte avant l'appel API
+  const triggerActionConfirmation = (finaliser: number, idFichePoste: any, idDevis: any, numeroDevis?: string) => {
+    if (!idDevis) return;
+
+    if (finaliser === 4) {
+      // 🔴 Alerte de Refus
+      Alert.alert(
+        'Refuser le devis',
+        'Voulez-vous vraiment refuser ce devis ?',
+        [
+          { text: 'Retour', style: 'cancel' },
+          { 
+            text: 'Oui, refuser', 
+            style: 'destructive',
+            onPress: () => handleActionDevis(finaliser, idFichePoste, idDevis) 
+          }
+        ]
+      );
+    } else if (finaliser === 3) {
+      // 🟢 Alerte d'Acceptation
+      Alert.alert(
+        'Accepter le devis',
+        `Devis N°: ${numeroDevis || '-'}\nBon pour accord`,
+        [
+          { text: 'Retour', style: 'cancel' },
+          { 
+            text: 'Valider', 
+            onPress: () => handleActionDevis(finaliser, idFichePoste, idDevis) 
+          }
+        ]
+      );
+    }
+  };
+
+  // 📡 Appel API réel après confirmation
+  const handleActionDevis = async (finaliser: number, idFichePoste: any, idDevis: any) => {
+    setActionLoadingId(idDevis);
+    try {
+      await AccepterRefuserDevis(finaliser, idFichePoste, idDevis);
+      Alert.alert('Succès', finaliser === 3 ? 'Le devis a été accepté avec succès.' : 'Le devis a été refusé.');
+      // 🔄 Rafraîchir la page après confirmation
+      await fetchData(false);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Erreur', "Une erreur est survenue lors de la mise à jour du devis.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   const columns =
     activeTab === 'quotes'
       ? [
           { key: 'numero_devis', label: 'Numero de devis', width: 140 },
-          { key: 'id', label: 'Id Commande', width: 110 },
+          { key: 'id', label: 'Id Commande', width: 110 }, 
           { key: 'statut', label: 'Statut', width: 90 },
           { key: 'download', label: 'Telecharger', width: 130 },
           { key: 'action', label: 'Accepter / Refuser', width: 160 },
@@ -133,6 +229,14 @@ export default function MyOffersScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#2b5bbb"]} 
+            tintColor="#2b5bbb"  
+          />
+        }
       >
         {/* ➕ BOUTON CRÉER UNE COMMANDE */}
         <TouchableOpacity 
@@ -217,72 +321,114 @@ export default function MyOffersScreen() {
             </Text>
           ) : (
             <View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View>
-                  <View style={styles.tableHeader}>
-                    {columns.map((col) => (
-                      <Text
-                        key={col.key}
-                        style={[styles.th, { width: col.width }]}
-                      >
-                        {col.label}
-                      </Text>
-                    ))}
-                  </View>
+              <View style={styles.verticalTableContainer}>
+                {displayedData.map((row, index) => (
+                  <View key={index} style={styles.verticalCard}>
+                    {columns.map((col) => {
+                      let value = row?.[col.key];
+                      if (col.key === 'id' && activeTab === 'quotes') {
+                        value = row?.id_fiche_poste;
+                      }
 
-                  {displayedData.map((row, index) => (
-                    <View key={index} style={styles.tableRow}>
-                      {columns.map((col) => {
-                        const value = row?.[col.key];
-                        let displayValue =
-                          col.key === 'statut_fiche'
-                            ? row?.statut_titre || (value === '2' ? 'Actif' : 'Inactif')
-                            : col.key === 'statut' && activeTab === 'quotes'
-                            ? row?.statut_titre || (Number(value) === 1
-                              ? 'Accepter'
-                              : Number(value) === 0
-                              ? 'Refuser'
-                              : value ?? '-')
-                            : col.key === 'nbr_poste'
-                            ? row?.nbr_poste ?? row?.nombre_poste ?? row?.nbr_postes ?? '-'
-                            : col.key === 'contrat_duree'
-                            ? [row?.contrat, row?.duree, row?.duree_contrat].filter(Boolean).join(' / ') || '-'
-                            : col.key === 'details'
-                            ? 'Voir'
-                            : col.key === 'download'
-                            ? 'Telecharger'
-                            : col.key === 'action'
-                            ? 'Accepter / Refuser'
-                            : value ?? '-';
+                      let displayValue = '-';
+                      if (col.key === 'statut_fiche') {
+                        displayValue = row?.statut_titre || (value === '2' ? 'Actif' : 'Inactif');
+                      } else if (col.key === 'statut' && activeTab === 'quotes') {
+                        displayValue = row?.statut_titre || (Number(value) === 1 ? 'Accepté' : Number(value) === 0 ? 'Refusé' : value ?? '-');
+                      } else if (col.key === 'nbr_poste') {
+                        displayValue = row?.nbr_poste ?? row?.nombre_poste ?? row?.nbr_postes ?? '-';
+                      } else if (col.key === 'contrat_duree') {
+                        const contratStr = row?.contrat || '';
+                        const dureeStr = row?.duree || '';
+                        displayValue = [contratStr, dureeStr].filter(Boolean).join(' / ') || '-';
+                      } else if (col.key === 'details') {
+                        displayValue = 'Voir';
+                      } else if (col.key === 'download') {
+                        displayValue = 'Telecharger';
+                      } else if (col.key === 'action') {
+                        displayValue = 'Accepter / Refuser';
+                      } else {
+                        displayValue = value ?? '-';
+                      }
 
-                        // Appliquer le décodage HTML uniquement sur les chaînes de texte affichées
-                        const cleanedText = typeof displayValue === 'string' ? decodeHTML(displayValue) : displayValue;
+                      const cleanedText = typeof displayValue === 'string' ? decodeHTML(displayValue) : displayValue;
 
-                        if (col.key === 'details' && activeTab === 'commands') {
+                      // 🛠️ Rendu spécifique de la cellule d'action conditionnelle (statut === 2)
+                      if (col.key === 'action' && activeTab === 'quotes') {
+                        const idDevis = row?.id_devis || row?.id; 
+                        const idFichePoste = row?.id_fiche_poste;
+                        const currentStatut = Number(row?.statut);
+
+                        // Condition : Afficher les boutons SEULEMENT si statut est égal à 2
+                        if (currentStatut === 2) {
                           return (
-                            <TouchableOpacity
-                              key={`${col.key}-${index}`}
-                              onPress={() => openDetails(row)}
-                              style={[styles.td, { width: col.width }]}
-                            >
-                              <Text style={styles.linkText}>{cleanedText}</Text>
-                            </TouchableOpacity>
+                            <View key={`${col.key}-${index}`} style={styles.verticalRow}>
+                              <Text style={styles.verticalLabel}>{col.label}</Text>
+                              {actionLoadingId === idDevis ? (
+                                <ActivityIndicator size="small" color="#2b5bbb" />
+                              ) : (
+                                <View style={styles.radioGroup}>
+                                  {/* Bouton Accepter (finaliser = 3) */}
+                                  <TouchableOpacity 
+                                    style={styles.radioButtonContainer}
+                                    onPress={() => triggerActionConfirmation(3, idFichePoste, idDevis, row?.numero_devis)}
+                                  >
+                                    <View style={styles.radioCircle}>
+                                      {/* Cercle vide par défaut, l'état initial étant en attente (statut 2) */}
+                                    </View>
+                                    <Text style={styles.radioLabel}>Accepter</Text>
+                                  </TouchableOpacity>
+
+                                  {/* Bouton Refuser (finaliser = 4) */}
+                                  <TouchableOpacity 
+                                    style={styles.radioButtonContainer}
+                                    onPress={() => triggerActionConfirmation(4, idFichePoste, idDevis)}
+                                  >
+                                    <View style={styles.radioCircle}>
+                                      {/* Cercle vide par défaut */}
+                                    </View>
+                                    <Text style={styles.radioLabel}>Refuser</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              )}
+                            </View>
+                          );
+                        } else {
+                          // Si le statut n'est pas 2, on masque les boutons d'action et on affiche la valeur par défaut ou rien
+                          return (
+                            <View key={`${col.key}-${index}`} style={styles.verticalRow}>
+                              <Text style={styles.verticalLabel}>{col.label}</Text>
+                              <Text style={styles.verticalValue}> </Text>
+                            </View>
                           );
                         }
+                      }
 
+                      if (col.key === 'details' && activeTab === 'commands') {
                         return (
-                          <Text
-                            key={`${col.key}-${index}`}
-                            style={[styles.td, { width: col.width }]}
-                          >
-                            {cleanedText}
-                          </Text>
+                          <View key={`${col.key}-${index}`} style={styles.verticalRow}>
+                            <Text style={styles.verticalLabel}>{col.label}</Text>
+                            <TouchableOpacity 
+                              onPress={() => openDetails(row)}
+                              style={styles.detailsBadge}
+                            >
+                              <Eye size={14} color="#2b5bbb" style={{ marginRight: 4 }} />
+                              <Text style={styles.detailsBadgeText}>Détails</Text>
+                            </TouchableOpacity>
+                          </View>
                         );
-                      })}
-                    </View>
-                  ))}
-                </View>
-              </ScrollView>
+                      }
+
+                      return (
+                        <View key={`${col.key}-${index}`} style={styles.verticalRow}>
+                          <Text style={styles.verticalLabel}>{col.label}</Text>
+                          <Text style={styles.verticalValue}>{cleanedText}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
               <Text style={styles.empty}>
                 Showing 1 to {displayedData.length} of {data.length} entries
               </Text>
@@ -314,12 +460,17 @@ export default function MyOffersScreen() {
             <Text style={styles.modalRow}>
               Contrat : {selectedCommande?.contrat || '-'}
             </Text>
+            
             <Text style={styles.modalRow}>
-              Date de debut : {selectedCommande?.date_besoin || '-'}
+              Date de debut : {formatDate(selectedCommande?.date_besoin)}
             </Text>
             <Text style={styles.modalRow}>
-              Date de fin : {selectedCommande?.date_fin || '-'}
+              Date de fin : {formatDate(selectedCommande?.date_fin)}
             </Text>
+            <Text style={styles.modalRow}>
+              Durée : {selectedCommande?.duree || '-'}
+            </Text>
+
             <Text style={styles.modalRow}>
               Adresse : {decodeHTML(selectedCommande?.adresse || '-')}
             </Text>
@@ -349,7 +500,6 @@ export default function MyOffersScreen() {
   );
 }
 
-// ... Vos styles d'origine restent inchangés
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#eef3ff' },
   content: { padding: 15, paddingBottom: 120, gap: 15 },
@@ -369,12 +519,35 @@ const styles = StyleSheet.create({
   selectItemText: { fontSize: 12, color: '#1b2d5a' },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 10 },
   input: { flex: 1, borderWidth: 1, borderColor: '#cfd9ee', borderRadius: 20, padding: 8, backgroundColor: '#fff' },
-  tableHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10 },
-  th: { fontSize: 10, color: '#2b5bbb', flex: 1 },
   empty: { textAlign: 'center', marginTop: 20, color: '#7a8ab8' },
-  tableRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#e1e9fb' },
-  td: { fontSize: 12, color: '#1b2d5a', flex: 1 },
-  linkText: { fontSize: 12, color: '#2b5bbb', textDecorationLine: 'underline' },
+  detailsBadge: {
+    flexDirection: 'row',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#d4e3f7',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#b0d0ff',
+  },
+  detailsBadgeText: {
+    fontSize: 11,
+    color: '#2b5bbb',
+    fontWeight: '600',
+  },
+  verticalTableContainer: { gap: 12 },
+  verticalCard: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e1e9fb', borderRadius: 12, padding: 12, gap: 8 },
+  verticalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
+  verticalLabel: { fontSize: 11, color: '#2b5bbb', fontWeight: '600', flex: 0.35 },
+  verticalValue: { fontSize: 12, color: '#1b2d5a', flex: 0.65, textAlign: 'right' },
+  
+  // 🔘 Styles des boutons Radio d'Action
+  radioGroup: { flexDirection: 'row', gap: 12, flex: 0.65, justifyContent: 'flex-end' },
+  radioButtonContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  radioCircle: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#94a3b8', alignItems: 'center', justifyContent: 'center' },
+  radioLabel: { fontSize: 11, color: '#475569', fontWeight: '500' },
+
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.3)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalCard: { width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 16 },
   modalTitle: { fontSize: 16, color: '#1b2d5a', marginBottom: 10, fontWeight: '600' },

@@ -38,7 +38,7 @@ export default function EmployeurLayout() {
       />
       <Stack.Screen
         name="autre/EmployerInfoScreen"
-        options={{ title: "Informations", headerShown: true }}
+        options={{ title: "Information de l'Entreprise", headerShown: true }}
       />
       <Stack.Screen
         name="autre/SubscriptionScreen"
@@ -50,7 +50,7 @@ export default function EmployeurLayout() {
       />
       <Stack.Screen
         name="autre/CreateOfferScreen"
-        options={{ title: "Creer une commande", headerShown: true }}
+        options={{ title: "Créer une commande", headerShown: true }}
       />
       <Stack.Screen
         name="autre/Chat"

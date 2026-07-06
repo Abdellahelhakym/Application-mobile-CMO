@@ -26,14 +26,13 @@ export default function NotificationScreen() {
     try {
       const response = await getNotification();
       if (response && response.success) {
-        // Transformation des données API en format utilisable
         const formattedData: NotificationItem[] = response.ids_msg.map((id: number, index: number) => ({
-          id: id.toString(),
-          title: "Nouveau notification",
+          id: id.toString(), // Garde l'ID sous forme de chaîne pour la FlatList
+          title: "Nouveau message reçu",
           description: response.messages[index] || "Vous avez reçu un nouveau message.",
-      
           type: "message",
           isRead: false,
+          time: "", // Laissé vide ou géré si disponible dans l'API
         }));
         setNotifications(formattedData);
       }
@@ -55,7 +54,11 @@ export default function NotificationScreen() {
 
   const handlePress = (item: NotificationItem) => {
     if (item.type === 'message') {
-      router.push("/employeur/autre/Chat");
+      // Redirection vers le dossier candidat/autre/Chat avec l'id du message
+      router.push({
+        pathname: "/candidat/autre/Chat",
+        params: { id_msg: item.id }
+      });
     }
   };
 
@@ -70,8 +73,9 @@ export default function NotificationScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        
-        <Text style={styles.counterText}>Vous avez {notifications.length}  Notification</Text>
+        <Text style={styles.counterText}>
+          Vous avez {notifications.length} {notifications.length > 1 ? "Notifications" : "Notification"}
+        </Text>
       </View>
 
       <FlatList
@@ -97,7 +101,6 @@ export default function NotificationScreen() {
                 {!item.isRead && <View style={styles.unreadDot} />}
               </View>
               <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
-           
             </View>
           </TouchableOpacity>
         )}
@@ -110,7 +113,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#eef3ff" },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { padding: 20, paddingTop: 10 },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#1b2d5a' },
   counterText: { fontSize: 14, color: '#64748b', marginTop: 5 },
   listContent: { padding: 15, gap: 12 },
   notificationCard: {
@@ -136,8 +138,6 @@ const styles = StyleSheet.create({
   unreadText: { color: "#1b2d5a", fontWeight: "700" },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#2b5bbb", marginLeft: 8 },
   description: { fontSize: 13, color: "#64748b", lineHeight: 18, marginBottom: 6 },
-  timeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  timeText: { fontSize: 11, color: "#7a8baf" },
   emptyState: { alignItems: "center", justifyContent: "center", marginTop: 40, gap: 10 },
   emptyText: { color: "#7a8baf", fontSize: 14 },
 });
