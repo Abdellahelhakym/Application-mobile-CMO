@@ -12,7 +12,6 @@ const { width } = Dimensions.get('window');
 const TAB_DEFINITIONS = [
   { key: 'propose', label: 'Candidat proposé' },
   { key: 'valide', label: 'Candidat validé' },
-  { key: 'archive', label: 'Candidat archivé' },
 ] as const;
 
 type TabKey = (typeof TAB_DEFINITIONS)[number]['key'];
@@ -135,10 +134,8 @@ export default function EmployeurCandidatures() {
 
       if (activeTab === 'propose') {
         response = await getCandidat();
-      } else if (activeTab === 'valide') {
-        response = await getCandidatValides();
       } else {
-        response = [];
+        response = await getCandidatValides();
       }
 
       if (Array.isArray(response)) {
@@ -191,7 +188,7 @@ export default function EmployeurCandidatures() {
     }
   };
 
-  // ── Nouvelle fonction de refus ──
+  // ── Fonction de refus ──
   const handleReject = async (candidate: ApiCandidate) => {
     const id_candidat = candidate.candidat_id ?? candidate.id;
     const id_aff = candidate.id_aff;
@@ -355,12 +352,7 @@ export default function EmployeurCandidatures() {
 
                   {/* Actions (Boutons) */}
                   <View style={styles.actionsRow}>
-                    {activeTab === 'valide' ? (
-                      <TouchableOpacity style={[styles.actionButton, styles.archiveButton]}>
-                        <Text style={[styles.actionText, styles.actionTextArchive]}>Archiver</Text>
-                        <Ionicons name="archive-outline" size={16} color="#e15b5b" style={{ marginLeft: 6 }} />
-                      </TouchableOpacity>
-                    ) : (
+                    {activeTab === 'propose' && (
                       <>
                         <TouchableOpacity 
                           style={[styles.actionButton, styles.actionButtonOutline]}
@@ -369,7 +361,6 @@ export default function EmployeurCandidatures() {
                           <Text style={[styles.actionText, styles.actionTextOutline]}>Oui</Text>
                         </TouchableOpacity>
                         
-                        {/* Bouton "Non" mis à jour */}
                         <TouchableOpacity 
                           style={[styles.actionButton, styles.actionButtonOutline]}
                           onPress={() => handleReject(candidate)}
@@ -588,7 +579,6 @@ const styles = StyleSheet.create({
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
   actionButton: { flex: 1, borderRadius: 22, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
   actionButtonOutline: { borderWidth: 1, borderColor: '#2b5bbb', backgroundColor: '#ffffff' },
-  archiveButton: { flex: 2, borderWidth: 1, borderColor: '#e15b5b', backgroundColor: '#fff5f5' },
   cvButton: { flex: 1, backgroundColor: '#2b5bbb' },
   actionText: { fontSize: 13, fontWeight: '700' },
   attestationList: { marginTop: 4 },
@@ -598,7 +588,6 @@ const styles = StyleSheet.create({
     marginTop: 6 
   },
   actionTextOutline: { color: '#2b5bbb' },
-  actionTextArchive: { color: '#e15b5b' },
   actionTextWhite: { color: '#ffffff' },
   cvIcon: { marginLeft: 6 },
   commentButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2b5bbb', borderRadius: 22, paddingVertical: 12 },

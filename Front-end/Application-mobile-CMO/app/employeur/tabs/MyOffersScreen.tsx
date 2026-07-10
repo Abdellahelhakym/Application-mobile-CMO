@@ -79,7 +79,7 @@ const formatDate = (dateString: string | undefined | null): string => {
 
 export default function MyOffersScreen() {
   const router = useRouter(); 
-  const [activeTab, setActiveTab] = useState<'commands' | 'quotes' | 'archive'>('commands');
+  const [activeTab, setActiveTab] = useState<'commands' | 'quotes'>('commands');
   const [commandes, setCommandes] = useState<any[]>([]);
   const [devis, setDevis] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,11 +93,6 @@ export default function MyOffersScreen() {
 
   // 🔄 Fonction centralisée de chargement des données
   const fetchData = async (showLoadingIndicator = true) => {
-    if (activeTab === 'archive') {
-      setLoading(false);
-      return;
-    }
-
     if (showLoadingIndicator) setLoading(true);
 
     try {
@@ -219,12 +214,7 @@ export default function MyOffersScreen() {
           { key: 'statut_fiche', label: 'Statut', width: 90 },
         ];
 
-  const data =
-    activeTab === 'quotes'
-      ? devis
-      : activeTab === 'commands'
-      ? commandes
-      : [];
+  const data = activeTab === 'quotes' ? devis : commandes;
 
   const entriesOptions: Array<{ label: string; value: '10' | '20' | '30' | '40' | 'all' }> = [
     { label: '10', value: '10' },
@@ -273,7 +263,7 @@ export default function MyOffersScreen() {
 
         {/* TABS */}
         <View style={styles.tabs}>
-          {['commands', 'quotes', 'archive'].map((tab) => (
+          {['commands', 'quotes'].map((tab) => (
             <TouchableOpacity
               key={tab}
               onPress={() => setActiveTab(tab as any)}
@@ -288,11 +278,7 @@ export default function MyOffersScreen() {
                   activeTab === tab && styles.tabTextActive,
                 ]}
               >
-                {tab === 'commands'
-                  ? 'COMMANDES'
-                  : tab === 'quotes'
-                  ? 'DEVIS'
-                  : 'ARCHIVE'}
+                {tab === 'commands' ? 'COMMANDES' : 'DEVIS'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -301,7 +287,7 @@ export default function MyOffersScreen() {
         {/* TABLE */}
         <View style={styles.tableCard}>
           <View style={styles.tableControls}>
-            <Text style={styles.smallText}>Show</Text>
+            <Text style={styles.smallText}>Afficher</Text>
             <View>
               <TouchableOpacity
                 style={styles.select}
@@ -329,11 +315,11 @@ export default function MyOffersScreen() {
                 </View>
               ) : null}
             </View>
-            <Text style={styles.smallText}>entries</Text>
+            <Text style={styles.smallText}>entrées</Text>
           </View>
 
           <View style={styles.searchRow}>
-            <Text style={styles.smallText}>Search:</Text>
+            <Text style={styles.smallText}>Rechercher :</Text>
             <TextInput style={styles.input} />
           </View>
 
@@ -341,7 +327,7 @@ export default function MyOffersScreen() {
             <ActivityIndicator size="small" color="#2b5bbb" />
           ) : data.length === 0 ? (
             <Text style={styles.empty}>
-              Showing 0 to 0 of 0 entries
+              Affichage de 0 à 0 sur 0 entrées
             </Text>
           ) : (
             <View>
@@ -369,7 +355,7 @@ export default function MyOffersScreen() {
                       } else if (col.key === 'details') {
                         displayValue = 'Voir';
                       } else if (col.key === 'download') {
-                        displayValue = 'Telecharger';
+                        displayValue = 'Télécharger';
                       } else if (col.key === 'action') {
                         displayValue = 'Accepter / Refuser';
                       } else {
@@ -394,7 +380,7 @@ export default function MyOffersScreen() {
                                 style={styles.detailsBadge}
                               >
                                 <Download size={14} color="#2b5bbb" style={{ marginRight: 4 }} />
-                                <Text style={styles.detailsBadgeText}>Telecharger</Text>
+                                <Text style={styles.detailsBadgeText}>Télécharger</Text>
                               </TouchableOpacity>
                             )}
                           </View>
@@ -470,7 +456,7 @@ export default function MyOffersScreen() {
                 ))}
               </View>
               <Text style={styles.empty}>
-                Showing 1 to {displayedData.length} of {data.length} entries
+                Affichage de 1 à {displayedData.length} sur {data.length} entrées
               </Text>
             </View>
           )}
@@ -486,10 +472,10 @@ export default function MyOffersScreen() {
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Details</Text>
+            <Text style={styles.modalTitle}>Détails</Text>
 
             <Text style={styles.modalRow}>
-              Categorie : {decodeHTML(selectedCommande?.categorie || '-')}
+              Catégorie : {decodeHTML(selectedCommande?.categorie || '-')}
             </Text>
             <Text style={styles.modalRow}>
               Sous Categorie : {decodeHTML(selectedCommande?.sous_categorie || '-')}
