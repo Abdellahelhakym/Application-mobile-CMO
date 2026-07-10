@@ -5,12 +5,13 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  RefreshControl // <-- 1. Importation de RefreshControl
 } from 'react-native';
 
 import { AlertCircle, Star } from 'lucide-react-native';
 
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 
 import {
   addtoFavorites,
@@ -18,8 +19,6 @@ import {
   isfavorite
 } from "@/app/candidat/services/CandidateLandingScreen";
 
-//(`id`, `titre`, `type_contrat`, `duree`, `lieu`, `categorie`, `descr`, `id_metiers`, `date`, `deleted`)
-// type_contrat
 interface Application {
   id: number;
   titre: string;
@@ -29,11 +28,15 @@ interface Application {
   lieu: string;
   categorie: string;
   descr: string;
-
 }
 
 export default function ApplicationsScreen() {
   const [favorites, setFavorites] = useState<Record<number, boolean>>({});
+  const [applications, setApplications] = useState<Application[]>([]);
+  
+  // <-- 2. État pour gérer l'animation du loader
+  const [refreshing, setRefreshing] = useState(false);
+
   const isFav = (id: number) => !!favorites[id];
 
   async function loadFavorites(ids: number[]) {
@@ -79,9 +82,6 @@ export default function ApplicationsScreen() {
     }
   }
 
-  // STATE
-  const [applications, setApplications] = useState<Application[]>([]);
-
   // GET DATA
   async function getData() {
     try {
@@ -101,34 +101,49 @@ export default function ApplicationsScreen() {
         ? payload.results
         : [];
 
-      
-
       setApplications(list);
       if (list.length > 0) {
-        loadFavorites(list.map((item) => item.id));
+        await loadFavorites(list.map((item) => item.id));
       }
-
     } catch (error) {
       console.log(error);
     }
   }
 
-useEffect(() => {
-  getData();
-}, []);
+  // <-- 3. Fonction déclenchée lors du swipe vers le bas
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await getData();
+    setRefreshing(false);
+  }, []);
 
-useFocusEffect(
-  useCallback(() => {
-    if (applications.length === 0) {
-      getData();
-    } else {
-      loadFavorites(applications.map((item) => item.id));
-    }
-  }, [applications])
-);
+  useEffect(() => {
+    getData();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (applications.length === 0) {
+        getData();
+      } else {
+        loadFavorites(applications.map((item) => item.id));
+      }
+    }, [applications])
+  );
 
   return (
-    <ScrollView style={styles.container}>
+    /* <-- 4. Intégration du RefreshControl dans la ScrollView */
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={["#2b5bbb"]} // Android loader color
+          tintColor="#2b5bbb"   // iOS loader color
+        />
+      }
+    >
       <View style={styles.content}>
 
         {applications.map((app) => (
@@ -182,8 +197,6 @@ useFocusEffect(
               {app.descr}
             </Text>
 
-          
-
           </View>
         ))}
 
@@ -191,7 +204,7 @@ useFocusEffect(
         {applications.length === 0 && (
           <View style={styles.empty}>
             <AlertCircle size={50} color="#aaa" />
-            <Text>Aucune offre</Text>
+            <Text style={{ marginTop: 8, color: '#6b7280' }}>Aucune offre</Text>
           </View>
         )}
 
@@ -199,38 +212,33 @@ useFocusEffect(
     </ScrollView>
   );
 }
-/* ================= STYLE ================= */
 
+/* ================= STYLE ================= */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#eef3ff',
-    paddingBottom: 90,  
   },
-
   content: {
     padding: 15,
+    paddingBottom: 110, // Le paddingBottom est appliqué ici pour laisser de l'espace à la fin du scroll sans casser le refresh
   },
-
   card: {
     backgroundColor: 'white',
     padding: 15,
     borderRadius: 20,
     marginBottom: 15,
   },
-
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 10,
   },
-
   star: {
     backgroundColor: '#f6f8ff',
     padding: 8,
     borderRadius: 20,
   },
-
   categorie: {
     backgroundColor: '#fff1dc',
     paddingHorizontal: 10,
@@ -239,68 +247,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 20,
   },
-
   categorieText: {
     fontSize: 12,
     color: '#b87900',
   },
-
   titre: {
     fontSize: 16,
     color: '#1b2d5a',
+    fontWeight: '600'
   },
-
   ref: {
     fontSize: 12,
     marginTop: 5,
     color: '#2b5bbb',
+    marginBottom: 5,
   },
-
   text: {
     fontSize: 12,
     color: '#1b2d5a',
+    lineHeight: 18,
   },
-
   bold: {
     fontWeight: 'bold',
   },
-
   desc: {
     fontSize: 12,
     marginTop: 10,
-    color: '#1b2d5a',
+    color: '#5b6a8e',
   },
-
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 15,
-  },
-
-  primaryBtn: {
-    backgroundColor: '#2b5bbb',
-    padding: 10,
-    borderRadius: 20,
-  },
-
-  primaryText: {
-    color: 'white',
-    fontSize: 12,
-  },
-
-  secondaryBtn: {
-    backgroundColor: '#fff1dc',
-    padding: 10,
-    borderRadius: 20,
-  },
-
-  secondaryText: {
-    color: '#b87900',
-    fontSize: 12,
-  },
-
   empty: {
     alignItems: 'center',
-    marginTop: 50,
+    marginTop: 80,
   },
 });

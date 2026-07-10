@@ -4,12 +4,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,Linking,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { changePassword } from "../services/PasswordChange";
 type ValidationRule = {
   label: string;
@@ -95,6 +96,17 @@ const ChangePasswordScreen: React.FC = () => {
     }
   };
 
+  // 🌐 Ouvre la page "mot de passe oublié" dans une WebView in-app
+  const handleForgotPassword = async () => {
+    try {
+      await WebBrowser.openBrowserAsync(
+        "https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie"
+      );
+    } catch (error) {
+      console.error(error);
+      alert("Impossible d'ouvrir la page.");
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -230,7 +242,7 @@ const ChangePasswordScreen: React.FC = () => {
           </TouchableOpacity>
 
           {/* Forgot Password */}
-          <TouchableOpacity style={styles.forgotBtn} onPress={() => Linking.openURL("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie")}>
+          <TouchableOpacity style={styles.forgotBtn} onPress={handleForgotPassword}>
             <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
           </TouchableOpacity>
         </View>

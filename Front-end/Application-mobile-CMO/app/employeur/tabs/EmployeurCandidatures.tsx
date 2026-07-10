@@ -101,6 +101,17 @@ interface ApiCandidate {
   metier_id?: number;
   metier_titre?: string;
   metiers?: MetierItem[];
+  mobilites?: { id_region?: number; region?: string }[];
+  parcours_scolaire?: {
+    id?: number;
+    ecole?: string;
+    diplome?: string;
+    mois_debut?: string;
+    annee_debut?: number;
+    mois_obtention?: string;
+    annee_obtention?: number;
+    description?: string;
+  }[];
   documents_manquants?: string[];
 }
 
@@ -425,49 +436,64 @@ export default function EmployeurCandidatures() {
                     )}
                   </View>
                   <Text style={styles.cvName}>
-                    {`${selectedCandidate.prenom.charAt(0).toUpperCase() + selectedCandidate.prenom.slice(1)} ${selectedCandidate.nom.toUpperCase()}`}
+                    {selectedCandidate.prenom
+                      ? selectedCandidate.prenom.charAt(0).toUpperCase() + selectedCandidate.prenom.slice(1)
+                      : 'Candidat'}
                   </Text>
                 </View>
 
-                <View style={styles.divider} />
-
-                <Text style={styles.sectionTitle}>Coordonnées</Text>
-                <Text style={styles.sectionItem}>• {selectedCandidate.email}</Text>
-                <Text style={styles.sectionItem}>• {selectedCandidate.tel}</Text>
-                {!!selectedCandidate.tel2 && <Text style={styles.sectionItem}>• {selectedCandidate.tel2}</Text>}
-                <Text style={styles.sectionItem}>• Ville : {selectedCandidate.ville} - {selectedCandidate.pays || 'France'}</Text>
-
-                <Text style={styles.sectionTitle}>Secteur d’activité & Métiers</Text>
-                {selectedCandidate.metiers && selectedCandidate.metiers.length > 0 ? (
-                  <Text style={styles.sectionItem}>
-                    {selectedCandidate.metiers.map((met, index) => {
-                      const titreMetier = met.titre || 'Métier non spécifié';
-                      return index === 0 ? `• ${titreMetier}` : ` • ${titreMetier}`;
-                    })}
-                  </Text>
+                {Array.isArray(selectedCandidate?.metiers) && selectedCandidate.metiers.length > 0 ? (
+                  <>
+                    <Text style={styles.sectionTitle}>Secteur d'activité</Text>
+                    {selectedCandidate.metiers.map((m: any, i: number) => (
+                      <Text key={i} style={styles.sectorMetier}>• {m.titre}</Text>
+                    ))}
+                    <View style={styles.divider} />
+                  </>
                 ) : (
                   <>
-                    <Text style={styles.sectionItem}>• {selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Non renseigné'}</Text>
-                    {!!selectedCandidate.secteur_activite && (
-                      <Text style={styles.sectionItem}>• {selectedCandidate.secteur_activite}</Text>
-                    )}
+                    <Text style={styles.sectionTitle}>Secteur d'activité</Text>
+                    <Text style={styles.contentText}>{selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Non renseigné'}</Text>
+                    <View style={styles.divider} />
                   </>
                 )}
 
-                <Text style={styles.sectionTitle}>Mobilité</Text>
-                <Text style={styles.sectionItem}>• Toute la France</Text>
+                {Array.isArray(selectedCandidate?.mobilites) && selectedCandidate.mobilites.length > 0 ? (
+                  <>
+                    <Text style={styles.sectionTitle}>Mobilité</Text>
+                    {selectedCandidate.mobilites.map((m: any, i: number) => (
+                      <Text key={i} style={styles.mobiliteText}>• {m.region}</Text>
+                    ))}
+                    <View style={styles.divider} />
+                  </>
+                ) : null}
 
-                <Text style={styles.sectionTitle}>Niveau d’études</Text>
-                <Text style={styles.sectionItem}>• {selectedCandidate.niveau_etude || 'Non spécifié'}</Text>
+                <Text style={styles.sectionTitle}>Niveau d'études</Text>
+                <Text style={styles.contentText}>{selectedCandidate.niveau_etude || 'Non spécifié'}</Text>
+                <View style={styles.divider} />
 
                 <Text style={styles.sectionTitle}>Expérience</Text>
-                <View style={styles.blockItem}>
-                  <Text style={styles.blockTitle}>{selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Poste'}</Text>
-                  <Text style={styles.sectionItem}>L'entreprise : {selectedCandidate.commentaire_cmo || 'Non renseignée'}</Text>
-                  <Text style={styles.sectionItem}>Période : {selectedCandidate.experience || 'Non spécifiée'}</Text>
-                </View>
+                <Text style={styles.contentText}>{selectedCandidate.experience || 'Non spécifiée'}</Text>
+                <View style={styles.divider} />
 
-                <Text style={styles.sectionTitle}>Attestation </Text>
+                {Array.isArray(selectedCandidate?.parcours_scolaire) && selectedCandidate.parcours_scolaire.length > 0 ? (
+                  <>
+                    <Text style={styles.sectionTitle}>Parcours scolaire</Text>
+                    {selectedCandidate.parcours_scolaire.map((parcours: any, index: number) => (
+                      <View key={index} style={styles.educationItem}>
+                        <Text style={styles.educationDiplome}>{parcours.diplome ? parcours.diplome.toUpperCase() : 'Diplôme non renseigné'}</Text>
+                        <Text style={styles.educationSchool}>École : {parcours.ecole || 'Non renseignée'}</Text>
+                        <Text style={styles.educationDate}>
+                          Durée : {String(parcours.mois_debut || '').padStart(2, '0')}/{parcours.annee_debut || ''} à {String(parcours.mois_obtention || '').padStart(2, '0')}/{parcours.annee_obtention || ''}
+                        </Text>
+                        {parcours.description ? <Text style={styles.educationDescription}>{parcours.description}</Text> : null}
+                      </View>
+                    ))}
+                    <View style={styles.divider} />
+                  </>
+                ) : null}
+
+                <Text style={styles.sectionTitle}>Attestations</Text>
 
                 <View style={styles.attestationList}>
                   {selectedCandidate.documents_manquants && selectedCandidate.documents_manquants.length > 0 ? (
@@ -582,14 +608,28 @@ const styles = StyleSheet.create({
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
   cvCard: { width: width * 0.9, maxHeight: '85%', backgroundColor: '#ffffff', borderRadius: 24, padding: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
   cvHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  cvTitle: { fontSize: 16, fontWeight: '800', color: '#1b2d5a' },
-  cvCenterAvatar: { alignItems: 'center', marginVertical: 10 },
-  cvAvatarLarge: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#d9e4ff', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', marginBottom: 10, borderWidth: 2, borderColor: '#2b5bbb' },
-  cvName: { fontSize: 18, fontWeight: '800', color: '#1b2d5a', textAlign: 'center' },
-  divider: { height: 1, backgroundColor: '#eef3ff', marginVertical: 12, width: '100%' },
+  cvTitle: { fontSize: 18, fontWeight: 'bold', color: '#1b2d5a' },
+  cvCenterAvatar: { alignItems: 'center', marginTop: 10, marginBottom: 15 },
+  cvAvatarLarge: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#eef2ff', justifyContent: 'center', alignItems: 'center', marginBottom: 10, overflow: 'hidden' },
+  cvName: { fontSize: 20, fontWeight: 'bold', color: '#1b2d5a' },
+  divider: { height: 1, backgroundColor: '#edf2f7', marginVertical: 15, width: '100%' },
   
-  sectionTitle: { marginTop: 18, fontSize: 13, fontWeight: '800', color: '#2b5bbb', textTransform: 'uppercase', letterSpacing: 0.6, borderBottomWidth: 1.5, borderBottomColor: '#eef3ff', paddingBottom: 4, marginBottom: 6 },
-  sectionItem: { marginTop: 6, fontSize: 13, color: '#1b2d5a', lineHeight: 20, fontWeight: '500' },
+  sectionTitle: { fontSize: 15, fontWeight: 'bold', color: '#2b5bbb', marginBottom: 10, marginTop: 5 },
+  contentText: { fontSize: 14, color: '#4a5568', marginBottom: 8 },
+  sectionItem: { fontSize: 14, color: '#4a5568', marginBottom: 8 },
+  
+  sectorItem: { marginBottom: 12, paddingLeft: 5 },
+  sectorMetier: { fontSize: 14, fontWeight: '600', color: '#1b2d5a', marginBottom: 3 },
+  sectorCategory: { fontSize: 12, color: '#7a8ab8', marginLeft: 15 },
+  mobiliteText: { fontSize: 14, color: '#4a5568', marginBottom: 6, paddingLeft: 5 },
+  educationItem: { marginBottom: 15, paddingLeft: 5, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#edf2f7' },
+  educationDiplome: { fontSize: 14, fontWeight: 'bold', color: '#2b5bbb', marginBottom: 5 },
+  educationSchool: { fontSize: 13, color: '#4a5568', marginBottom: 3 },
+  educationDate: { fontSize: 13, color: '#7a8ab8', marginBottom: 5, fontStyle: 'italic' },
+  educationDescription: { fontSize: 12, color: '#4a5568', marginTop: 5, lineHeight: 18 },
+  attestationItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 10, backgroundColor: '#f8f9fa', borderRadius: 8, marginBottom: 10 },
+  attestationTitle: { fontSize: 14, fontWeight: '600', color: '#1b2d5a' },
+  attestationCategory: { fontSize: 12, color: '#7a8ab8' },
   blockItem: { marginTop: 8, paddingLeft: 10, borderLeftWidth: 3, borderLeftColor: '#2b5bbb' },
   blockTitle: { fontSize: 14, fontWeight: '700', color: '#1b2d5a', marginBottom: 4 },
 

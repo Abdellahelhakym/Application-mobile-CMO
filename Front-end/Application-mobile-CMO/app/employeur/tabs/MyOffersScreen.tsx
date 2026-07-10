@@ -12,10 +12,13 @@ import {
   RefreshControl,
 } from 'react-native';
 
-import { Phone, MessageSquare, ChevronDown, Eye } from 'lucide-react-native';
+import { Phone, MessageSquare, ChevronDown, Eye, Download } from 'lucide-react-native';
 import { Feather } from '@expo/vector-icons'; 
 import { useRouter } from 'expo-router'; 
+import * as WebBrowser from 'expo-web-browser';
 import { getCommandes, getDevis, AccepterRefuserDevis } from '@/app/employeur/services/MyOffers';
+
+import url from "@/app/services/url.js";
 
 // 🔧 Fonction globale de décodage des entités HTML (nommées et numériques)
 const decodeHTML = (str: string): string => {
@@ -82,6 +85,7 @@ export default function MyOffersScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false); 
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null); // Loader local pour les boutons d'action
+  const [downloadLoadingId, setDownloadLoadingId] = useState<number | null>(null); // Loader local pour le bouton telecharger
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [selectedCommande, setSelectedCommande] = useState<any | null>(null);
   const [entriesOpen, setEntriesOpen] = useState(false);
@@ -126,6 +130,26 @@ export default function MyOffersScreen() {
     setRefreshing(true);
     await fetchData(false); 
     setRefreshing(false);
+  };
+
+  // 📄 Ouvre le fichier PDF du devis dans une WebView du navigateur (in-app)
+  const openDevisFile = async (fileName: string | undefined | null, idDevis: number) => {
+    if (!fileName) {
+      Alert.alert('Erreur', 'Aucun fichier disponible pour ce devis.');
+      return;
+    }
+
+    setDownloadLoadingId(idDevis);
+    try {
+      const viewerUrl = url() + "documents/devis/" + fileName + "?t=" + Date.now();
+
+      await WebBrowser.openBrowserAsync(viewerUrl);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Erreur', "Impossible d'ouvrir le fichier du devis.");
+    } finally {
+      setDownloadLoadingId(null);
+    }
   };
 
   // 🚀 Fonction de traitement du clic avec boîte de dialogue d'alerte avant l'appel API
@@ -353,6 +377,29 @@ export default function MyOffersScreen() {
                       }
 
                       const cleanedText = typeof displayValue === 'string' ? decodeHTML(displayValue) : displayValue;
+
+                      // 🛠️ Rendu spécifique de la cellule "Telecharger" (ouvre le PDF du devis dans une WebView)
+                      if (col.key === 'download' && activeTab === 'quotes') {
+                        const idDevis = row?.id_devis || row?.id;
+                        const fileName = row?.devis;
+
+                        return (
+                          <View key={`${col.key}-${index}`} style={styles.verticalRow}>
+                            <Text style={styles.verticalLabel}>{col.label}</Text>
+                            {downloadLoadingId === idDevis ? (
+                              <ActivityIndicator size="small" color="#2b5bbb" />
+                            ) : (
+                              <TouchableOpacity
+                                onPress={() => openDevisFile(fileName, idDevis)}
+                                style={styles.detailsBadge}
+                              >
+                                <Download size={14} color="#2b5bbb" style={{ marginRight: 4 }} />
+                                <Text style={styles.detailsBadgeText}>Telecharger</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        );
+                      }
 
                       // 🛠️ Rendu spécifique de la cellule d'action conditionnelle (statut === 2)
                       if (col.key === 'action' && activeTab === 'quotes') {

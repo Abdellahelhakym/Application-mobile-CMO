@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { router, useFocusEffect } from "expo-router"; // Importation de useFocusEffect
+import { router, useFocusEffect } from "expo-router"; 
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -10,9 +10,10 @@ import {
     Linking,
     TouchableOpacity,
     View,
+    RefreshControl, // <-- 1. Importation de RefreshControl
 } from "react-native";
 
-import { PieChart } from "react-native-chart-kit";
+import Svg, { Path, Text as SvgText } from "react-native-svg";
 import { Bell, MessageSquare, Phone} from "lucide-react-native";
 import {
     getDashboardData,
@@ -120,6 +121,98 @@ function normalizeDashboardData(
     };
 }
 
+/* ---------------------------------------------------------------- */
+/* 🥧 Camembert SVG personnalisé avec pourcentages affichés dedans   */
+/* ---------------------------------------------------------------- */
+type PieSlice = { value: number; color: string };
+
+function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
+    const angleRad = ((angleDeg - 90) * Math.PI) / 180;
+    return {
+        x: cx + r * Math.cos(angleRad),
+        y: cy + r * Math.sin(angleRad),
+    };
+}
+
+function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number) {
+    const start = polarToCartesian(cx, cy, r, endAngle);
+    const end = polarToCartesian(cx, cy, r, startAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+    return [
+        "M", cx, cy,
+        "L", start.x, start.y,
+        "A", r, r, 0, largeArcFlag, 0, end.x, end.y,
+        "Z",
+    ].join(" ");
+}
+
+function CustomPieChart({ data, size = 100 }: { data: PieSlice[]; size?: number }) {
+    const total = data.reduce((sum, d) => sum + d.value, 0);
+    const radius = size / 2;
+    const cx = radius;
+    const cy = radius;
+
+    if (total <= 0) {
+        return (
+            <Svg width={size} height={size}>
+                <Path d={describeArc(cx, cy, radius, 0, 359.999)} fill="#e5e7eb" />
+            </Svg>
+        );
+    }
+
+    let cumulativeAngle = 0;
+    const slices = data
+        .filter((d) => d.value > 0)
+        .map((d, index) => {
+            const angle = (d.value / total) * 360;
+            const startAngle = cumulativeAngle;
+            const endAngle = cumulativeAngle + angle;
+            const midAngle = startAngle + angle / 2;
+            cumulativeAngle = endAngle;
+
+            // Distance réelle du centroïde d'un secteur circulaire par rapport au centre :
+            // d = (2/3) * r * sin(a) / a, où "a" est le demi-angle du secteur (en radians).
+            const halfAngleRad = (angle * Math.PI) / 180 / 2;
+            const labelDistanceRatio =
+                halfAngleRad > 0 ? (2 / 3) * (Math.sin(halfAngleRad) / halfAngleRad) : 0;
+            const labelPos = polarToCartesian(cx, cy, radius * labelDistanceRatio, midAngle);
+            const percent = Math.round((d.value / total) * 100);
+
+            return {
+                key: `${index}-${d.color}`,
+                path: describeArc(cx, cy, radius, startAngle, endAngle),
+                color: d.color,
+                percent,
+                labelX: labelPos.x,
+                labelY: labelPos.y,
+            };
+        });
+
+    return (
+        <Svg width={size} height={size}>
+            {slices.map((s) => (
+                <Path key={s.key} d={s.path} fill={s.color} />
+            ))}
+            {slices.map((s) =>
+                s.percent > 0 ? (
+                    <SvgText
+                        key={`label-${s.key}`}
+                        x={s.labelX}
+                        y={s.labelY}
+                        dy={size * 0.03}
+                        fontSize={size * 0.09}
+                        fontWeight="bold"
+                        fill="#fff"
+                        textAnchor="middle"
+                    >
+                        {s.percent}%
+                    </SvgText>
+                ) : null
+            )}
+        </Svg>
+    );
+}
+
 export default function DashboardScreen() {
     const [dashboardData, setDashboardData] = useState<DashboardDataType | null>(
         null,
@@ -130,6 +223,9 @@ export default function DashboardScreen() {
     const [missingDocs, setMissingDocs] = useState<MissingDocument[]>([]);
     const [badgeLoading, setBadgeLoading] = useState(false);
     const [notifCount, setNotifCount] = useState<number>(0);
+    
+    // <-- 2. État pour gérer l'animation du RefreshControl
+    const [refreshing, setRefreshing] = useState(false); 
 
     const loadDashboard = React.useCallback(async () => {
         try {
@@ -158,7 +254,13 @@ export default function DashboardScreen() {
         }
     }, []);
 
-    // Remplacement de useEffect par useFocusEffect pour forcer le refresh à chaque entrée
+    // <-- 3. Fonction déclenchée lors du swipe vers le bas
+    const onRefresh = React.useCallback(async () => {
+        setRefreshing(true);
+        await loadDashboard();
+        setRefreshing(false);
+    }, [loadDashboard]);
+
     useFocusEffect(
         React.useCallback(() => {
             loadDashboard();
@@ -187,7 +289,18 @@ export default function DashboardScreen() {
         totalValue > 0 ? Math.round((value / totalValue) * 100) : 0;
 
     return (
-        <ScrollView style={styles.container}>
+        /* <-- 4. Ajout de RefreshControl dans le ScrollView */
+        <ScrollView 
+            style={styles.container}
+            refreshControl={
+                <RefreshControl 
+                    refreshing={refreshing} 
+                    onRefresh={onRefresh} 
+                    colors={["#2b5bbb"]} // Couleur du loader sur Android
+                    tintColor="#2b5bbb"   // Couleur du loader sur iOS
+                />
+            }
+        >
             <View style={styles.content}>
                 {/* WELCOME */}
                 <View style={styles.card}>
@@ -297,40 +410,13 @@ export default function DashboardScreen() {
                             </Text>
                         </View>
 
-                        <PieChart
+                        <CustomPieChart
+                            size={100}
                             data={[
-                                {
-                                    name: "Envoyées",
-                                    population: dashboardData.candidatureStats.sent,
-                                    color: "#4f6edb",
-                                    legendFontColor: "#1b2d5a",
-                                    legendFontSize: 10,
-                                },
-                                {
-                                    name: "Répondues",
-                                    population: dashboardData.candidatureStats.replied,
-                                    color: "#7cc7a5",
-                                    legendFontColor: "#1b2d5a",
-                                    legendFontSize: 10,
-                                },
-                                {
-                                    name: "Favoris",
-                                    population: dashboardData.candidatureStats.favorites,
-                                    color: "#f5b82e",
-                                    legendFontColor: "#1b2d5a",
-                                    legendFontSize: 10,
-                                },
+                                { value: dashboardData.candidatureStats.sent, color: "#4f6edb" },
+                                { value: dashboardData.candidatureStats.replied, color: "#7cc7a5" },
+                                { value: dashboardData.candidatureStats.favorites, color: "#f5b82e" },
                             ]}
-                            width={100}
-                            height={100}
-                            accessor={"population"}
-                            backgroundColor={"transparent"}
-                            paddingLeft={"15"}
-                            hasLegend={false}
-                            chartConfig={{
-                                color: () => `#000`,
-                                labelColor: () => "#1b2d5a",
-                            }}
                         />
                     </View>
                 </View>
@@ -356,24 +442,12 @@ export default function DashboardScreen() {
                             ))}
                         </View>
 
-                        <PieChart
+                        <CustomPieChart
+                            size={100}
                             data={secteursActivite.map((s, index) => ({
-                                name: s.categorie,
-                                population: s.total_candidatures,
+                                value: s.total_candidatures,
                                 color: sectorColors[index % sectorColors.length],
-                                legendFontColor: "#1b2d5a",
-                                legendFontSize: 10,
                             }))}
-                            width={100}
-                            height={100}
-                            accessor={"population"}
-                            backgroundColor={"transparent"}
-                            paddingLeft={"15"}
-                            hasLegend={false}
-                            chartConfig={{
-                                color: () => `#000`,
-                                labelColor: () => "#1b2d5a",
-                            }}
                         />
                     </View>
                 </View>
@@ -418,11 +492,11 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#eef3ff",
-        paddingBottom: 90,  
     },
     content: {
         padding: 15,
         gap: 15,
+        paddingBottom: 90,  // Déplacé du container vers content pour un meilleur scroll
     },
     card: {
         backgroundColor: "#fff",

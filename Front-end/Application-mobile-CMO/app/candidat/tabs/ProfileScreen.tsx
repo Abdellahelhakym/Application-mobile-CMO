@@ -1,5 +1,3 @@
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,8 +7,11 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  RefreshControl // <-- 1. Importation de RefreshControl
 } from 'react-native';
+
+import { router, useFocusEffect } from 'expo-router'; // <-- 2. Nettoyage et utilisation de expo-router
 
 import {
   FileText,
@@ -24,16 +25,13 @@ import {
   User
 } from 'lucide-react-native';
 
-import { getImage } from "../services/document";
-
-import {  getProfile } from "@/app/candidat/services/ProfileScreen";
-import { deleteAccount } from "@/app/candidat/services/deleteAccount";
 import { Feather } from '@expo/vector-icons';
-
+import { getImage } from "../services/document";
+import { getProfile } from "@/app/candidat/services/ProfileScreen";
+import { deleteAccount } from "@/app/candidat/services/deleteAccount";
 import url from "@/app/services/url";
 
 export default function ProfileScreen() {
-  const navigation = useNavigation();
   const [profileData, setProfileData] = useState({
     pseudo: '',
     email: '',
@@ -42,6 +40,9 @@ export default function ProfileScreen() {
   });
   const [photo, setPhoto] = useState('');
   const [avatarLoading, setAvatarLoading] = useState(false);
+  
+  // <-- 3. État pour gérer l'animation du loader de rafraîchissement
+  const [refreshing, setRefreshing] = useState(false);
 
   const getData = useCallback(async () => {
     try {
@@ -61,6 +62,13 @@ export default function ProfileScreen() {
     }
   }, []);
 
+  // <-- 4. Fonction exécutée lors du Pull-to-Refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await getData();
+    setRefreshing(false);
+  }, [getData]);
+
   useFocusEffect(
     useCallback(() => {
       getData();
@@ -72,10 +80,7 @@ export default function ProfileScreen() {
       'Déconnexion',
       'Voulez-vous vraiment vous déconnecter ?',
       [
-        {
-          text: 'Annuler',
-          style: 'cancel',
-        },
+        { text: 'Annuler', style: 'cancel' },
         {
           text: 'Déconnecter',
           style: 'destructive',
@@ -89,7 +94,7 @@ export default function ProfileScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      ' Suppression compte',
+      'Suppression compte',
       'Cette action est irréversible. Voulez-vous continuer ?',
       [
         { text: 'Annuler', style: 'cancel' },
@@ -109,6 +114,15 @@ export default function ProfileScreen() {
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
+      // <-- 5. Intégration du RefreshControl
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={["#2b5bbb"]} // Android
+          tintColor="#2b5bbb"   // iOS
+        />
+      }
     >
 
       {/* PROFILE CARD */}
@@ -121,7 +135,6 @@ export default function ProfileScreen() {
                   source={{ uri: photo }}
                   style={styles.avatarImage}
                   onLoadStart={() => setAvatarLoading(true)}
-                  // 🎯 Ajout de onLoad pour arrêter le chargement dès que les pixels sont disponibles
                   onLoad={() => setAvatarLoading(false)}
                   onLoadEnd={() => setAvatarLoading(false)}
                   onError={() => setAvatarLoading(false)}
@@ -154,7 +167,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.item}>
+        <View style={[styles.item, { marginBottom: 0 }]}>
           <MapPin size={18} color="#2b5bbb" />
           <View>
             <Text style={styles.label}>Pays</Text>
@@ -172,6 +185,7 @@ export default function ProfileScreen() {
           <Settings size={20} color="#2b5bbb" />
           <Text style={styles.btnText}>CV</Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.btn}
           onPress={() => router.push('/candidat/autre/PasswordChange')}
@@ -197,7 +211,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.btn}
+          style={[styles.btn, { borderBottomWidth: 0 }]}
           onPress={() =>
             router.push('https://conceptmaindoeuvre.com/nos-offres-emploi#')
           }
@@ -229,7 +243,7 @@ export default function ProfileScreen() {
   );
 }
 
-/* STYLE */
+/* ================= STYLE ================= */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -237,7 +251,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 15,
-    paddingBottom: 80,
+    paddingBottom: 110, // Un peu plus d'espace en bas pour le confort de scroll
     gap: 15,
   },
   card: {
@@ -273,6 +287,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     color: '#1b2d5a',
+    fontWeight: '600',
   },
   email: {
     fontSize: 12,
@@ -311,10 +326,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f3d0cb',
     backgroundColor: '#fff',
-    marginHorizontal: 15,
   },
   deleteText: {
     color: 'red',
+    fontWeight: '500',
   },
   logoutBtn: {
     flexDirection: 'row',
@@ -323,9 +338,9 @@ const styles = StyleSheet.create({
     padding: 14,
     backgroundColor: '#fff',
     borderRadius: 16,
-    marginHorizontal: 15,
   },
   logoutText: {
     color: '#1b2d5a',
+    fontWeight: '500',
   },
 });

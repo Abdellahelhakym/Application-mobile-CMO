@@ -1,3 +1,4 @@
+import * as WebBrowser from "expo-web-browser";
 import { Eye, EyeOff } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -7,10 +8,11 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,Linking,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { changePassword } from "../services/PasswordChange";
+
 type ValidationRule = {
   label: string;
   test: (value: string) => boolean;
@@ -95,6 +97,19 @@ const ChangePasswordScreen: React.FC = () => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    try {
+      await WebBrowser.openBrowserAsync(
+        "https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie",
+        {
+          toolbarColor: "#1a3a6b",
+          controlsColor: "#ffffff",
+        }
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -230,7 +245,7 @@ const ChangePasswordScreen: React.FC = () => {
           </TouchableOpacity>
 
           {/* Forgot Password */}
-          <TouchableOpacity style={styles.forgotBtn} onPress={() => Linking.openURL("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie")}>
+          <TouchableOpacity style={styles.forgotBtn} onPress={handleForgotPassword}>
             <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
           </TouchableOpacity>
         </View>

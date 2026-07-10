@@ -7,22 +7,26 @@ import {
   StyleSheet,
   Text,
   View,
+  RefreshControl
 } from "react-native";
+
+// La bonne syntaxe pour récupérer useFocusEffect depuis Expo Router :
+import { useFocusEffect } from "expo-router"; 
 
 import { getListFils } from '@/app/candidat/services/AttestationsScreen';
 import {
   getExperiences,
   getFormations,
-  
   getInformations,
   getMobiliteUser
 } from "@/app/candidat/services/CVScreen";
 import url from "@/app/services/url";
-import { useFocusEffect } from "@react-navigation/native";
 import { getImage } from "../services/document";
 
 export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -34,13 +38,6 @@ export default function ProfileScreen() {
   const [experiences, setExperiences] = useState<any[]>([]);
   const [formations, setFormations] = useState<any[]>([]);
   const [attestations, setAttestations] = useState<any[]>([]);
-
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      loadData();
-    }, [])
-  );
 
   const loadData = async () => {
     try {
@@ -77,6 +74,19 @@ export default function ProfileScreen() {
     }
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadData();
+    }, [])
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -87,7 +97,17 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView 
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#1e3a8a"]}
+            tintColor="#1e3a8a"
+          />
+        }
+      >
 
         {/* ── HEADER CARD ── */}
         <View style={styles.headerCard}>
@@ -228,10 +248,8 @@ const styles = StyleSheet.create({
   scroll: {
     padding: 16,
     gap: 14,
-    paddingBottom: 80,
+    paddingBottom: 110,
   },
-
-  // Header card
   headerCard: {
     backgroundColor: "#1e3a8a",
     borderRadius: 20,
@@ -272,8 +290,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#c8d6f0",
   },
-
-  // Section cards
   card: {
     backgroundColor: "#ffffff",
     borderRadius: 16,
@@ -306,8 +322,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#374151",
   },
-
-  // Empty state
   emptyRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -322,12 +336,11 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     fontStyle: "italic",
   },
-
-  // Expérience items
   expCard: {
     flexDirection: "row",
     gap: 12,
     alignItems: "flex-start",
+    marginBottom: 8,
   },
   expDot: {
     width: 8,

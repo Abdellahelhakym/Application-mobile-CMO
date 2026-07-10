@@ -15,13 +15,16 @@ import {
   Upload,
   User,
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -36,7 +39,7 @@ import {
   addFormation,
   deleteExperiences,
   deleteFormation,
-  
+ 
   getExperiences,
   getFormations,
  
@@ -48,7 +51,7 @@ import {
   getToutMobilite,
   updateExperiences,
   updateFormation,
-  
+ 
   updateInformations,
   updateLangues,
   updateMobilite,
@@ -341,6 +344,140 @@ const CheckItem = ({
   </TouchableOpacity>
 );
 
+// ─── Sélecteur d'onglets en dropdown ───────────────────────────────────────────
+// Remplace l'ancienne barre d'onglets horizontale : un seul bouton affiche
+// l'onglet actif, et un menu déroulant animé permet de choisir un autre onglet.
+// La logique de navigation (activeTab / setActiveTab) reste strictement identique.
+const TabDropdownSelector = ({
+  activeTab,
+  setActiveTab,
+  tabs,
+}: {
+  activeTab: TabKey;
+  setActiveTab: (key: TabKey) => void;
+  tabs: { key: TabKey; label: string }[];
+}) => {
+  const buttonRef = useRef<View>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [anchor, setAnchor] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const animValue = useRef(new Animated.Value(0)).current;
+
+  const activeLabel = tabs.find((t) => t.key === activeTab)?.label ?? '';
+  const otherTabs = tabs.filter((t) => t.key !== activeTab);
+
+  const openDropdown = () => {
+    buttonRef.current?.measureInWindow((x, y, width, height) => {
+      setAnchor({ x, y, width, height });
+      setModalVisible(true);
+      setIsOpen(true);
+      requestAnimationFrame(() => {
+        Animated.timing(animValue, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }).start();
+      });
+    });
+  };
+
+  const closeDropdown = () => {
+    setIsOpen(false);
+    Animated.timing(animValue, {
+      toValue: 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setModalVisible(false);
+    });
+  };
+
+  const toggleDropdown = () => {
+    if (isOpen) {
+      closeDropdown();
+    } else {
+      openDropdown();
+    }
+  };
+
+  const handleSelect = (key: TabKey) => {
+    setActiveTab(key);
+    closeDropdown();
+  };
+
+  const chevronRotate = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  const dropdownOpacity = animValue;
+  const dropdownTranslateY = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-6, 0],
+  });
+  const dropdownScale = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.95, 1],
+  });
+
+  return (
+    <View style={styles.tabSelectorWrap}>
+      <TouchableOpacity
+        ref={buttonRef}
+        activeOpacity={0.85}
+        style={styles.tabSelectorBtn}
+        onPress={toggleDropdown}
+      >
+        <Text style={styles.tabSelectorBtnText}>{activeLabel}</Text>
+        <Animated.View style={{ transform: [{ rotate: chevronRotate }] }}>
+          <ChevronDown size={18} color={C.white} />
+        </Animated.View>
+      </TouchableOpacity>
+
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="none"
+        onRequestClose={closeDropdown}
+        statusBarTranslucent
+      >
+        <Pressable style={styles.tabSelectorOverlay} onPress={closeDropdown}>
+          <Animated.View
+            style={[
+              styles.tabSelectorDropdown,
+              {
+                position: 'absolute',
+                top: anchor.y + anchor.height + 8,
+                left: anchor.x,
+                width: anchor.width,
+                opacity: dropdownOpacity,
+                transform: [
+                  { translateY: dropdownTranslateY },
+                  { scale: dropdownScale },
+                ],
+              },
+            ]}
+          >
+            {otherTabs.map((tab, index) => (
+              <TouchableOpacity
+                key={tab.key}
+                style={[
+                  styles.tabSelectorItem,
+                  index === otherTabs.length - 1 ? styles.tabSelectorItemLast : undefined,
+                ]}
+                activeOpacity={0.6}
+                onPress={() => handleSelect(tab.key)}
+              >
+                <Text style={styles.tabSelectorItemText}>{tab.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </Animated.View>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+};
+
 // ─── Tab Screens ──────────────────────────────────────────────────────────────
 const IdentityTab = ({
   formData,
@@ -395,7 +532,7 @@ const IdentityTab = ({
       if (result.canceled || !result.assets?.length) return;
 
       const asset = result.assets[0];
-      
+     
       // On met directement l'URI locale dans l'état photo pour un affichage instantané
       setPhoto(asset.uri);
 
@@ -435,7 +572,7 @@ const IdentityTab = ({
 
         await updateImage(photoUpload as any);
         setPhotoUpload(null);
-        
+       
         // Après l'upload réussi, on recharge l'URI officielle depuis le serveur
         await fetchProfileImage();
         setAvatarLoading(false);
@@ -443,7 +580,7 @@ const IdentityTab = ({
 
       Alert.alert('Enregistré', 'Informations enregistrées avec succès.');
     } catch (error) {
-      setAvatarLoading(false); 
+      setAvatarLoading(false);
       Alert.alert('Erreur', 'Impossible de sauvegarder les informations.');
     }
   };
@@ -455,7 +592,7 @@ const IdentityTab = ({
           {'Photo de profil'}
         </SectionTitle>
         <View style={styles.photoContainer}>
-          
+         
           {/* 🎯 Même structure de boîte et de styles que ProfileScreen */}
           <View style={styles.photoBox}>
             {photo ? (
@@ -601,7 +738,7 @@ const MobilityTab = ({
   const handleSaveMobilite = async () => {
     try {
       const disponibiliteValue = formData.availabilityChoice === 'Oui' ? 1 : 0;
-      
+     
       // ✨ Correction ici : on décode le titre de l'option pour correspondre à la valeur décodée choisie
       const selectedMobilite = mobilityOptions.find(
         (item) => decodeHTML(item.titre) === formData.mobilityZone
@@ -874,22 +1011,13 @@ const SectorsTab = ({
           </View>
           <Text style={styles.sectionTitlePlain}>{"Secteurs d'activité"}</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={add}>
-          <Plus size={14} color={C.blueDark} />
-          <Text style={styles.addBtnText}>{'Ajouter'}</Text>
-        </TouchableOpacity>
       </View>
 
       {sectors.map((sector, index) => (
         <Card key={sector.id}>
           <View style={styles.rowBetween}>
             <Label>{`Secteur d'activité ${index + 1}`}</Label>
-            {/* Bouton de suppression si plus de 1 secteur */}
-            {sectors.length > 1 && (
-              <TouchableOpacity onPress={() => remove(sector.id)} style={{ padding: 4 }}>
-                <Trash2 size={16} color={C.red} />
-              </TouchableOpacity>
-            )}
+           
           </View>
 
           <View style={styles.sectorColumn}>
@@ -997,10 +1125,6 @@ const ExperienceTab = ({
               <Save size={16} color={C.white} />
               <Text style={styles.btnImportText}>{'Mettre à jour'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.deleteBtn} onPress={() => remove(exp)}>
-              <Trash2 size={16} color={C.red} />
-              <Text style={styles.deleteBtnText}>{'Supprimer'}</Text>
-            </TouchableOpacity>
           </View>
         </Card>
       ))}
@@ -1089,10 +1213,6 @@ const EducationTab = ({
             <TouchableOpacity style={styles.btnImport} onPress={() => onUpdate(edu)}>
               <Save size={16} color={C.white} />
               <Text style={styles.btnImportText}>{'Mettre à jour'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.deleteBtn} onPress={() => remove(edu)}>
-              <Trash2 size={16} color={C.red} />
-              <Text style={styles.deleteBtnText}>{'Supprimer'}</Text>
             </TouchableOpacity>
           </View>
         </Card>
@@ -1430,12 +1550,12 @@ useEffect(() => {
     loadFormations();
   }, []);
 
-  
+ 
 useEffect(() => {
   const loadSecteurs = async () => {
     try {
       const data = await getSecteur();
-      
+     
       // ✅ DÉCODAGE: Décoder tous les titres HTML
       setSectorData({
         categories: (data?.secteurs ?? []).map((cat: SectorCategory) => ({
@@ -1812,26 +1932,12 @@ useEffect(() => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Tabs */}
-      <View style={styles.tabBar}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabScroll}
-        >
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tabBtn, activeTab === tab.key ? styles.tabBtnActive : undefined]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <Text style={[styles.tabText, activeTab === tab.key ? styles.tabTextActive : undefined]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      {/* Sélecteur d'onglet en dropdown (remplace l'ancienne barre horizontale) */}
+      <TabDropdownSelector
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        tabs={TABS}
+      />
 
       {/* Content */}
       <KeyboardAvoidingView
@@ -1859,33 +1965,63 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: C.bg,
   },
-  tabBar: {
+  // ── Sélecteur d'onglets (dropdown) ──────────────────────────────────────
+  tabSelectorWrap: {
     backgroundColor: C.white,
     borderBottomWidth: 1,
     borderBottomColor: C.border,
-  },
-  tabScroll: {
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    gap: 8,
-    flexDirection: 'row',
-  },
-  tabBtn: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: C.gray100,
+    paddingVertical: 12,
   },
-  tabBtnActive: {
+  tabSelectorBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: C.blueDark,
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    shadowColor: C.navy,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  tabText: {
-    fontSize: 12,
+  tabSelectorBtnText: {
+    color: C.white,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  tabSelectorOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.18)',
+  },
+  tabSelectorDropdown: {
+    backgroundColor: C.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.border,
+    paddingVertical: 4,
+    overflow: 'hidden',
+    shadowColor: C.navy,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  tabSelectorItem: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: C.gray200,
+  },
+  tabSelectorItemLast: {
+    borderBottomWidth: 0,
+  },
+  tabSelectorItemText: {
+    fontSize: 14,
     color: C.gray700,
     fontWeight: '500',
-  },
-  tabTextActive: {
-    color: C.white,
   },
   scrollView: {
     flex: 1,
