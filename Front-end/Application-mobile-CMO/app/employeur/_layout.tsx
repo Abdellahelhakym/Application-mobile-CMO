@@ -9,9 +9,12 @@ export default function EmployeurLayout() {
   const isAndroid3Button = Platform.OS === "android" && insets.bottom >= 24;
 
   // Espace bas à appliquer sur les écrans "autre/*" (hors tabs)
-  const bottomSpace = Platform.OS === "ios"
-    ? insets.bottom
-    : (isAndroid3Button ? insets.bottom : 0);
+  const bottomSpace =
+    Platform.OS === "ios"
+      ? insets.bottom
+      : isAndroid3Button
+        ? insets.bottom
+        : 0;
 
   return (
     <Stack
@@ -38,7 +41,10 @@ export default function EmployeurLayout() {
       />
       <Stack.Screen
         name="autre/EmployerInfoScreen"
-        options={{ title: "Information de l'Entreprise", headerShown: true }}
+        options={{
+          title: "Informations de l'entreprise",
+          headerShown: true,
+        }}
       />
       <Stack.Screen
         name="autre/SubscriptionScreen"

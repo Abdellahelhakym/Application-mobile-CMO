@@ -9,7 +9,7 @@ import { getRaison } from "@/app/employeur/services/token_id";
 
 export default function Layout() {
   const insets = useSafeAreaInsets();
-  
+
   // 🎯 Détection du mode 3 boutons UNIQUEMENT sur Android
   const isAndroid3Button = Platform.OS === "android" && insets.bottom >= 24;
 
@@ -40,7 +40,14 @@ export default function Layout() {
         ...(Platform.OS === "ios" && {
           headerTitle: () => null,
           headerLeft: () => (
-            <Text style={{ fontSize: 18, color: "#ffffff", fontWeight: "600", marginLeft: 15 }}>
+            <Text
+              style={{
+                fontSize: 18,
+                color: "#ffffff",
+                fontWeight: "600",
+                marginLeft: 15,
+              }}
+            >
               {getTitle(route.name)}
             </Text>
           ),
@@ -58,8 +65,21 @@ export default function Layout() {
 
         // ⚪ Nom utilisateur en BLANC
         headerRight: () => (
-          <View style={{ marginRight: 15, flexDirection: "row", alignItems: "center" }}>
-            <Text style={{ fontSize: 18, color: "#ffffff", marginRight: 10, fontWeight: "500" }}>
+          <View
+            style={{
+              marginRight: 15,
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 18,
+                color: "#ffffff",
+                marginRight: 10,
+                fontWeight: "500",
+              }}
+            >
               {userName}
             </Text>
           </View>
@@ -68,13 +88,13 @@ export default function Layout() {
         // ⚪ Configuration de la Barre de Navigation
         tabBarStyle: {
           backgroundColor: "#fff",
-          
+
           // 🛠️ Hauteur de 70 partout, SAUF sur Android en mode 3 boutons
           height: isAndroid3Button ? 65 + insets.bottom : 70,
-          
+
           // 🛠️ Padding de 10 partout (parfait pour iPhone), ajusté uniquement pour les 3 boutons Android
           paddingBottom: isAndroid3Button ? insets.bottom - 4 : 10,
-            
+
           borderTopWidth: 1,
           borderTopColor: "#e7edf7",
           elevation: 6,
@@ -95,24 +115,73 @@ export default function Layout() {
         tabBarInactiveTintColor: "#7a8ab8",
       })}
     >
-      <Tabs.Screen name="EmployerDashboard" options={{ title: "Accueil", tabBarIcon: ({ color }) => <Feather name="home" size={20} color={color} /> }} />
-      <Tabs.Screen name="MyOffersScreen" options={{ title: "Commandes", tabBarIcon: ({ color }) => <Feather name="shopping-bag" size={20} color={color} /> }} />
-      <Tabs.Screen name="EmployeurCandidatures" options={{ title: "Candidatures", tabBarIcon: ({ color }) => <Feather name="users" size={20} color={color} /> }} />
- 
-      <Tabs.Screen name="CVDatabaseScreen" options={{ title: "Park CV", tabBarIcon: ({ color }) => <Feather name="user-plus" size={20} color={color} /> }} />
-      <Tabs.Screen name="EmployerProfileScreen" options={{ title: "Plus", tabBarIcon: ({ color }) => <Feather name="menu" size={20} color={color} /> }} />
+      <Tabs.Screen
+        name="EmployerDashboard"
+        options={{
+          title: "Accueil",
+          tabBarIcon: ({ color }) => (
+            <Feather name="home" size={20} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="MyOffersScreen"
+        options={{
+          title: "Commandes",
+          tabBarIcon: ({ color }) => (
+            <Feather name="shopping-bag" size={20} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="EmployeurCandidatures"
+        options={{
+          title: "Candidatures",
+          tabBarIcon: ({ color }) => (
+            <Feather name="users" size={20} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="CVDatabaseScreen"
+        options={{
+          title: "Park CV",
+          tabBarIcon: ({ color }) => (
+            <Feather name="user-plus" size={20} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="EmployerProfileScreen"
+        options={{
+          title: "Plus",
+          tabBarIcon: ({ color }) => (
+            <Feather name="menu" size={20} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
 
 function getTitle(name: string) {
   switch (name) {
-    case "EmployerDashboard": return "Accueil";
-    case "MyOffersScreen": return "Commandes";
-    case "EmployeurCandidatures": return "Candidatures";
-    case "CVDatabaseScreen": return "Candidats";
-    case "EmployerProfileScreen": return "Plus";
-    default: return "";
+    case "EmployerDashboard":
+      return "Accueil";
+    case "MyOffersScreen":
+      return "Commandes";
+    case "EmployeurCandidatures":
+      return "Candidatures";
+    case "CVDatabaseScreen":
+      return "Parc de CV";
+    case "EmployerProfileScreen":
+      return "Plus";
+    default:
+      return "";
   }
 }
 

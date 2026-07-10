@@ -249,14 +249,14 @@ export default function CreateOfferScreen() {
 
   const handleSubmit = async () => {
     const requiredFields: Array<{ key: keyof typeof formData; label: string }> = [
-      { key: 'categoryId', label: 'Categorie' },
-      { key: 'subcategoryId', label: 'Sous-categorie' },
-      { key: 'jobId', label: 'Metier' },
+      { key: 'categoryId', label: 'Catégorie' },
+      { key: 'subcategoryId', label: 'Sous-catégorie' },
+      { key: 'jobId', label: 'Métier' },
       { key: 'jobType', label: 'Type de contrat' },
-      { key: 'startDate', label: 'Date debut (MM/DD/YYYY)' },
+      { key: 'startDate', label: 'Date début (MM/DD/YYYY)' },
       { key: 'address', label: 'Adresse' },
-      { key: 'mobility', label: 'Mobilite' },
-      { key: 'positions', label: 'Nombre de poste' },
+      { key: 'mobility', label: 'Mobilité' },
+      { key: 'positions', label: 'Nombre de postes' },
       { key: 'salary', label: 'Salaire' },
       { key: 'housing', label: 'Logement' },
     ];
@@ -271,11 +271,11 @@ export default function CreateOfferScreen() {
     });
 
     if (formData.startDate && !dateRegex.test(formData.startDate)) {
-      nextErrors.startDate = 'Format date invalide: MM/DD/YYYY';
+      nextErrors.startDate = 'Format date invalide : MM/DD/YYYY';
     }
 
     if (formData.endDate && !dateRegex.test(formData.endDate)) {
-      nextErrors.endDate = 'Format date invalide: MM/DD/YYYY';
+      nextErrors.endDate = 'Format date invalide : MM/DD/YYYY';
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -295,11 +295,11 @@ export default function CreateOfferScreen() {
 
       const result = await createCommande(payload);
       const message = result?.message || 'Offre soumise pour validation CMO';
-      Alert.alert('Resultat', message);
+      Alert.alert('Résultat', message);
       setFormData(initialFormData);
       setErrors({});
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Impossible de creer la commande';
+      const message = error instanceof Error ? error.message : 'Impossible de créer la commande';
       Alert.alert('Erreur', message);
       console.error(error);
     }
@@ -353,7 +353,7 @@ export default function CreateOfferScreen() {
           <View>
             <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowCategoryPicker(true)}>
               <Text style={[styles.pickerTriggerText, !formData.category && styles.pickerPlaceholder]}>
-                {formData.category ? decodeHTML(formData.category) : 'Categorie'}
+                {formData.category ? decodeHTML(formData.category) : 'Catégorie'}
               </Text>
               <Ionicons name="chevron-down" size={18} color="#7a8ab8" />
             </TouchableOpacity>
@@ -367,7 +367,7 @@ export default function CreateOfferScreen() {
                   </TouchableOpacity>
                 </View>
                 <Picker selectedValue={formData.categoryId} onValueChange={(value) => handleCategorySelect(String(value))} style={styles.picker} itemStyle={styles.pickerItem}>
-                  <Picker.Item label="Categorie" value="" />
+                  <Picker.Item label="Catégorie" value="" />
                   {sectorData.categories.map((c) => (
                     <Picker.Item key={c.id_categorie ?? c.id} label={decodeHTML(c.titre)} value={String(c.id_categorie ?? c.id)} />
                   ))}
@@ -379,7 +379,7 @@ export default function CreateOfferScreen() {
         ) : (
           <View style={styles.pickerWrapper}>
             <Picker selectedValue={formData.categoryId} onValueChange={(value) => handleCategorySelect(String(value))} style={styles.picker} mode="dropdown" itemStyle={styles.pickerItem}>
-              <Picker.Item label="Categorie" value="" />
+              <Picker.Item label="Catégorie" value="" />
               {sectorData.categories.map((c) => (
                 <Picker.Item key={c.id_categorie ?? c.id} label={decodeHTML(c.titre)} value={String(c.id_categorie ?? c.id)} />
               ))}
@@ -390,17 +390,17 @@ export default function CreateOfferScreen() {
 
         <SelectPicker
           value={formData.subcategoryId}
-          options={[{ label: 'Sous-categorie', value: '' }, ...filteredSubCategories.map(sc => ({ label: sc.titre, value: String(sc.id_sous ?? sc.id) }))]}
+          options={[{ label: 'Sous-catégorie', value: '' }, ...filteredSubCategories.map(sc => ({ label: sc.titre, value: String(sc.id_sous ?? sc.id) }))]}
           onChange={(v) => handleSubcategorySelect(v)}
-          placeholder="Sous-categorie"
+          placeholder="Sous-catégorie"
           error={errors.subcategoryId}
         />
 
         <SelectPicker
           value={formData.jobId}
-          options={[{ label: 'Metier / Intitule du poste', value: '' }, ...filteredJobs.map(j => ({ label: j.titre, value: String(j.id_metier ?? j.id) }))]}
+          options={[{ label: 'Métier / Intitulé du poste', value: '' }, ...filteredJobs.map(j => ({ label: j.titre, value: String(j.id_metier ?? j.id) }))]}
           onChange={(v) => handleJobSelect(v)}
-          placeholder="Metier / Intitule du poste"
+          placeholder="Métier / Intitulé du poste"
           error={errors.jobId}
         />
 
@@ -420,7 +420,7 @@ export default function CreateOfferScreen() {
         {/* 📅 Date début avec calendrier */}
         <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowStartPicker(true)}>
           <Text style={[styles.pickerTriggerText, !formData.startDate && styles.pickerPlaceholder]}>
-            {formData.startDate || 'Date debut (MM/DD/YYYY)'}
+            {formData.startDate || 'Date début (MM/DD/YYYY)'}
           </Text>
           <Ionicons name="calendar-outline" size={18} color="#7a8ab8" />
         </TouchableOpacity>
@@ -504,7 +504,7 @@ export default function CreateOfferScreen() {
           error={errors.mobility}
         />
 
-        <TextInput style={styles.input} placeholder="Nombre de poste" placeholderTextColor="#7a8ab8" value={formData.positions} onChangeText={(v) => handleChange('positions', v)} keyboardType="numeric" />
+        <TextInput style={styles.input} placeholder="Nombre de postes" placeholderTextColor="#7a8ab8" value={formData.positions} onChangeText={(v) => handleChange('positions', v)} keyboardType="numeric" />
         {errors.positions ? <Text style={styles.errorText}>{errors.positions}</Text> : null}
 
         <TextInput style={styles.input} placeholder="Salaire" placeholderTextColor="#7a8ab8" value={formData.salary} onChangeText={(v) => handleChange('salary', v)} keyboardType="numeric" />
@@ -518,7 +518,7 @@ export default function CreateOfferScreen() {
           error={errors.housing}
         />
 
-        <MultiSelectPicker value={formData.drivingLicense} options={drivingLicenseOptions} onChange={(v) => handleChange('drivingLicense', v)} placeholder="permis" error={errors.drivingLicense} />
+        <MultiSelectPicker value={formData.drivingLicense} options={drivingLicenseOptions} onChange={(v) => handleChange('drivingLicense', v)} placeholder="Permis" error={errors.drivingLicense} />
 
         <TextInput style={styles.textarea} placeholder="Description" placeholderTextColor="#7a8ab8" multiline value={formData.description} onChangeText={(v) => handleChange('description', v)} />
         {errors.description ? <Text style={styles.errorText}>{errors.description}</Text> : null}
@@ -531,15 +531,15 @@ export default function CreateOfferScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.subtitle}>Recapitulatif</Text>
-        <Text>Categorie : {decodeHTML(formData.category)}</Text>
-        <Text>Sous-Categorie : {decodeHTML(formData.subcategory)}</Text>
-        <Text>Metier : {decodeHTML(formData.jobTitle)}</Text>
+        <Text style={styles.subtitle}>Récapitulatif</Text>
+        <Text>Catégorie : {decodeHTML(formData.category)}</Text>
+        <Text>Sous-catégorie : {decodeHTML(formData.subcategory)}</Text>
+        <Text>Métier : {decodeHTML(formData.jobTitle)}</Text>
         <Text>Contrat : {formData.jobType}</Text>
-        <Text>Date debut : {formData.startDate}</Text>
+        <Text>Date début : {formData.startDate}</Text>
         <Text>Date fin : {formData.endDate}</Text>
         <Text>Adresse : {formData.address}</Text>
-        <Text>Mobilite : {decodeHTML(selectedMobilityText)}</Text>
+        <Text>Mobilité : {decodeHTML(selectedMobilityText)}</Text>
         <Text>Postes : {formData.positions}</Text>
         <Text>Salaire : {formData.salary}</Text>
         <Text>Logement : {formData.housing}</Text>
