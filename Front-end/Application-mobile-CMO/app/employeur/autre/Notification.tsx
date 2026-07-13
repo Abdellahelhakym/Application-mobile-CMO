@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator } from "react-native";
-import { Bell, Briefcase, MessageSquare, CheckCircle, Clock } from "lucide-react-native";
+import { Bell, Briefcase, MessageSquare, CheckCircle } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { getNotification } from '../../employeur/services/messagerie'; 
 
@@ -13,6 +13,52 @@ interface NotificationItem {
   isRead: boolean;
 }
 
+/**
+ * Nettoie le code HTML, décode les entités spéciales (&eacute;, &#039;...)
+ * et corrige les erreurs courantes d'encodage (ex: âœ” -> ✔)
+ */
+const cleanHtml = (htmlStr: string): string => {
+  if (!htmlStr) return "";
+
+  let text = htmlStr;
+
+  // 1. Convertir les balises d'entités de base encodées en texte brut (&lt;p&gt; -> <p>)
+  text = text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
+  // 2. Dictionnaire de conversion pour les entités HTML courantes
+  const htmlEntities: { [key: string]: string } = {
+    '&eacute;': 'é', '&Eacute;': 'É',
+    '&egrave;': 'è', '&Egrave;': 'È',
+    '&agrave;': 'à', '&Agrave;': 'À',
+    '&ugrave;': 'ù', '&icirc;': 'î', 
+    '&iuml;': 'ï',   '&ocirc;': 'ô', 
+    '&ecirc;': 'ê',  '&euml;': 'ë', 
+    '&ccedil;': 'ç', '&Ccedil;': 'Ç',
+    '&nbsp;': ' ',   '&amp;': '&',
+    '&quot;': '"',   '&#039;': "'", 
+    '&rsquo;': "'",  '&ndash;': '–',
+    '&mdash;': '—',  '&deg;': '°',
+    '&OElig;': 'Œ',  '&oelig;': 'œ',
+    '&euro;': '€'
+  };
+
+  // Remplacement de toutes les entités du dictionnaire
+  Object.keys(htmlEntities).forEach(entity => {
+    const reg = new RegExp(entity, 'g');
+    text = text.replace(reg, htmlEntities[entity]);
+  });
+
+  // 3. Correction des erreurs d'encodage de caractères (UTF-8 mal interprété)
+  text = text.replace(/âœ”/g, '✔');
+  text = text.replace(/â€“/g, '–');
+
+  // 4. Suppression complète de toutes les balises HTML (<p>, </p>, <br>, etc.)
+  text = text.replace(/<\/?[^>]+(>|$)/g, " ");
+
+  // 5. Nettoyage des espaces multiples et sauts de lignes pour l'aperçu de la notification
+  return text.replace(/\s+/g, " ").trim();
+};
+
 export default function NotificationScreen() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -23,24 +69,30 @@ export default function NotificationScreen() {
   }, []);
 
   const fetchData = async () => {
-  try {
-    const response = await getNotification();
-    if (response && response.success) {
-      const formattedData: NotificationItem[] = response.ids_msg.map((id: number, index: number) => ({
-        id: id.toString(), // Garde l'ID sous forme de chaîne pour la FlatList
-        title: "Nouvelle notification",
-        description: response.messages[index] || "Vous avez reçu un nouveau message.",
-        type: "message",
-        isRead: false,
-      }));
-      setNotifications(formattedData);
+    try {
+      const response = await getNotification();
+      if (response && response.success) {
+        const formattedData: NotificationItem[] = response.ids_msg.map((id: number, index: number) => {
+          const rawMessage = response.messages[index] || "Vous avez reçu un nouveau message.";
+          
+          return {
+            id: id.toString(),
+            title: "Nouvelle notification",
+            // APPLICATION DU NETTOYAGE ROBUSTE SUR LA DESCRIPTION
+            description: cleanHtml(rawMessage),
+            type: "message",
+            isRead: false,
+            time: ""
+          };
+        });
+        setNotifications(formattedData);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération des notifications:", error);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Erreur lors de la récupération des notifications:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const renderIcon = (type: string) => {
     switch (type) {
@@ -51,15 +103,14 @@ export default function NotificationScreen() {
     }
   };
 
-const handlePress = (item: NotificationItem) => {
-  if (item.type === 'message') {
-    // On passe l'id du message en paramètre de recherche (query param)
-    router.push({
-      pathname: "/employeur/autre/Chat",
-      params: { id_msg: item.id }
-    });
-  }
-};
+  const handlePress = (item: NotificationItem) => {
+    if (item.type === 'message') {
+      router.push({
+        pathname: "/employeur/autre/Chat",
+        params: { id_msg: item.id }
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -72,8 +123,9 @@ const handlePress = (item: NotificationItem) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        
-        <Text style={styles.counterText}>Vous avez {notifications.length}  Notification</Text>
+        <Text style={styles.counterText}>
+          Vous avez {notifications.length} {notifications.length > 1 ? "Notifications" : "Notification"}
+        </Text>
       </View>
 
       <FlatList
@@ -98,8 +150,8 @@ const handlePress = (item: NotificationItem) => {
                 <Text style={[styles.title, !item.isRead && styles.unreadText]}>{item.title}</Text>
                 {!item.isRead && <View style={styles.unreadDot} />}
               </View>
+              {/* Le texte s'affiche de manière fluide et lisible sans résidu HTML */}
               <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
-           
             </View>
           </TouchableOpacity>
         )}
@@ -112,7 +164,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#eef3ff" },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { padding: 20, paddingTop: 10 },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#1b2d5a' },
   counterText: { fontSize: 14, color: '#64748b', marginTop: 5 },
   listContent: { padding: 15, gap: 12 },
   notificationCard: {
@@ -138,8 +189,6 @@ const styles = StyleSheet.create({
   unreadText: { color: "#1b2d5a", fontWeight: "700" },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#2b5bbb", marginLeft: 8 },
   description: { fontSize: 13, color: "#64748b", lineHeight: 18, marginBottom: 6 },
-  timeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  timeText: { fontSize: 11, color: "#7a8baf" },
   emptyState: { alignItems: "center", justifyContent: "center", marginTop: 40, gap: 10 },
   emptyText: { color: "#7a8baf", fontSize: 14 },
 });

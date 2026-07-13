@@ -20,27 +20,27 @@ import { getCommandes, getDevis, AccepterRefuserDevis } from '@/app/employeur/se
 
 import url from "@/app/services/url.js";
 
-// 🔧 Fonction globale de décodage des entités HTML (nommées et numériques)
+// 🔧 Fonction globale de décodage des entités HTML (gère minuscules et majuscules ex: &Eacute;)
 const decodeHTML = (str: string): string => {
   if (!str) return '';
   return str
     .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
-    .replace(/&eacute;/g, 'é')
-    .replace(/&egrave;/g, 'è')
-    .replace(/&ecirc;/g, 'ê')
-    .replace(/&euml;/g, 'ë')
-    .replace(/&agrave;/g, 'à')
-    .replace(/&acirc;/g, 'â')
-    .replace(/&icirc;/g, 'î')
-    .replace(/&iuml;/g, 'ï')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+    .replace(/&eacute;/gi, 'é')  
+    .replace(/&egrave;/gi, 'è')
+    .replace(/&ecirc;/gi, 'ê')
+    .replace(/&euml;/gi, 'ë')
+    .replace(/&agrave;/gi, 'à')
+    .replace(/&acirc;/gi, 'â')
+    .replace(/&icirc;/gi, 'î')
+    .replace(/&iuml;/gi, 'ï')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>');
 };
 
-// 🔧 Fonction corrigée pour format les dates MySQL (YYYY-MM-DD...) en (DD/MM/YYYY)
+// 🔧 Fonction pour formater les dates MySQL (YYYY-MM-DD...) en (DD/MM/YYYY)
 const formatDate = (dateString: string | undefined | null): string => {
   if (!dateString) return '-';
   
@@ -84,26 +84,54 @@ export default function MyOffersScreen() {
   const [devis, setDevis] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false); 
-  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null); // Loader local pour les boutons d'action
-  const [downloadLoadingId, setDownloadLoadingId] = useState<number | null>(null); // Loader local pour le bouton telecharger
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null); 
+  const [downloadLoadingId, setDownloadLoadingId] = useState<number | null>(null); 
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [selectedCommande, setSelectedCommande] = useState<any | null>(null);
   const [entriesOpen, setEntriesOpen] = useState(false);
   const [entriesValue, setEntriesValue] = useState<'10' | '20' | '30' | '40' | 'all'>('10');
 
-  // 🔄 Fonction centralisée de chargement des données
+  // 🔄 Fonction de chargement des données avec sécurité anti-doublons
   const fetchData = async (showLoadingIndicator = true) => {
     if (showLoadingIndicator) setLoading(true);
 
     try {
       if (activeTab === 'commands') {
         const res = await getCommandes();
-        const cleanData = Array.isArray(res) ? res : (res?.data || []);
-        setCommandes(cleanData);
+        const rawData = Array.isArray(res) ? res : (res?.data || []);
+        
+        // FIX: Filtrer les doublons basés sur l'ID unique 'id_fiche_poste'
+        const uniqueCommandes: any[] = [];
+        const seenIds = new Set();
+        rawData.forEach((item: any) => {
+          if (item && item.id_fiche_poste && !seenIds.has(item.id_fiche_poste)) {
+            seenIds.add(item.id_fiche_poste);
+            uniqueCommandes.push(item);
+          } else if (item && !item.id_fiche_poste) {
+            // Sécurité au cas où l'id_fiche_poste est manquant temporairement
+            uniqueCommandes.push(item);
+          }
+        });
+
+        setCommandes(uniqueCommandes);
       } else if (activeTab === 'quotes') {
         const res = await getDevis();
-        const cleanData = Array.isArray(res) ? res : (res?.data || []);
-        setDevis(cleanData);
+        const rawData = Array.isArray(res) ? res : (res?.data || []);
+        
+        // FIX: Filtrer les doublons pour les devis basés sur 'id_devis' ou 'id'
+        const uniqueDevis: any[] = [];
+        const seenDevisIds = new Set();
+        rawData.forEach((item: any) => {
+          const currentId = item?.id_devis || item?.id;
+          if (currentId && !seenDevisIds.has(currentId)) {
+            seenDevisIds.add(currentId);
+            uniqueDevis.push(item);
+          } else if (!currentId) {
+            uniqueDevis.push(item);
+          }
+        });
+
+        setDevis(uniqueDevis);
       }
     } catch (error) {
       const message =
@@ -137,7 +165,6 @@ export default function MyOffersScreen() {
     setDownloadLoadingId(idDevis);
     try {
       const viewerUrl = url() + "documents/devis/" + fileName + "?t=" + Date.now();
-
       await WebBrowser.openBrowserAsync(viewerUrl);
     } catch (error) {
       console.error(error);
@@ -147,12 +174,11 @@ export default function MyOffersScreen() {
     }
   };
 
-  // 🚀 Fonction de traitement du clic avec boîte de dialogue d'alerte avant l'appel API
+  // 🚀 Confirmation d'action avant l'appel API
   const triggerActionConfirmation = (finaliser: number, idFichePoste: any, idDevis: any, numeroDevis?: string) => {
     if (!idDevis) return;
 
     if (finaliser === 4) {
-      // 🔴 Alerte de Refus
       Alert.alert(
         'Refuser le devis',
         'Voulez-vous vraiment refuser ce devis ?',
@@ -166,7 +192,6 @@ export default function MyOffersScreen() {
         ]
       );
     } else if (finaliser === 3) {
-      // 🟢 Alerte d'Acceptation
       Alert.alert(
         'Accepter le devis',
         `Devis N°: ${numeroDevis || '-'}\nBon pour accord`,
@@ -187,7 +212,6 @@ export default function MyOffersScreen() {
     try {
       await AccepterRefuserDevis(finaliser, idFichePoste, idDevis);
       Alert.alert('Succès', finaliser === 3 ? 'Le devis a été accepté avec succès.' : 'Le devis a été refusé.');
-      // 🔄 Rafraîchir la page après confirmation
       await fetchData(false);
     } catch (error) {
       console.error(error);
@@ -332,128 +356,133 @@ export default function MyOffersScreen() {
           ) : (
             <View>
               <View style={styles.verticalTableContainer}>
-                {displayedData.map((row, index) => (
-                  <View key={index} style={styles.verticalCard}>
-                    {columns.map((col) => {
-                      let value = row?.[col.key];
-                      if (col.key === 'id' && activeTab === 'quotes') {
-                        value = row?.id_fiche_poste;
-                      }
+                {displayedData.map((row, rowIndex) => {
+                  // FIX: Génération d'une clé unique robuste pour la carte parente
+                  const rowUniqueKey = activeTab === 'quotes' 
+                    ? `quote-${row?.id_devis || row?.id || rowIndex}`
+                    : `command-${row?.id_fiche_poste || rowIndex}`;
 
-                      let displayValue = '-';
-                      if (col.key === 'statut_fiche') {
-                        // FIX: Affiche le statut textuel ou l'état numérique brut sans forcer "Inactif"
-                        displayValue = row?.statut_titre || (value !== undefined && value !== null ? `État ${value}` : '-');
-                      } else if (col.key === 'statut' && activeTab === 'quotes') {
-                        displayValue = row?.statut_titre || (Number(value) === 1 ? 'Accepté' : Number(value) === 0 ? 'Refusé' : value ?? '-');
-                      } else if (col.key === 'nbr_poste') {
-                        displayValue = row?.nbr_poste ?? row?.nombre_poste ?? row?.nbr_postes ?? '-';
-                      } else if (col.key === 'contrat_duree') {
-                        const contratStr = row?.contrat || '';
-                        const dureeStr = row?.duree || '';
-                        displayValue = [contratStr, dureeStr].filter(Boolean).join(' / ') || '-';
-                      } else if (col.key === 'details') {
-                        displayValue = 'Voir';
-                      } else if (col.key === 'download') {
-                        displayValue = 'Télécharger';
-                      } else if (col.key === 'action') {
-                        displayValue = 'Accepter / Refuser';
-                      } else {
-                        displayValue = value ?? '-';
-                      }
+                  return (
+                    <View key={rowUniqueKey} style={styles.verticalCard}>
+                      {columns.map((col, colIndex) => {
+                        let value = row?.[col.key];
+                        if (col.key === 'id' && activeTab === 'quotes') {
+                          value = row?.id_fiche_poste;
+                        }
 
-                      const cleanedText = typeof displayValue === 'string' ? decodeHTML(displayValue) : displayValue;
+                        let displayValue = '-';
+                        if (col.key === 'statut_fiche') {
+                          displayValue = row?.statut_titre || (value !== undefined && value !== null ? `État ${value}` : '-');
+                        } else if (col.key === 'statut' && activeTab === 'quotes') {
+                          displayValue = row?.statut_titre || (Number(value) === 1 ? 'Accepté' : Number(value) === 0 ? 'Refusé' : value ?? '-');
+                        } else if (col.key === 'nbr_poste') {
+                          displayValue = row?.nbr_poste ?? row?.nombre_poste ?? row?.nbr_postes ?? '-';
+                        } else if (col.key === 'contrat_duree') {
+                          const contratStr = row?.contrat || '';
+                          const dureeStr = row?.duree || '';
+                          displayValue = [contratStr, dureeStr].filter(Boolean).join(' / ') || '-';
+                        } else if (col.key === 'details') {
+                          displayValue = 'Voir';
+                        } else if (col.key === 'download') {
+                          displayValue = 'Télécharger';
+                        } else if (col.key === 'action') {
+                          displayValue = 'Accepter / Refuser';
+                        } else {
+                          displayValue = value ?? '-';
+                        }
 
-                      // 🛠️ Rendu spécifique de la cellule "Telecharger" (ouvre le PDF du devis dans une WebView)
-                      if (col.key === 'download' && activeTab === 'quotes') {
-                        const idDevis = row?.id_devis || row?.id;
-                        const fileName = row?.devis;
+                        const cleanedText = typeof displayValue === 'string' ? decodeHTML(displayValue) : displayValue;
+                        const cellKey = `${rowUniqueKey}-col-${col.key || colIndex}`;
 
-                        return (
-                          <View key={`${col.key}-${index}`} style={styles.verticalRow}>
-                            <Text style={styles.verticalLabel}>{col.label}</Text>
-                            {downloadLoadingId === idDevis ? (
-                              <ActivityIndicator size="small" color="#2b5bbb" />
-                            ) : (
-                              <TouchableOpacity
-                                onPress={() => openDevisFile(fileName, idDevis)}
-                                style={styles.detailsBadge}
-                              >
-                                <Download size={14} color="#2b5bbb" style={{ marginRight: 4 }} />
-                                <Text style={styles.detailsBadgeText}>Télécharger</Text>
-                              </TouchableOpacity>
-                            )}
-                          </View>
-                        );
-                      }
+                        if (col.key === 'download' && activeTab === 'quotes') {
+                          const idDevis = row?.id_devis || row?.id;
+                          const fileName = row?.devis;
 
-                      // 🛠️ Rendu spécifique de la cellule d'action conditionnelle (statut === 2)
-                      if (col.key === 'action' && activeTab === 'quotes') {
-                        const idDevis = row?.id_devis || row?.id; 
-                        const idFichePoste = row?.id_fiche_poste;
-                        const currentStatut = Number(row?.statut);
-
-                        if (currentStatut === 2) {
                           return (
-                            <View key={`${col.key}-${index}`} style={styles.verticalRow}>
+                            <View key={cellKey} style={styles.verticalRow}>
                               <Text style={styles.verticalLabel}>{col.label}</Text>
-                              {actionLoadingId === idDevis ? (
+                              {downloadLoadingId === idDevis ? (
                                 <ActivityIndicator size="small" color="#2b5bbb" />
                               ) : (
-                                <View style={styles.radioGroup}>
-                                  <TouchableOpacity 
-                                    style={styles.radioButtonContainer}
-                                    onPress={() => triggerActionConfirmation(3, idFichePoste, idDevis, row?.numero_devis)}
-                                  >
-                                    <View style={styles.radioCircle}></View>
-                                    <Text style={styles.radioLabel}>Accepter</Text>
-                                  </TouchableOpacity>
-
-                                  <TouchableOpacity 
-                                    style={styles.radioButtonContainer}
-                                    onPress={() => triggerActionConfirmation(4, idFichePoste, idDevis)}
-                                  >
-                                    <View style={styles.radioCircle}></View>
-                                    <Text style={styles.radioLabel}>Refuser</Text>
-                                  </TouchableOpacity>
-                                </View>
+                                <TouchableOpacity
+                                  onPress={() => openDevisFile(fileName, idDevis)}
+                                  style={styles.detailsBadge}
+                                >
+                                  <Download size={14} color="#2b5bbb" style={{ marginRight: 4 }} />
+                                  <Text style={styles.detailsBadgeText}>Télécharger</Text>
+                                </TouchableOpacity>
                               )}
                             </View>
                           );
-                        } else {
+                        }
+
+                        if (col.key === 'action' && activeTab === 'quotes') {
+                          const idDevis = row?.id_devis || row?.id; 
+                          const idFichePoste = row?.id_fiche_poste;
+                          const currentStatut = Number(row?.statut);
+
+                          if (currentStatut === 2) {
+                            return (
+                              <View key={cellKey} style={styles.verticalRow}>
+                                <Text style={styles.verticalLabel}>{col.label}</Text>
+                                {actionLoadingId === idDevis ? (
+                                  <ActivityIndicator size="small" color="#2b5bbb" />
+                                ) : (
+                                  <View style={styles.radioGroup}>
+                                    <TouchableOpacity 
+                                      style={styles.radioButtonContainer}
+                                      onPress={() => triggerActionConfirmation(3, idFichePoste, idDevis, row?.numero_devis)}
+                                    >
+                                      <View style={styles.radioCircle}></View>
+                                      <Text style={styles.radioLabel}>Accepter</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity 
+                                      style={styles.radioButtonContainer}
+                                      onPress={() => triggerActionConfirmation(4, idFichePoste, idDevis)}
+                                    >
+                                      <View style={styles.radioCircle}></View>
+                                      <Text style={styles.radioLabel}>Refuser</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                )}
+                              </View>
+                            );
+                          } else {
+                            return (
+                              <View key={cellKey} style={styles.verticalRow}>
+                                <Text style={styles.verticalLabel}>{col.label}</Text>
+                                <Text style={styles.verticalValue}> </Text>
+                              </View>
+                            );
+                          }
+                        }
+
+                        if (col.key === 'details' && activeTab === 'commands') {
                           return (
-                            <View key={`${col.key}-${index}`} style={styles.verticalRow}>
+                            <View key={cellKey} style={styles.verticalRow}>
                               <Text style={styles.verticalLabel}>{col.label}</Text>
-                              <Text style={styles.verticalValue}> </Text>
+                              <TouchableOpacity 
+                                onPress={() => openDetails(row)}
+                                style={styles.detailsBadge}
+                              >
+                                <Eye size={14} color="#2b5bbb" style={{ marginRight: 4 }} />
+                                <Text style={styles.detailsBadgeText}>Détails</Text>
+                              </TouchableOpacity>
                             </View>
                           );
                         }
-                      }
 
-                      if (col.key === 'details' && activeTab === 'commands') {
                         return (
-                          <View key={`${col.key}-${index}`} style={styles.verticalRow}>
+                          <View key={cellKey} style={styles.verticalRow}>
                             <Text style={styles.verticalLabel}>{col.label}</Text>
-                            <TouchableOpacity 
-                              onPress={() => openDetails(row)}
-                              style={styles.detailsBadge}
-                            >
-                              <Eye size={14} color="#2b5bbb" style={{ marginRight: 4 }} />
-                              <Text style={styles.detailsBadgeText}>Détails</Text>
-                            </TouchableOpacity>
+                            <Text style={styles.verticalValue}>{cleanedText}</Text>
                           </View>
                         );
-                      }
-
-                      return (
-                        <View key={`${col.key}-${index}`} style={styles.verticalRow}>
-                          <Text style={styles.verticalLabel}>{col.label}</Text>
-                          <Text style={styles.verticalValue}>{cleanedText}</Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                ))}
+                      })}
+                    </View>
+                  );
+                })}
               </View>
               <Text style={styles.empty}>
                 Affichage de 1 à {displayedData.length} sur {data.length} entrées

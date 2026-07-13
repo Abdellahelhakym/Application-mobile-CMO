@@ -88,13 +88,7 @@ function StatusBadge({ statut }: { statut: number }) {
   );
 }
 
-function ActionBtn() {
-  return (
-    <TouchableOpacity style={styles.actionBtn}>
-      <Text style={styles.actionBtnText}>Télécharger ⬇</Text>
-    </TouchableOpacity>
-  );
-}
+
 
 function formatDate(dateString: string) {
   if (!dateString) return '-';
@@ -309,7 +303,7 @@ export default function SubscriptionScreen() {
                 </View>
                 <View style={styles.invoiceBottom}>
                   <Text style={styles.invoiceAmount}>{inv.montant} € HT</Text>
-                  <ActionBtn />
+              
                 </View>
               </View>
             ))

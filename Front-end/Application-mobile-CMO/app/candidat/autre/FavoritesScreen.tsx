@@ -5,6 +5,7 @@ import {
     Text,
     TouchableOpacity,
     View,
+    RefreshControl // Optionnel, mais FlatList gère ça directement avec onRefresh
 } from "react-native";
 
 import { AlertCircle, Star } from "lucide-react-native";
@@ -37,6 +38,9 @@ interface Favorite {
 export default function FavoritesScreen() {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [favoriteState, setFavoriteState] = useState<Record<number, boolean>>({});
+  // 1. Ajout de l'état pour l'indicateur de chargement
+  const [refreshing, setRefreshing] = useState(false); 
+
   const isFav = (id: number) => !!favoriteState[id];
 
   /* =========================
@@ -50,13 +54,18 @@ export default function FavoritesScreen() {
         ? data
         : data?.data || data?.favoris || [];
 
-    
-
       setFavorites(list);
     } catch (error) {
       console.log("Error loading favorites:", error);
     }
   }
+
+  // 2. Fonction déclenchée lors du Pull to Refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadFavorites(); // Attend que les données soient rechargées
+    setRefreshing(false); // Arrête l'animation de chargement
+  };
 
   useEffect(() => {
     loadFavorites();
@@ -166,6 +175,11 @@ export default function FavoritesScreen() {
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
+        
+        // 3. Ajout des props indispensables ici :
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        
         ListEmptyComponent={
           <View style={styles.empty}>
             <AlertCircle size={50} color="#aaa" />
@@ -180,7 +194,6 @@ export default function FavoritesScreen() {
 /* =========================
    STYLE (UNCHANGED)
 ========================= */
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -190,75 +203,62 @@ const styles = StyleSheet.create({
     padding: 15,
     paddingBottom: 60,
   },
-
   card: {
     backgroundColor: "white",
     padding: 15,
     borderRadius: 20,
     marginBottom: 15,
   },
-
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 10,
   },
-
   star: {
     backgroundColor: "#f6f8ff",
     padding: 8,
     borderRadius: 20,
   },
-
   category: {
     backgroundColor: "#fff1dc",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
   },
-
   categoryText: {
     fontSize: 12,
     color: "#b87900",
   },
-
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-
   headerText: {
     flex: 1,
     paddingRight: 10,
   },
-
   title: {
     fontSize: 16,
     color: "#1b2d5a",
   },
-
   ref: {
     fontSize: 12,
     marginTop: 5,
     color: "#2b5bbb",
   },
-
   text: {
     fontSize: 12,
     color: "#1b2d5a",
   },
-
   bold: {
     fontWeight: "bold",
   },
-
   desc: {
     fontSize: 12,
     marginTop: 10,
     color: "#1b2d5a",
   },
-
   empty: {
     alignItems: "center",
     marginTop: 50,

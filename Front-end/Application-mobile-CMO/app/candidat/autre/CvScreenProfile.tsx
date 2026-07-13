@@ -10,7 +10,6 @@ import {
   RefreshControl
 } from "react-native";
 
-// La bonne syntaxe pour récupérer useFocusEffect depuis Expo Router :
 import { useFocusEffect } from "expo-router"; 
 
 import { getListFils } from '@/app/candidat/services/AttestationsScreen';
@@ -22,6 +21,30 @@ import {
 } from "@/app/candidat/services/CVScreen";
 import url from "@/app/services/url";
 import { getImage } from "../services/document";
+
+// 🔧 Décodage des entités HTML (gère les accents comme dans "Chef d’équipe restauration rapide")
+const decodeHTML = (str: string): string => {
+  if (!str) return '';
+  return str
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    .replace(/&eacute;/g, 'é')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&agrave;/g, 'à')
+    .replace(/&acirc;/g, 'â')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&iuml;/g, 'ï')
+    .replace(/&ocirc;/g, 'ô')
+    .replace(/&ugrave;/g, 'ù')
+    .replace(/&ucirc;/g, 'û')
+    .replace(/&ccedil;/g, 'ç')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+};
 
 export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
@@ -121,7 +144,7 @@ export default function ProfileScreen() {
               style={styles.avatar}
             />
           </View>
-          <Text style={styles.name}>{nom || "—"}</Text>
+          <Text style={styles.name}>{decodeHTML(nom) || "—"}</Text>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoText}>{email || "—"}</Text>
@@ -131,7 +154,7 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoText}>
-              {[ville, pays].filter(Boolean).join(", ") || "—"}
+              {decodeHTML([ville, pays].filter(Boolean).join(", ")) || "—"}
             </Text>
           </View>
         </View>
@@ -142,7 +165,7 @@ export default function ProfileScreen() {
             <View style={styles.sectionBar} />
             <Text style={styles.sectionTitle}>Mobilité</Text>
           </View>
-          <Text style={styles.value}>{mobilite || "—"}</Text>
+          <Text style={styles.value}>{decodeHTML(mobilite) || "—"}</Text>
         </View>
 
         {/* ── NIVEAU D'ÉTUDES ── */}
@@ -151,7 +174,7 @@ export default function ProfileScreen() {
             <View style={styles.sectionBar} />
             <Text style={styles.sectionTitle}>Niveau d'études</Text>
           </View>
-          <Text style={styles.value}>{niveauEtude || "-"}</Text>
+          <Text style={styles.value}>{decodeHTML(niveauEtude) || "-"}</Text>
         </View>
 
         {/* ── EXPÉRIENCES ── */}
@@ -171,15 +194,15 @@ export default function ProfileScreen() {
               <View key={index} style={styles.expCard}>
                 <View style={styles.expDot} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.expTitle}>{exp.titre}</Text>
+                  <Text style={styles.expTitle}>{decodeHTML(exp.titre)}</Text>
                   <Text style={styles.expSub}>
-                    {exp.societe}{exp.ville_pays ? ` · ${exp.ville_pays}` : ""}
+                    {decodeHTML(exp.societe)}{exp.ville_pays ? ` · ${decodeHTML(exp.ville_pays)}` : ""}
                   </Text>
                   <Text style={styles.expDate}>
                     {exp.date1}{exp.date2 ? ` – ${exp.date2}` : ""}
                   </Text>
                   {exp.description ? (
-                    <Text style={styles.expDesc}>{exp.description}</Text>
+                    <Text style={styles.expDesc}>{decodeHTML(exp.description)}</Text>
                   ) : null}
                 </View>
               </View>
@@ -204,8 +227,8 @@ export default function ProfileScreen() {
               <View key={index} style={styles.expCard}>
                 <View style={styles.expDot} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.expTitle}>{edu.diplome}</Text>
-                  <Text style={styles.expSub}>{edu.ecole}</Text>
+                  <Text style={styles.expTitle}>{decodeHTML(edu.diplome)}</Text>
+                  <Text style={styles.expSub}>{decodeHTML(edu.ecole)}</Text>
                 </View>
               </View>
             ))
@@ -225,10 +248,9 @@ export default function ProfileScreen() {
               <View key={index} style={styles.expCard}>
                 <View style={styles.expDot} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.expTitle}>{att.titre ?? att.titre2 ?? "Attestation"}</Text>
-                  {att.titre2 ? (
-                    <Text style={styles.expSub}>{att.titre2}</Text>
-                  ) : null}
+                  <Text style={styles.expTitle}>
+                    {decodeHTML(att.titre ?? att.titre2 ?? "Attestation")}
+                  </Text>
                 </View>
               </View>
             ))

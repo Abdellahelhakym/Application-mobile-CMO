@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router'; // <-- Ajout pour récupérer l'id de la notification
+import { useLocalSearchParams } from 'expo-router'; 
 import { getMessages, getSousMessages, CreateMessage, sendMessage, ClotureMessage  } from '../../candidat/services/messagerie'; 
 import { getPsaudo } from "../../candidat/services/token_id"; 
 
@@ -45,8 +45,54 @@ interface SousMessageItem {
   deleted: number;
 }
 
+/**
+ * Nettoie le code HTML, décode les entités spéciales (&eacute;, &#039;...)
+ * et corrige les erreurs courantes d'encodage (ex: âœ” -> ✔)
+ */
+const cleanHtml = (htmlStr: string): string => {
+  if (!htmlStr) return "";
+
+  let text = htmlStr;
+
+  // 1. Convertir les balises d'entités de base encodées en texte brut (&lt;p&gt; -> <p>)
+  text = text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
+  // 2. Dictionnaire de conversion pour les entités HTML courantes
+  const htmlEntities: { [key: string]: string } = {
+    '&eacute;': 'é', '&Eacute;': 'É',
+    '&egrave;': 'è', '&Egrave;': 'È',
+    '&agrave;': 'à', '&Agrave;': 'À',
+    '&ugrave;': 'ù', '&icirc;': 'î', 
+    '&iuml;': 'ï',   '&ocirc;': 'ô', 
+    '&ecirc;': 'ê',  '&euml;': 'ë', 
+    '&ccedil;': 'ç', '&Ccedil;': 'Ç',
+    '&nbsp;': ' ',   '&amp;': '&',
+    '&quot;': '"',   '&#039;': "'", 
+    '&rsquo;': "'",  '&ndash;': '–',
+    '&mdash;': '—',  '&deg;': '°',
+    '&OElig;': 'Œ',  '&oelig;': 'œ',
+    '&euro;': '€'
+  };
+
+  // Remplacement de toutes les entités du dictionnaire
+  Object.keys(htmlEntities).forEach(entity => {
+    const reg = new RegExp(entity, 'g');
+    text = text.replace(reg, htmlEntities[entity]);
+  });
+
+  // 3. Correction des erreurs d'encodage de caractères (UTF-8 mal interprété)
+  text = text.replace(/âœ”/g, '✔');
+  text = text.replace(/â€“/g, '–');
+
+  // 4. Suppression complète de toutes les balises HTML (<p>, </p>, <br>, etc.)
+  text = text.replace(/<\/?[^>]+(>|$)/g, " ");
+
+  // 5. Nettoyage des espaces multiples et sauts de lignes pour l'aperçu de la notification
+  return text.replace(/\s+/g, " ").trim();
+};
+
 export default function ChatScreen() {
-  const params = useLocalSearchParams(); // <-- Récupération des paramètres de navigation
+  const params = useLocalSearchParams(); 
   const { id_msg } = params;
 
   const [currentView, setCurrentView] = useState<'home' | 'chat' | 'compose'>('home');
@@ -65,7 +111,6 @@ export default function ChatScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Gestion de l'initialisation et de la redirection automatique
   useEffect(() => {
     const loadInitialData = async () => {
       try {
@@ -75,10 +120,8 @@ export default function ChatScreen() {
           if (pseudo) setUserPseudo(pseudo);
         }
         
-        // Charger les messages et récupérer la liste à jour
         const messages = await fetchMainMessages();
 
-        // Si l'id_msg est présent dans les paramètres, on ouvre automatiquement la discussion
         if (id_msg) {
           const targetId = parseInt(id_msg as string, 10);
           const foundMessage = messages.find(m => m.id === targetId);
@@ -89,7 +132,6 @@ export default function ChatScreen() {
             setCurrentView('chat');
             await fetchReplies(targetId);
           } else {
-            // Fallback : Si le message n'est pas encore synchronisé dans la liste principale
             const mockRootMessage: MessageItem = {
               id: targetId,
               id_user: "",
@@ -115,9 +157,8 @@ export default function ChatScreen() {
     };
 
     loadInitialData();
-  }, [id_msg]); // Se déclenche à chaque fois que l'id du message reçu change
+  }, [id_msg]);
 
-  // Récupérer les discussions principales (modifié pour retourner la liste de données)
   const fetchMainMessages = async (): Promise<MessageItem[]> => {
     try {
       const data = await getMessages();
@@ -152,7 +193,6 @@ export default function ChatScreen() {
     }
   };
 
-  // Récupérer l'historique des sous-messages
   const fetchReplies = async (id_msg: number) => {
     try {
       setLoadingChat(true);
@@ -374,7 +414,8 @@ export default function ChatScreen() {
                           {formatDate(subMsg.date_msg)} {formatHeure(subMsg.heure_msg)}
                         </Text>
                       </View>
-                      <Text style={isCMO ? styles.cmoText : styles.userText}>{subMsg.message}</Text>
+                      {/* APPLICATION DU NETTOYAGE DANS LA BULLE DE CHAT */}
+                      <Text style={isCMO ? styles.cmoText : styles.userText}>{cleanHtml(subMsg.message)}</Text>
                     </View>
                   </View>
                 );
@@ -441,7 +482,7 @@ export default function ChatScreen() {
           ) : (
             mainMessages.map((msg) => {
               const statusInfo = getStatusBadge(msg.statut, msg.last_message_statut);
-              const texteApercu = msg.last_message || msg.description;
+              const rawTexteApercu = msg.last_message || msg.description;
               const currentStatut = msg.last_message_statut !== undefined ? msg.last_message_statut : msg.statut;
               const isClosedCard = currentStatut === 4;
 
@@ -465,8 +506,9 @@ export default function ChatScreen() {
                     <Text style={styles.sujetText} numberOfLines={1}>{msg.sujet}</Text>
                   </View>
 
+                  {/* APPLICATION DU NETTOYAGE DANS L'APERÇU DE LA CARD */}
                   <Text style={styles.msgPreview} numberOfLines={2}>
-                    {texteApercu}
+                    {cleanHtml(rawTexteApercu)}
                   </Text>
                   
                   <View style={styles.openDiscussionHint}>

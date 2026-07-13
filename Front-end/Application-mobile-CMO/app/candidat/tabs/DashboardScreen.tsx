@@ -161,32 +161,37 @@ function CustomPieChart({ data, size = 100 }: { data: PieSlice[]; size?: number 
     }
 
     let cumulativeAngle = 0;
-    const slices = data
-        .filter((d) => d.value > 0)
-        .map((d, index) => {
-            const angle = (d.value / total) * 360;
-            const startAngle = cumulativeAngle;
-            const endAngle = cumulativeAngle + angle;
-            const midAngle = startAngle + angle / 2;
-            cumulativeAngle = endAngle;
+    const validSlices = data.filter((d) => d.value > 0);
 
-            // Distance réelle du centroïde d'un secteur circulaire par rapport au centre :
-            // d = (2/3) * r * sin(a) / a, où "a" est le demi-angle du secteur (en radians).
-            const halfAngleRad = (angle * Math.PI) / 180 / 2;
-            const labelDistanceRatio =
-                halfAngleRad > 0 ? (2 / 3) * (Math.sin(halfAngleRad) / halfAngleRad) : 0;
-            const labelPos = polarToCartesian(cx, cy, radius * labelDistanceRatio, midAngle);
-            const percent = Math.round((d.value / total) * 100);
+    const slices = validSlices.map((d, index) => {
+        let angle = (d.value / total) * 360;
+        
+        // CORRECTION : Si c'est le seul élément (100%), on triche très légèrement 
+        // à 359.99° pour que le path SVG accepte de dessiner le cercle complet.
+        if (validSlices.length === 1 && angle === 360) {
+            angle = 359.99;
+        }
 
-            return {
-                key: `${index}-${d.color}`,
-                path: describeArc(cx, cy, radius, startAngle, endAngle),
-                color: d.color,
-                percent,
-                labelX: labelPos.x,
-                labelY: labelPos.y,
-            };
-        });
+        const startAngle = cumulativeAngle;
+        const endAngle = cumulativeAngle + angle;
+        const midAngle = startAngle + angle / 2;
+        cumulativeAngle = endAngle;
+
+        const halfAngleRad = (angle * Math.PI) / 180 / 2;
+        const labelDistanceRatio =
+            halfAngleRad > 0 ? (2 / 3) * (Math.sin(halfAngleRad) / halfAngleRad) : 0;
+        const labelPos = polarToCartesian(cx, cy, radius * labelDistanceRatio, midAngle);
+        const percent = Math.round((d.value / total) * 100);
+
+        return {
+            key: `${index}-${d.color}`,
+            path: describeArc(cx, cy, radius, startAngle, endAngle),
+            color: d.color,
+            percent,
+            labelX: labelPos.x,
+            labelY: labelPos.y,
+        };
+    });
 
     return (
         <Svg width={size} height={size}>

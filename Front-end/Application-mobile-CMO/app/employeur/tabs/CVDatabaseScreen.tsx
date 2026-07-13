@@ -18,6 +18,30 @@ import url from "@/app/services/url.js";
 
 const { width, height } = Dimensions.get('window');
 
+// 🔧 Décodage des entités HTML
+const decodeHTML = (str: string): string => {
+  if (!str) return '';
+  return str
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    .replace(/&eacute;/g, 'é')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&agrave;/g, 'à')
+    .replace(/&acirc;/g, 'â')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&iuml;/g, 'ï')
+    .replace(/&ocirc;/g, 'ô')
+    .replace(/&ugrave;/g, 'ù')
+    .replace(/&ucirc;/g, 'û')
+    .replace(/&ccedil;/g, 'ç')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+};
+
 const CONTRATS = ['CDI', 'CDD', 'Saisonnier', 'Alternance', 'Stage', 'Mi-temps', 'Interim', 'Liberal'];
 
 const PAYS = [
@@ -31,6 +55,11 @@ const PAYS = [
   { label: 'Italie', value: 'Italie' },
   { label: 'Allemagne', value: 'Allemagne' },
 ];
+
+// Nombre de candidats affichés par page
+const PAGE_SIZE = 10;
+// Nombre max de boutons de page visibles en même temps
+const MAX_PAGE_BUTTONS = 5;
 
 export default function CVDatabaseScreen() {
   const [candidats, setCandidats] = useState<any[]>([]);
@@ -61,6 +90,9 @@ export default function CVDatabaseScreen() {
   const [subCatOpen, setSubCatOpen] = useState(false);
   const [metierOpen, setMetierOpen] = useState(false);
   const [paysOpen, setPaysOpen] = useState(false);
+
+  // ──────────────── PAGINATION ────────────────
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     let mounted = true;
@@ -137,6 +169,7 @@ export default function CVDatabaseScreen() {
     setSelectedMetier(tempMetier);
     setSelectedPays(tempPays);
     setSelectedContrats(tempContrats);
+    setCurrentPage(1); // on revient à la page 1 à chaque nouveau filtre
     setFilterVisible(false);
   };
 
@@ -182,14 +215,45 @@ export default function CVDatabaseScreen() {
       return Number(idB) - Number(idA);
     });
 
+  // ──────────────── LOGIQUE DE PAGINATION ────────────────
+  const totalItems = filteredCandidats.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+
+  // Sécurité : si on change de filtre et que la page actuelle dépasse le nouveau total
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [totalPages]);
+
+  const paginatedCandidats = filteredCandidats.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  const goToPage = (page: number) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
+
+  // Calcule la liste de numéros de page à afficher (ex: 3 4 [5] 6 7)
+  const getPageNumbers = () => {
+    const pages: number[] = [];
+    let start = Math.max(1, currentPage - Math.floor(MAX_PAGE_BUTTONS / 2));
+    let end = Math.min(totalPages, start + MAX_PAGE_BUTTONS - 1);
+    start = Math.max(1, end - MAX_PAGE_BUTTONS + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
+
   const getCategoryLabel = () =>
-    secteurData.categories.find((c) => String(c.id_categorie) === selectedCategory)?.titre || 'Catégorie';
+    decodeHTML(secteurData.categories.find((c) => String(c.id_categorie) === selectedCategory)?.titre) || 'Catégorie';
 
   const getSubCategoryLabel = () =>
-    filteredSubCategories.find((c) => String(c.id_sous) === selectedSubCategory)?.titre || 'Sous-catégorie';
+    decodeHTML(filteredSubCategories.find((c) => String(c.id_sous) === selectedSubCategory)?.titre) || 'Sous-catégorie';
 
   const getMetierLabel = () =>
-    filteredMetiers.find((c) => String(c.id_metier) === selectedMetier)?.titre || 'Métier';
+    decodeHTML(filteredMetiers.find((c) => String(c.id_metier) === selectedMetier)?.titre) || 'Métier';
 
   const getPaysLabel = () =>
     PAYS.find((p) => p.value === selectedPays)?.label || 'Tout ...';
@@ -206,13 +270,20 @@ export default function CVDatabaseScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* COMPTEUR DE RESULTATS */}
+        {!loading && totalItems > 0 && (
+          <Text style={styles.resultCount}>
+            {totalItems} candidat{totalItems > 1 ? 's' : ''} trouvé{totalItems > 1 ? 's' : ''} — page {currentPage}/{totalPages}
+          </Text>
+        )}
+
         {/* LIST */}
         {loading ? (
           <ActivityIndicator size="small" color="#2b5bbb" style={{ marginTop: 40 }} />
         ) : filteredCandidats.length === 0 ? (
           <Text style={styles.emptyText}>Aucun candidat trouvé</Text>
         ) : (
-          filteredCandidats.map((profile, index) => {
+          paginatedCandidats.map((profile, index) => {
             const hasPhoto = profile.photo && profile.photo.trim() !== '';
             const photoUrl = hasPhoto 
               ? `${url()}documents/photos_candidats/${profile.photo}?t=${Date.now()}`
@@ -235,15 +306,15 @@ export default function CVDatabaseScreen() {
                   </View>
 
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.name}>{profile.prenom} </Text>
-                    <Text style={styles.status}>{profile.experience || 'Vide !'} d'experience</Text>
+                    <Text style={styles.name}>{decodeHTML(profile.prenom)} </Text>
+                    <Text style={styles.status}>{decodeHTML(profile.experience) || 'Vide !'} d'experience</Text>
                     
                     {/* METIERS */}
                     <View style={styles.metiersContainer}>
                       {Array.isArray(profile?.secteur_activite) && profile.secteur_activite.length > 0 ? (
                         profile.secteur_activite.slice(0, 2).map((secteur: any, idx: number) => (
                           <View key={idx} style={styles.metierBadge}>
-                            <Text style={styles.metierBadgeText}>{secteur.metier}</Text>
+                            <Text style={styles.metierBadgeText}>{decodeHTML(secteur.metier)}</Text>
                           </View>
                         ))
                       ) : (
@@ -255,7 +326,7 @@ export default function CVDatabaseScreen() {
                     </View>
 
                     <Text style={styles.info}>
-                      Mobilité : {profile.mobilite?.map((m: any) => m.region).filter(Boolean).join(', ') || '-'}
+                      Mobilité : {profile.mobilite?.map((m: any) => decodeHTML(m.region)).filter(Boolean).join(', ') || '-'}
                     </Text>
                     <Text style={styles.info}>Disponibilité : Oui</Text>
                   </View>
@@ -270,6 +341,59 @@ export default function CVDatabaseScreen() {
               </View>
             );
           })
+        )}
+
+        {/* ──────────────── PAGINATION CONTROLS ──────────────── */}
+        {!loading && totalItems > 0 && totalPages > 1 && (
+          <View style={styles.paginationContainer}>
+            <TouchableOpacity
+              style={[styles.pageNavBtn, currentPage === 1 && styles.pageNavBtnDisabled]}
+              onPress={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <Ionicons name="chevron-back" size={18} color={currentPage === 1 ? '#a0aec0' : '#2b5bbb'} />
+            </TouchableOpacity>
+
+            {getPageNumbers()[0] > 1 && (
+              <>
+                <TouchableOpacity style={styles.pageBtn} onPress={() => goToPage(1)}>
+                  <Text style={styles.pageBtnText}>1</Text>
+                </TouchableOpacity>
+                {getPageNumbers()[0] > 2 && <Text style={styles.pageEllipsis}>...</Text>}
+              </>
+            )}
+
+            {getPageNumbers().map((page) => (
+              <TouchableOpacity
+                key={page}
+                style={[styles.pageBtn, page === currentPage && styles.pageBtnActive]}
+                onPress={() => goToPage(page)}
+              >
+                <Text style={[styles.pageBtnText, page === currentPage && styles.pageBtnTextActive]}>
+                  {page}
+                </Text>
+              </TouchableOpacity>
+            ))}
+
+            {getPageNumbers()[getPageNumbers().length - 1] < totalPages && (
+              <>
+                {getPageNumbers()[getPageNumbers().length - 1] < totalPages - 1 && (
+                  <Text style={styles.pageEllipsis}>...</Text>
+                )}
+                <TouchableOpacity style={styles.pageBtn} onPress={() => goToPage(totalPages)}>
+                  <Text style={styles.pageBtnText}>{totalPages}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            <TouchableOpacity
+              style={[styles.pageNavBtn, currentPage === totalPages && styles.pageNavBtnDisabled]}
+              onPress={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              <Ionicons name="chevron-forward" size={18} color={currentPage === totalPages ? '#a0aec0' : '#2b5bbb'} />
+            </TouchableOpacity>
+          </View>
         )}
 
       </ScrollView>
@@ -306,7 +430,7 @@ export default function CVDatabaseScreen() {
                       <Ionicons name="person-outline" size={40} color="#2b5bbb" />
                     )}
                   </View>
-                  <Text style={styles.cvName}>{selectedCandidate.prenom} </Text>
+                  <Text style={styles.cvName}>{decodeHTML(selectedCandidate.prenom)} </Text>
                 </View>
 
                 <View style={styles.divider} />
@@ -317,9 +441,9 @@ export default function CVDatabaseScreen() {
                     <Text style={styles.sectionTitle}>Secteur d'activité</Text>
                     {selectedCandidate.secteur_activite.map((s: any, i: number) => (
                       <View key={i} style={styles.sectorItem}>
-                        <Text style={styles.sectorMetier}>• {s.metier}</Text>
+                        <Text style={styles.sectorMetier}>• {decodeHTML(s.metier)}</Text>
                         <Text style={styles.sectorCategory}>
-                          {s.sous_categorie} - {s.categorie}
+                          {decodeHTML(s.sous_categorie)} - {decodeHTML(s.categorie)}
                         </Text>
                       </View>
                     ))}
@@ -332,7 +456,7 @@ export default function CVDatabaseScreen() {
                   <>
                     <Text style={styles.sectionTitle}>Mobilité</Text>
                     {selectedCandidate.mobilite.map((m: any, i: number) => (
-                      <Text key={i} style={styles.mobiliteText}>• {m.region}</Text>
+                      <Text key={i} style={styles.mobiliteText}>• {decodeHTML(m.region)}</Text>
                     ))}
                     <View style={styles.divider} />
                   </>
@@ -342,7 +466,7 @@ export default function CVDatabaseScreen() {
                 {selectedCandidate.niveau_etudes && (
                   <>
                     <Text style={styles.sectionTitle}>Niveau d'études</Text>
-                    <Text style={styles.contentText}>{selectedCandidate.niveau_etudes}</Text>
+                    <Text style={styles.contentText}>{decodeHTML(selectedCandidate.niveau_etudes)}</Text>
                     <View style={styles.divider} />
                   </>
                 )}
@@ -351,7 +475,7 @@ export default function CVDatabaseScreen() {
                 {selectedCandidate.experience && (
                   <>
                     <Text style={styles.sectionTitle}>Expérience</Text>
-                    <Text style={styles.contentText}>{selectedCandidate.experience}</Text>
+                    <Text style={styles.contentText}>{decodeHTML(selectedCandidate.experience)}</Text>
                     <View style={styles.divider} />
                   </>
                 )}
@@ -363,14 +487,14 @@ export default function CVDatabaseScreen() {
                     {selectedCandidate.parcours_scolaire.map((p: any, i: number) => (
                       <View key={i} style={styles.educationItem}>
                         <Text style={styles.educationDiplome}>
-                          {p.diplome.toUpperCase() || 'Diplôme non renseigné'}
+                          {decodeHTML(p.diplome)?.toUpperCase() || 'Diplôme non renseigné'}
                         </Text>
-                        <Text style={styles.educationSchool}>École : {p.ecole}</Text>
+                        <Text style={styles.educationSchool}>École : {decodeHTML(p.ecole)}</Text>
                         <Text style={styles.educationDate}>
                           Durée : {String(p.mois_debut).padStart(2, '0')}/{p.annee_debut} à {String(p.mois_obtention).padStart(2, '0')}/{p.annee_obtention}
                         </Text>
                         {p.description && (
-                          <Text style={styles.educationDescription}>{p.description}</Text>
+                          <Text style={styles.educationDescription}>{decodeHTML(p.description)}</Text>
                         )}
                       </View>
                     ))}
@@ -387,8 +511,8 @@ export default function CVDatabaseScreen() {
                               {selectedCandidate.attestation.map((a: any, i: number) => (
                                 <View key={i} style={styles.attestationItem}>
                                   <View style={{ flex: 1 }}>
-                                    <Text style={styles.attestationTitle}>{a.titre}</Text>
-                                    <Text style={styles.attestationCategory}>{a.categorie}</Text>
+                                    <Text style={styles.attestationTitle}>{decodeHTML(a.titre)}</Text>
+                                    <Text style={styles.attestationCategory}>{decodeHTML(a.categorie)}</Text>
                                   </View>
                                 </View>
                               ))}
@@ -432,7 +556,7 @@ export default function CVDatabaseScreen() {
                 }}
               >
                 <Text style={[styles.dropdownText, tempCategory ? styles.dropdownTextActive : null]}>
-                  {tempCategory ? secteurData.categories.find((c) => String(c.id_categorie) === tempCategory)?.titre || 'Catégorie' : 'Catégorie'}
+                  {tempCategory ? (decodeHTML(secteurData.categories.find((c) => String(c.id_categorie) === tempCategory)?.titre) || 'Catégorie') : 'Catégorie'}
                 </Text>
                 <Ionicons name={catOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
               </TouchableOpacity>
@@ -470,7 +594,7 @@ export default function CVDatabaseScreen() {
                             String(item.id_categorie) === tempCategory ? styles.dropdownItemTextActive : null,
                           ]}
                         >
-                          {item.titre}
+                          {decodeHTML(item.titre)}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -492,7 +616,7 @@ export default function CVDatabaseScreen() {
               >
                 <Text style={[styles.dropdownText, tempSubCategory ? styles.dropdownTextActive : null]}>
                   {tempCategory
-                    ? tempFilteredSubCategories.find((c) => String(c.id_sous) === tempSubCategory)?.titre || 'Sous-catégorie'
+                    ? (decodeHTML(tempFilteredSubCategories.find((c) => String(c.id_sous) === tempSubCategory)?.titre) || 'Sous-catégorie')
                     : 'Sous-catégorie'}
                 </Text>
                 <Ionicons name={subCatOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
@@ -529,7 +653,7 @@ export default function CVDatabaseScreen() {
                             String(item.id_sous) === tempSubCategory ? styles.dropdownItemTextActive : null,
                           ]}
                         >
-                          {item.titre}
+                          {decodeHTML(item.titre)}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -551,7 +675,7 @@ export default function CVDatabaseScreen() {
               >
                 <Text style={[styles.dropdownText, tempMetier ? styles.dropdownTextActive : null]}>
                   {tempSubCategory
-                    ? tempFilteredMetiers.find((c) => String(c.id_metier) === tempMetier)?.titre || 'Métier'
+                    ? (decodeHTML(tempFilteredMetiers.find((c) => String(c.id_metier) === tempMetier)?.titre) || 'Métier')
                     : 'Métier'}
                 </Text>
                 <Ionicons name={metierOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
@@ -586,7 +710,7 @@ export default function CVDatabaseScreen() {
                             String(item.id_metier) === tempMetier ? styles.dropdownItemTextActive : null,
                           ]}
                         >
-                          {item.titre}
+                          {decodeHTML(item.titre)}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -678,6 +802,7 @@ const styles = StyleSheet.create({
   filterBtn: { flexDirection: 'row', backgroundColor: '#2b5bbb', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25, alignItems: 'center' },
   filterText: { color: '#fff', fontWeight: 'bold' },
   emptyText: { textAlign: 'center', marginTop: 40, color: '#7a8ab8' },
+  resultCount: { textAlign: 'center', color: '#7a8ab8', fontSize: 12, marginBottom: 10 },
   card: { backgroundColor: '#fff', borderRadius: 10, padding: 15, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1.41 },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
   
@@ -709,6 +834,16 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 12, color: '#a0aec0', fontStyle: 'italic' },
   cvBtn: { flexDirection: 'row', backgroundColor: '#2b5bbb', paddingHorizontal: 15, paddingVertical: 6, borderRadius: 15, alignItems: 'center' },
   cvText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+
+  // Pagination
+  paginationContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', marginTop: 10, marginBottom: 20 },
+  pageNavBtn: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center', backgroundColor: '#eef2ff', marginHorizontal: 3 },
+  pageNavBtnDisabled: { backgroundColor: '#f1f5f9' },
+  pageBtn: { minWidth: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center', backgroundColor: '#eef2ff', marginHorizontal: 3, paddingHorizontal: 8 },
+  pageBtnActive: { backgroundColor: '#2b5bbb' },
+  pageBtnText: { color: '#2b5bbb', fontSize: 13, fontWeight: '600' },
+  pageBtnTextActive: { color: '#fff' },
+  pageEllipsis: { color: '#7a8ab8', marginHorizontal: 4, fontSize: 13 },
   
   // Modals Backdrops
   filterBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

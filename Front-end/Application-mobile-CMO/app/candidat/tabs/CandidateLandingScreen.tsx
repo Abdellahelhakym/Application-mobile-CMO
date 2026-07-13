@@ -6,7 +6,7 @@ import {
   Text,
   TouchableOpacity,
   View,
-  RefreshControl // <-- 1. Importation de RefreshControl
+  RefreshControl 
 } from 'react-native';
 
 import { AlertCircle, Star } from 'lucide-react-native';
@@ -30,11 +30,33 @@ interface Application {
   descr: string;
 }
 
+// 🔧 Décodage des entités HTML (gère les accents comme dans "Chef d’équipe restauration rapide")
+const decodeHTML = (str: string): string => {
+  if (!str) return '';
+  return str
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    .replace(/&eacute;/g, 'é')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&agrave;/g, 'à')
+    .replace(/&acirc;/g, 'â')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&iuml;/g, 'ï')
+    .replace(/&ocirc;/g, 'ô')
+    .replace(/&ugrave;/g, 'ù')
+    .replace(/&ucirc;/g, 'û')
+    .replace(/&ccedil;/g, 'ç')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+};
+
 export default function ApplicationsScreen() {
   const [favorites, setFavorites] = useState<Record<number, boolean>>({});
   const [applications, setApplications] = useState<Application[]>([]);
-  
-  // <-- 2. État pour gérer l'animation du loader
   const [refreshing, setRefreshing] = useState(false);
 
   const isFav = (id: number) => !!favorites[id];
@@ -110,7 +132,6 @@ export default function ApplicationsScreen() {
     }
   }
 
-  // <-- 3. Fonction déclenchée lors du swipe vers le bas
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await getData();
@@ -132,15 +153,14 @@ export default function ApplicationsScreen() {
   );
 
   return (
-    /* <-- 4. Intégration du RefreshControl dans la ScrollView */
     <ScrollView 
       style={styles.container}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={["#2b5bbb"]} // Android loader color
-          tintColor="#2b5bbb"   // iOS loader color
+          colors={["#2b5bbb"]} 
+          tintColor="#2b5bbb"   
         />
       }
     >
@@ -165,14 +185,14 @@ export default function ApplicationsScreen() {
 
               <View style={styles.categorie}>
                 <Text style={styles.categorieText}>
-                  {app.categorie}
+                  {decodeHTML(app.categorie)}
                 </Text>
               </View>
             </View>
 
             {/* titre */}
             <Text style={styles.titre}>
-              {app.titre}
+              {decodeHTML(app.titre)}
             </Text>
 
             <Text style={styles.ref}>
@@ -181,20 +201,20 @@ export default function ApplicationsScreen() {
 
             {/* INFO */}
             <Text style={styles.text}>
-              <Text style={styles.bold}>type_contrat :</Text> {app.type_contrat}
+              <Text style={styles.bold}>Type de contrat :</Text> {decodeHTML(app.type_contrat)}
             </Text>
 
             <Text style={styles.text}>
-              <Text style={styles.bold}>Durée :</Text> {app.duree}
+              <Text style={styles.bold}>Durée :</Text> {decodeHTML(app.duree)}
             </Text>
 
             <Text style={styles.text}>
-              <Text style={styles.bold}>Région :</Text> {app.lieu}
+              <Text style={styles.bold}>Région :</Text> {decodeHTML(app.lieu)}
             </Text>
 
             {/* DESC */}
             <Text style={styles.desc}>
-              {app.descr}
+              {decodeHTML(app.descr)}
             </Text>
 
           </View>
@@ -221,7 +241,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 15,
-    paddingBottom: 110, // Le paddingBottom est appliqué ici pour laisser de l'espace à la fin du scroll sans casser le refresh
+    paddingBottom: 110, 
   },
   card: {
     backgroundColor: 'white',

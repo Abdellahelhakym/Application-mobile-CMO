@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator } from "react-native";
-import { Bell, Briefcase, MessageSquare, CheckCircle, Clock } from "lucide-react-native";
+import { Bell, Briefcase, MessageSquare, CheckCircle } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { getNotification } from '../../candidat/services/messagerie'; 
 
@@ -12,6 +12,52 @@ interface NotificationItem {
   type: 'message' | 'recrutement' | 'validation' | 'info';
   isRead: boolean;
 }
+
+/**
+ * Nettoie le code HTML, décode les entités spéciales (&eacute;, &#039;...)
+ * et corrige les erreurs courantes d'encodage (ex: âœ” -> ✔)
+ */
+const cleanHtml = (htmlStr: string): string => {
+  if (!htmlStr) return "";
+
+  let text = htmlStr;
+
+  // 1. Convertir les balises d'entités de base encodées en texte brut (&lt;p&gt; -> <p>)
+  text = text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
+  // 2. Dictionnaire de conversion pour les entités HTML courantes
+  const htmlEntities: { [key: string]: string } = {
+    '&eacute;': 'é', '&Eacute;': 'É',
+    '&egrave;': 'è', '&Egrave;': 'È',
+    '&agrave;': 'à', '&Agrave;': 'À',
+    '&ugrave;': 'ù', '&icirc;': 'î', 
+    '&iuml;': 'ï',   '&ocirc;': 'ô', 
+    '&ecirc;': 'ê',  '&euml;': 'ë', 
+    '&ccedil;': 'ç', '&Ccedil;': 'Ç',
+    '&nbsp;': ' ',   '&amp;': '&',
+    '&quot;': '"',   '&#039;': "'", 
+    '&rsquo;': "'",  '&ndash;': '–',
+    '&mdash;': '—',  '&deg;': '°',
+    '&OElig;': 'Œ',  '&oelig;': 'œ',
+    '&euro;': '€'
+  };
+
+  // Remplacement de toutes les entités du dictionnaire
+  Object.keys(htmlEntities).forEach(entity => {
+    const reg = new RegExp(entity, 'g');
+    text = text.replace(reg, htmlEntities[entity]);
+  });
+
+  // 3. Correction des erreurs d'encodage de caractères (UTF-8 mal interprété)
+  text = text.replace(/âœ”/g, '✔');
+  text = text.replace(/â€“/g, '–');
+
+  // 4. Suppression complète de toutes les balises HTML (<p>, </p>, <br>, etc.)
+  text = text.replace(/<\/?[^>]+(>|$)/g, " ");
+
+  // 5. Nettoyage des espaces multiples et sauts de lignes pour l'aperçu de la notification
+  return text.replace(/\s+/g, " ").trim();
+};
 
 export default function NotificationScreen() {
   const router = useRouter();
@@ -26,14 +72,19 @@ export default function NotificationScreen() {
     try {
       const response = await getNotification();
       if (response && response.success) {
-        const formattedData: NotificationItem[] = response.ids_msg.map((id: number, index: number) => ({
-          id: id.toString(), // Garde l'ID sous forme de chaîne pour la FlatList
-          title: "Nouveau message reçu",
-          description: response.messages[index] || "Vous avez reçu un nouveau message.",
-          type: "message",
-          isRead: false,
-          time: "", // Laissé vide ou géré si disponible dans l'API
-        }));
+        const formattedData: NotificationItem[] = response.ids_msg.map((id: number, index: number) => {
+          const rawMessage = response.messages[index] || "Vous avez reçu un nouveau message.";
+          
+          return {
+            id: id.toString(),
+            title: "Nouveau message reçu",
+            // Traitement complet de la chaîne de caractères
+            description: cleanHtml(rawMessage), 
+            type: "message",
+            isRead: false,
+            time: "", 
+          };
+        });
         setNotifications(formattedData);
       }
     } catch (error) {
@@ -54,7 +105,6 @@ export default function NotificationScreen() {
 
   const handlePress = (item: NotificationItem) => {
     if (item.type === 'message') {
-      // Redirection vers le dossier candidat/autre/Chat avec l'id du message
       router.push({
         pathname: "/candidat/autre/Chat",
         params: { id_msg: item.id }
@@ -100,6 +150,7 @@ export default function NotificationScreen() {
                 <Text style={[styles.title, !item.isRead && styles.unreadText]}>{item.title}</Text>
                 {!item.isRead && <View style={styles.unreadDot} />}
               </View>
+              {/* Le texte s'affiche ici de manière propre sur un maximum de 2 lignes */}
               <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
             </View>
           </TouchableOpacity>

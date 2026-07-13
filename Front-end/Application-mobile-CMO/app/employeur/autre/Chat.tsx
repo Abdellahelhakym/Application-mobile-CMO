@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router'; // <-- Ajout pour récupérer l'id de la notification
+import { useLocalSearchParams } from 'expo-router'; 
 import { getMessages, getSousMessages, CreateMessage, sendMessage, ClotureMessage  } from '../../employeur/services/messagerie'; 
 import { getRaison } from "../../employeur/services/token_id"; 
 
@@ -45,8 +45,54 @@ interface SousMessageItem {
   deleted: number;
 }
 
+/**
+ * Nettoie le code HTML, décode les entités spéciales (&eacute;, &#039;...)
+ * et corrige les erreurs courantes d'encodage (ex: âœ” -> ✔)
+ */
+const cleanHtml = (htmlStr: string): string => {
+  if (!htmlStr) return "";
+
+  let text = htmlStr;
+
+  // 1. Convertir les balises d'entités de base encodées en texte brut (&lt;p&gt; -> <p>)
+  text = text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
+  // 2. Dictionnaire de conversion pour les entités HTML courantes
+  const htmlEntities: { [key: string]: string } = {
+    '&eacute;': 'é', '&Eacute;': 'É',
+    '&egrave;': 'è', '&Egrave;': 'È',
+    '&agrave;': 'à', '&Agrave;': 'À',
+    '&ugrave;': 'ù', '&icirc;': 'î', 
+    '&iuml;': 'ï',   '&ocirc;': 'ô', 
+    '&ecirc;': 'ê',  '&euml;': 'ë', 
+    '&ccedil;': 'ç', '&Ccedil;': 'Ç',
+    '&nbsp;': ' ',   '&amp;': '&',
+    '&quot;': '"',   '&#039;': "'", 
+    '&rsquo;': "'",  '&ndash;': '–',
+    '&mdash;': '—',  '&deg;': '°',
+    '&OElig;': 'Œ',  '&oelig;': 'œ',
+    '&euro;': '€'
+  };
+
+  // Remplacement de toutes les entités du dictionnaire
+  Object.keys(htmlEntities).forEach(entity => {
+    const reg = new RegExp(entity, 'g');
+    text = text.replace(reg, htmlEntities[entity]);
+  });
+
+  // 3. Correction des erreurs d'encodage de caractères (UTF-8 mal interprété)
+  text = text.replace(/âœ”/g, '✔');
+  text = text.replace(/â€“/g, '–');
+
+  // 4. Suppression complète de toutes les balises HTML (<p>, </p>, <br>, etc.)
+  text = text.replace(/<\/?[^>]+(>|$)/g, " ");
+
+  // 5. Nettoyage des espaces multiples et sauts de lignes pour l'aperçu de la notification
+  return text.replace(/\s+/g, " ").trim();
+};
+
 export default function ChatScreen() {
-  const params = useLocalSearchParams(); // <-- Récupération des paramètres de navigation
+  const params = useLocalSearchParams(); 
   const { id_msg } = params;
 
   const [currentView, setCurrentView] = useState<'home' | 'chat' | 'compose'>('home');
@@ -75,10 +121,8 @@ export default function ChatScreen() {
           if (raison) setUserPseudo(raison);
         }
         
-        // Charger les messages et récupérer la liste à jour
         const messages = await fetchMainMessages();
 
-        // Si l'id_msg est présent dans les paramètres, on ouvre automatiquement la discussion
         if (id_msg) {
           const targetId = parseInt(id_msg as string, 10);
           const foundMessage = messages.find(m => m.id === targetId);
@@ -89,7 +133,6 @@ export default function ChatScreen() {
             setCurrentView('chat');
             await fetchReplies(targetId);
           } else {
-            // Fallback : Si le message n'est pas encore synchronisé dans la liste principale
             const mockRootMessage: MessageItem = {
               id: targetId,
               id_user: "",
@@ -115,9 +158,9 @@ export default function ChatScreen() {
     };
 
     loadInitialData();
-  }, [id_msg]); // Se déclenche à chaque fois que l'id du message reçu change
+  }, [id_msg]);
 
-  // Récupérer les discussions principales (modifié pour retourner la liste de données)
+  // Récupérer les discussions principales avec nettoyage du texte de l'aperçu
   const fetchMainMessages = async (): Promise<MessageItem[]> => {
     try {
       const data = await getMessages();
@@ -133,14 +176,16 @@ export default function ChatScreen() {
               const lastReply = filtered[filtered.length - 1];
               return { 
                 ...msg, 
-                last_message: lastReply.message,
+                // APPLICATION DU NETTOYAGE SUR L'APERÇU DU DERNIER MESSAGE
+                last_message: cleanHtml(lastReply.message),
                 last_message_statut: lastReply.statut
               };
             }
           } catch (e) {
             console.log("Erreur sous-message pour l'aperçu", e);
           }
-          return msg;
+          // Nettoyage de la description par défaut si pas de sous-message
+          return { ...msg, description: cleanHtml(msg.description) };
         })
       );
 
@@ -152,16 +197,20 @@ export default function ChatScreen() {
     }
   };
 
-  // Récupérer l'historique des sous-messages
+  // Récupérer l'historique des sous-messages et les nettoyer de tout code HTML
   const fetchReplies = async (id_msg: number) => {
     try {
       setLoadingChat(true);
       const data = await getSousMessages(id_msg);
       const repliesList: SousMessageItem[] = Array.isArray(data) ? data : data?.data ?? [];
       
-      const filteredReplies = repliesList.filter(reply => 
-        [1, 2, 3, 4, 10].includes(reply.statut)
-      );
+      const filteredReplies = repliesList
+        .filter(reply => [1, 2, 3, 4, 10].includes(reply.statut))
+        .map(reply => ({
+          ...reply,
+          // APPLICATION DU NETTOYAGE SUR CHAQUE BULLE DU CHAT
+          message: cleanHtml(reply.message)
+        }));
 
       setCurrentThreadReplies(filteredReplies);
     } catch (error) {
@@ -374,6 +423,7 @@ export default function ChatScreen() {
                           {formatDate(subMsg.date_msg)} {formatHeure(subMsg.heure_msg)}
                         </Text>
                       </View>
+                      {/* Affichage propre sans HTML */}
                       <Text style={isCMO ? styles.cmoText : styles.userText}>{subMsg.message}</Text>
                     </View>
                   </View>
@@ -465,6 +515,7 @@ export default function ChatScreen() {
                     <Text style={styles.sujetText} numberOfLines={1}>{msg.sujet}</Text>
                   </View>
 
+                  {/* L'aperçu ici profite du nettoyage HTML automatique */}
                   <Text style={styles.msgPreview} numberOfLines={2}>
                     {texteApercu}
                   </Text>

@@ -7,6 +7,30 @@ import { Ionicons } from '@expo/vector-icons';
 import { getCandidat, getCandidatValides, setCandidatValides, setCandidatNonValide } from '@/app/employeur/services/EmployeurCandidatures';
 import url from "@/app/services/url.js"; 
 
+// 🔧 Décodage des entités HTML
+const decodeHTML = (str: string): string => {
+  if (!str) return '';
+  return str
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    .replace(/&eacute;/g, 'é')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&agrave;/g, 'à')
+    .replace(/&acirc;/g, 'â')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&iuml;/g, 'ï')
+    .replace(/&ocirc;/g, 'ô')
+    .replace(/&ugrave;/g, 'ù')
+    .replace(/&ucirc;/g, 'û')
+    .replace(/&ccedil;/g, 'ç')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+};
+
 const { width } = Dimensions.get('window');
 
 const TAB_DEFINITIONS = [
@@ -110,7 +134,7 @@ interface ApiCandidate {
     mois_obtention?: string;
     annee_obtention?: number;
     description?: string;
-  }[];
+   }[];
   documents_manquants?: string[];
 }
 
@@ -188,7 +212,6 @@ export default function EmployeurCandidatures() {
     }
   };
 
-  // ── Fonction de refus ──
   const handleReject = async (candidate: ApiCandidate) => {
     const id_candidat = candidate.candidat_id ?? candidate.id;
     const id_aff = candidate.id_aff;
@@ -200,7 +223,6 @@ export default function EmployeurCandidatures() {
       return;
     }
 
-    // Demande de confirmation avant de rejeter
     Alert.alert(
       'Confirmation',
       `Êtes-vous sûr de vouloir refuser la candidature de ${candidate.prenom} ${candidate.nom} ?`,
@@ -212,9 +234,7 @@ export default function EmployeurCandidatures() {
           onPress: async () => {
             try {
               setLoading(true);
-              // Appel de l'API avec les 4 arguments requis
               await setCandidatNonValide(id_candidat, id_aff, id_fiche_post, tokenid_cand);
-              
               Alert.alert('Succès', 'Le candidat a été refusé et archivé.');
               setRefreshTrigger(prev => !prev);
             } catch (error) {
@@ -329,16 +349,16 @@ export default function EmployeurCandidatures() {
                     </View>
                   </View>
 
-                  {/* Affichage des métiers */}
+                  {/* Affichage des métiers avec decodeHTML */}
                   <View style={styles.jobList}>
                     <Text style={styles.jobItem}>
                       {candidate.metiers && candidate.metiers.length > 0 ? (
                         candidate.metiers.map((met, index) => {
-                          const titreMetier = met.titre || 'Métier non spécifié';
+                          const titreMetier = decodeHTML(met.titre || 'Métier non spécifié');
                           return index === 0 ? `• ${titreMetier}` : ` • ${titreMetier}`;
                         })
                       ) : (
-                        `• ${candidate.metier_titre || candidate.intitule_poste || 'Poste non spécifié'}`
+                        `• ${decodeHTML(candidate.metier_titre || candidate.intitule_poste || 'Poste non spécifié')}`
                       )}
                     </Text>
                   </View>
@@ -346,7 +366,7 @@ export default function EmployeurCandidatures() {
                   {/* Expérience */}
                   <Text style={styles.experienceText}>
                     {candidate.experience
-                      ? `${candidate.experience} d'expérience`
+                      ? `${decodeHTML(candidate.experience)} d'expérience`
                       : 'Aucune expérience mentionnée'}
                   </Text>
 
@@ -433,51 +453,53 @@ export default function EmployeurCandidatures() {
                   </Text>
                 </View>
 
+                {/* Secteur / Métiers avec decodeHTML */}
+                <Text style={styles.sectionTitle}>Secteur d'activité</Text>
                 {Array.isArray(selectedCandidate?.metiers) && selectedCandidate.metiers.length > 0 ? (
                   <>
-                    <Text style={styles.sectionTitle}>Secteur d'activité</Text>
                     {selectedCandidate.metiers.map((m: any, i: number) => (
-                      <Text key={i} style={styles.sectorMetier}>• {m.titre}</Text>
+                      <Text key={i} style={styles.sectorMetier}>• {decodeHTML(m.titre)}</Text>
                     ))}
                     <View style={styles.divider} />
                   </>
                 ) : (
                   <>
-                    <Text style={styles.sectionTitle}>Secteur d'activité</Text>
-                    <Text style={styles.contentText}>{selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Non renseigné'}</Text>
+                    <Text style={styles.contentText}>{decodeHTML(selectedCandidate.metier_titre || selectedCandidate.intitule_poste || 'Non renseigné')}</Text>
                     <View style={styles.divider} />
                   </>
                 )}
 
+                {/* Mobilité avec decodeHTML */}
                 {Array.isArray(selectedCandidate?.mobilites) && selectedCandidate.mobilites.length > 0 ? (
                   <>
                     <Text style={styles.sectionTitle}>Mobilité</Text>
                     {selectedCandidate.mobilites.map((m: any, i: number) => (
-                      <Text key={i} style={styles.mobiliteText}>• {m.region}</Text>
+                      <Text key={i} style={styles.mobiliteText}>• {decodeHTML(m.region)}</Text>
                     ))}
                     <View style={styles.divider} />
                   </>
                 ) : null}
 
                 <Text style={styles.sectionTitle}>Niveau d'études</Text>
-                <Text style={styles.contentText}>{selectedCandidate.niveau_etude || 'Non spécifié'}</Text>
+                <Text style={styles.contentText}>{decodeHTML(selectedCandidate.niveau_etude || 'Non spécifié')}</Text>
                 <View style={styles.divider} />
 
                 <Text style={styles.sectionTitle}>Expérience</Text>
-                <Text style={styles.contentText}>{selectedCandidate.experience || 'Non spécifiée'}</Text>
+                <Text style={styles.contentText}>{decodeHTML(selectedCandidate.experience || 'Non spécifiée')}</Text>
                 <View style={styles.divider} />
 
+                {/* Parcours scolaire avec decodeHTML */}
                 {Array.isArray(selectedCandidate?.parcours_scolaire) && selectedCandidate.parcours_scolaire.length > 0 ? (
                   <>
                     <Text style={styles.sectionTitle}>Parcours scolaire</Text>
                     {selectedCandidate.parcours_scolaire.map((parcours: any, index: number) => (
                       <View key={index} style={styles.educationItem}>
-                        <Text style={styles.educationDiplome}>{parcours.diplome ? parcours.diplome.toUpperCase() : 'Diplôme non renseigné'}</Text>
-                        <Text style={styles.educationSchool}>École : {parcours.ecole || 'Non renseignée'}</Text>
+                        <Text style={styles.educationDiplome}>{parcours.diplome ? decodeHTML(parcours.diplome).toUpperCase() : 'Diplôme non renseigné'}</Text>
+                        <Text style={styles.educationSchool}>École : {decodeHTML(parcours.ecole || 'Non renseignée')}</Text>
                         <Text style={styles.educationDate}>
                           Durée : {String(parcours.mois_debut || '').padStart(2, '0')}/{parcours.annee_debut || ''} à {String(parcours.mois_obtention || '').padStart(2, '0')}/{parcours.annee_obtention || ''}
                         </Text>
-                        {parcours.description ? <Text style={styles.educationDescription}>{parcours.description}</Text> : null}
+                        {parcours.description ? <Text style={styles.educationDescription}>{decodeHTML(parcours.description)}</Text> : null}
                       </View>
                     ))}
                     <View style={styles.divider} />
@@ -485,7 +507,6 @@ export default function EmployeurCandidatures() {
                 ) : null}
 
                 <Text style={styles.sectionTitle}>Attestations</Text>
-
                 <View style={styles.attestationList}>
                   {selectedCandidate.documents_manquants && selectedCandidate.documents_manquants.length > 0 ? (
                     selectedCandidate.documents_manquants.map((doc, index) => {
@@ -495,7 +516,7 @@ export default function EmployeurCandidatures() {
                       return (
                         <View key={index} style={styles.documentMissingRow}>
                           <Text style={[styles.sectionItem, {fontWeight: '600' }]}>
-                            {cleanDoc} manquant
+                            {decodeHTML(cleanDoc)} manquant
                           </Text>
                         </View>
                       );
@@ -534,7 +555,7 @@ export default function EmployeurCandidatures() {
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
               <Text style={styles.commentBody}>
-                {selectedComment ? selectedComment : "Aucun commentaire disponible."}
+                {selectedComment ? decodeHTML(selectedComment) : "Aucun commentaire disponible."}
               </Text>
             </ScrollView>
           </View>
@@ -544,8 +565,6 @@ export default function EmployeurCandidatures() {
     </View>
   );
 }
-
-// Les styles restent inchangés...
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#eef4ff', paddingHorizontal: 16, paddingTop: 20 },
@@ -630,8 +649,7 @@ const styles = StyleSheet.create({
     padding: 22,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    shadowOpacity: 0.3, shadowRadius: 5,
     elevation: 6,
   },
   commentBody: {
