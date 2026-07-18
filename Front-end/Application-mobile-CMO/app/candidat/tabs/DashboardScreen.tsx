@@ -10,7 +10,7 @@ import {
     Linking,
     TouchableOpacity,
     View,
-    RefreshControl, // <-- 1. Importation de RefreshControl
+    RefreshControl,
 } from "react-native";
 
 import Svg, { Path, Text as SvgText } from "react-native-svg";
@@ -18,6 +18,7 @@ import { Bell, MessageSquare, Phone} from "lucide-react-native";
 import {
     getDashboardData,
     getSecteursActivite,
+    categorieMetier
 } from "@/app/candidat/services/DashboardScreen";
 import { getNotification } from '../../candidat/services/messagerie'; 
 import { getListFils } from "@/app/candidat/services/AttestationsScreen";
@@ -166,8 +167,6 @@ function CustomPieChart({ data, size = 100 }: { data: PieSlice[]; size?: number 
     const slices = validSlices.map((d, index) => {
         let angle = (d.value / total) * 360;
         
-        // CORRECTION : Si c'est le seul élément (100%), on triche très légèrement 
-        // à 359.99° pour que le path SVG accepte de dessiner le cercle complet.
         if (validSlices.length === 1 && angle === 360) {
             angle = 359.99;
         }
@@ -219,30 +218,44 @@ function CustomPieChart({ data, size = 100 }: { data: PieSlice[]; size?: number 
 }
 
 export default function DashboardScreen() {
-    const [dashboardData, setDashboardData] = useState<DashboardDataType | null>(
-        null,
-    );
-    const [secteursActivite, setSecteursActivite] = useState<SecteurActivite[]>(
-        [],
-    );
+    const [dashboardData, setDashboardData] = useState<DashboardDataType | null>(null);
+    const [secteursActivite, setSecteursActivite] = useState<SecteurActivite[]>([]);
     const [missingDocs, setMissingDocs] = useState<MissingDocument[]>([]);
     const [badgeLoading, setBadgeLoading] = useState(false);
     const [notifCount, setNotifCount] = useState<number>(0);
-    
-    // <-- 2. État pour gérer l'animation du RefreshControl
     const [refreshing, setRefreshing] = useState(false); 
 
     const loadDashboard = React.useCallback(async () => {
         try {
-            const [data, secteurs, docs, notifRes] = await Promise.all([
+            // Ajout de categorieMetier au Promise.all
+            const [data, secteursRaw, categoriesRaw, docs, notifRes] = await Promise.all([
                 getDashboardData(),
                 getSecteursActivite(),
+                categorieMetier(),
                 getListFils(),
                 getNotification(),
             ]);
 
             setDashboardData(normalizeDashboardData(data));
-            setSecteursActivite(Array.isArray(secteurs) ? secteurs : []);
+
+            // --- Jointure et formatage des secteurs d'activités ---
+            if (Array.isArray(secteursRaw) && Array.isArray(categoriesRaw)) {
+                const formattedSecteurs: SecteurActivite[] = secteursRaw.map((secteur) => {
+                    // Trouver le métier correspondant par l'ID (titre dans le JSON secteur correspond à l'id de categorieMetier)
+                    const matchingCategory = categoriesRaw.find(
+                        (cat) => cat.id === secteur.titre
+                    );
+                    return {
+                        id_categorie: secteur.titre,
+                        categorie: matchingCategory ? matchingCategory.titre : `Secteur #${secteur.titre}`,
+                        total_candidatures: secteur.postuler || 0,
+                    };
+                });
+                setSecteursActivite(formattedSecteurs);
+            } else {
+                setSecteursActivite([]);
+            }
+
             const list = Array.isArray(docs)
                 ? docs
                 : Array.isArray(docs?.data)
@@ -259,7 +272,6 @@ export default function DashboardScreen() {
         }
     }, []);
 
-    // <-- 3. Fonction déclenchée lors du swipe vers le bas
     const onRefresh = React.useCallback(async () => {
         setRefreshing(true);
         await loadDashboard();
@@ -294,15 +306,14 @@ export default function DashboardScreen() {
         totalValue > 0 ? Math.round((value / totalValue) * 100) : 0;
 
     return (
-        /* <-- 4. Ajout de RefreshControl dans le ScrollView */
         <ScrollView 
             style={styles.container}
             refreshControl={
                 <RefreshControl 
                     refreshing={refreshing} 
                     onRefresh={onRefresh} 
-                    colors={["#2b5bbb"]} // Couleur du loader sur Android
-                    tintColor="#2b5bbb"   // Couleur du loader sur iOS
+                    colors={["#2b5bbb"]}
+                    tintColor="#2b5bbb"
                 />
             }
         >
@@ -346,7 +357,7 @@ export default function DashboardScreen() {
                             <Text style={styles.btnText}>Conseiller</Text>
                         </TouchableOpacity>
         
-                        <TouchableOpacity style={styles.btnOutline}   onPress={() => router.push('/candidat/autre/Chat')}>
+                        <TouchableOpacity style={styles.btnOutline} onPress={() => router.push('/candidat/autre/Chat')}>
                             <MessageSquare size={16} color="#2b5bbb" />
                             <Text style={styles.btnText}>Chat</Text>
                         </TouchableOpacity>
@@ -363,11 +374,10 @@ export default function DashboardScreen() {
                         </TouchableOpacity>
                     </View>
                 </View>
-                    
 
                 {/* INSCRIPTION STATUS */}
                 <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>État de l inscription</Text>
+                    <Text style={styles.sectionTitle}>État de l'inscription</Text>
 
                     <View style={styles.grid}>
                         {[
@@ -501,7 +511,7 @@ const styles = StyleSheet.create({
     content: {
         padding: 15,
         gap: 15,
-        paddingBottom: 90,  // Déplacé du container vers content pour un meilleur scroll
+        paddingBottom: 90,
     },
     card: {
         backgroundColor: "#fff",

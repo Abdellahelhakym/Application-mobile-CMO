@@ -91,6 +91,8 @@ EmployerInfo.post('/updateInfo', auth, (req, res) => {
         token_id // Utilisé pour le WHERE
     ];
 
+     const pseudo = prenom_responsable + ' ' + responsable;
+
     db.query(sqlQuery, queryParams, (err, results) => {
         if (err) {
             console.error("Erreur d'update mco_entreprise :", err);
@@ -100,7 +102,20 @@ EmployerInfo.post('/updateInfo', auth, (req, res) => {
         if (results.affectedRows === 0) {
             return res.status(404).json({ error: 'Employer not found' });
         }
-        
+
+        // Mettre à jour le pseudo dans la table mco_users
+        const updatePseudoQuery = `
+            UPDATE users 
+            SET pseudo = ? 
+            WHERE token_id = ? AND deleted = 0
+        `;
+        db.query(updatePseudoQuery, [pseudo, token_id], (err, results) => {
+            if (err) {
+                console.error("Erreur de mise à jour du pseudo :", err);
+                return res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+
         res.json({ message: 'Employer info updated successfully' });
     });
 });

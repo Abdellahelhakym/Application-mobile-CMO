@@ -58,12 +58,11 @@ myOffers.post('/commandes', auth, (req, res) => {
  
 });
 
+
 myOffers.post('/devis', auth, (req, res) => {
     const token_id = req.user.token_id;
 
-   
-
-    // 1. Recherche de l'entreprise/user via le token
+    // 1. Retrieve the company
     db.query(
         'SELECT id FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
         [token_id],
@@ -74,32 +73,131 @@ myOffers.post('/devis', auth, (req, res) => {
             }
 
             const idEmployer = enterpriseResults[0]?.id;
+
             if (!idEmployer) {
                 return res.status(404).json({ error: 'Employer not found' });
             }
 
-            // 2. Requête des devis avec gestion stricte de la collation textuelle
+            // 2. Get all job IDs linked to the company
             db.query(
-    `SELECT d.*, s.titre AS statut_titre
-     FROM devis_fiche d
-     INNER JOIN fiche_poste f 
-        ON REPLACE(d.id_fiche_poste, '0000-', '000-') COLLATE utf8mb4_general_ci = f.id_fiche_poste COLLATE utf8mb4_general_ci
-     LEFT JOIN statut_fiche_poste s ON s.id = f.statut_fiche
-     WHERE d.deleted = '0'
-       AND f.id_societe = ?`,
-    [idEmployer],
-    (err, results) => {
-        if (err) {
-            console.error("Erreur SQL :", err);
-            return res.status(500).json({ error: 'Internal server error' });
-        }
+                `SELECT id_fiche_poste
+                 FROM fiche_poste
+                 WHERE id_societe = ? AND deleted = 0`,
+                [idEmployer],
+                (err, devisResults) => {
+                    if (err) {
+                        console.error(err);
+                        return res.status(500).json({ error: 'Internal server error' });
+                    }
 
-        res.json(results);
-    }
-);
+                    const fichePosteIds = devisResults.map(row => row.id_fiche_poste);
+
+                    if (fichePosteIds.length === 0) {
+                        return res.json([]);
+                    }
+
+                    // 3. Get all quotes for those job IDs
+                    db.query(
+                        `SELECT *
+                         FROM devis_fiche
+                         WHERE id_fiche_poste IN (?) AND deleted = 0`,
+                        [fichePosteIds],
+                        (err, fichePosteResults) => {
+                            if (err) {
+                                console.error(err);
+                                return res.status(500).json({ error: 'Internal server error' });
+                            }
+
+                            return res.json(fichePosteResults);
+                        }
+                    );
+                }
+            );
         }
     );
 });
 
+
+myOffers.post('/AccepterRefuserDevis', auth, (req, res) => {
+
+    const token_id = req.user.token_id;
+    const { finaliser, id_fiche_post, id_devis } = req.body;
+    
+    if (!finaliser || !id_fiche_post || !id_devis) {
+        return res.status(400).json({ error: 'Champs manquants' });
+    }
+
+    db.query(
+        'SELECT id FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
+        [token_id],
+        (err, results) => {
+
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Internal server error' });
+            }
+
+            if (results.length === 0) {
+                return res.status(404).json({ error: 'Employer not found' });
+            }
+
+            const idEmployer = results[0].id;
+
+            // Mise à jour fiche poste
+            db.query(
+                'UPDATE fiche_poste SET statut_fiche = ? WHERE id_fiche_poste = ? AND deleted = 0',
+                [finaliser, id_fiche_post],
+                (err) => {
+
+                    if (err) {
+                        console.error(err);
+                        return res.status(500).json({ error: 'Internal server error' });
+                    }
+
+                    // Historique
+                    db.query(
+                        `INSERT INTO historiq_statut_fiche
+                        (
+                            id_fiche_poste,
+                            type_user,
+                            id_user,
+                            id_societe,
+                            statut_fiche,
+                            date_heure,
+                            deleted
+                        )
+                        VALUES (?, '1', ?, ?, ?, NOW(), 0)`,
+                        [id_fiche_post, idEmployer, token_id, finaliser],
+                        (err) => {
+
+                            if (err) {
+                                console.error(err);
+                                return res.status(500).json({ error: 'Internal server error' });
+                            }
+
+                            // Mise à jour devis
+                            db.query(
+                                'UPDATE devis_fiche SET statut = ? WHERE id = ? AND deleted = 0',
+                                [finaliser, id_devis],
+                                (err) => {
+
+                                    if (err) {
+                                        console.error(err);
+                                        return res.status(500).json({ error: 'Internal server error' });
+                                    }
+
+                                    return res.status(200).json({
+                                        success: true,
+                                        message: 'Devis accepté avec succès'
+                                    });
+                                }
+                            );
+                        }
+                    );
+                }
+            );
+        }
+    );
+});
 
 module.exports = myOffers;

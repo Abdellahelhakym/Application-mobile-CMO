@@ -73,3 +73,22 @@ export async function getSecteursActivite() {
   }
 }
 
+export async function categorieMetier() {
+  try {
+    const token_id = await getTokenId();
+    const response = await fetch(url() + "candidat/Dashboard/categorieMetier", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token_id }),
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.log("Error fetching secteurs d'activité:", error);
+    return [];
+  }
+}
+

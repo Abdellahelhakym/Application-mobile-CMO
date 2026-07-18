@@ -1,89 +1,58 @@
 const express = require('express');
 const db = require('../db');
-const fs = require('fs');
-const multer = require("multer");
+const auth = require('../middleware/auth');
+
+const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+const crypto = require("crypto");
 
 const AttestationsScreen = express.Router();
 
-const upload = multer({
-    storage: multer.diskStorage({
-        destination: function (req, file, cb) {
-            cb(null, path.join(__dirname, "fils/Document"));
-        },
-        filename: function (req, file, cb) {
-            const ext = (path.extname(file.originalname || "") || ".pdf").toLowerCase();
-            const nom_fichier =
-                Date.now() +
-                "_" +
-                Math.floor(Math.random() * 1000000) +
-                ext;
-            cb(null, nom_fichier);
-        }
-    })
-});
+// --- Chemin de stockage vers le dossier partagé du CRM ---
+const uploadPathAttestation = path.resolve(
+    __dirname,
+    '../../../crm_cmo/documents/attestations'
+);
 
-const removeFileIfExists = (dirPath, filename, done) => {
-    if (!filename) {
-        return done();
-    }
-
-    const filePath = path.join(dirPath, filename);
-
-    fs.access(filePath, fs.constants.F_OK, (accessErr) => {
-        if (accessErr) {
-            return done();
-        }
-
-        fs.unlink(filePath, (unlinkErr) => {
-            if (unlinkErr) {
-                console.log(unlinkErr);
-            }
-
-            return done();
-        });
-    });
-};
-
-AttestationsScreen.get('/', (req, res) => {
+/*
+|--------------------------------------------------------------------------
+| GET / (Test)
+|--------------------------------------------------------------------------
+*/
+AttestationsScreen.get('/', auth, (req, res) => {
     res.send('Attestations route');
 });
 
-AttestationsScreen.post('/categorie', (req, res) => {
-    const { token_id } = req.body;
 
-    console.log('Received categories request with token_id');
-    if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
-    }
-
+/*
+|--------------------------------------------------------------------------
+| POST /categorie
+|--------------------------------------------------------------------------
+*/
+AttestationsScreen.post('/categorie', auth, (req, res) => {
     db.query(
-        `SELECT * from categorie_attestation where deleted = 0`,
+        `SELECT * FROM categorie_attestation WHERE deleted = 0`,
         (err, results) => {
             if (err) {
                 console.error(err);
-                return res.status(500).json({
-                    error: 'Internal server error'
-                });
+                return res.status(500).json({ error: 'Internal server error' });
             }
-
             return res.json(results);
         }
     );
 });
 
-AttestationsScreen.post('/', (req, res) => {
-
-    const { token_id } = req.body;
-
-    console.log('Received attestations request with token_id');
+/*
+|--------------------------------------------------------------------------
+| POST /
+|--------------------------------------------------------------------------
+*/
+AttestationsScreen.post('/', auth, (req, res) => {
+    const token_id = req.user.token_id;
 
     if (!token_id) {
-        return res.status(400).json({
-            error: 'token_id is required'
-        });
+        return res.status(400).json({ error: 'token_id is required' });
     }
 
     db.query(
@@ -92,404 +61,267 @@ AttestationsScreen.post('/', (req, res) => {
             dm.id,
             dm.token_id_cand,
             dm.etats,
-
             ta.id AS id_attestation,
             ta.titre,
             ta.titre2,
-
             ca.id AS id_categorie,
             ca.titre AS categorie
-
         FROM documents_manquants dm
-
-        INNER JOIN titre_attestation ta
-            ON dm.id_attestation = ta.id
-
-        INNER JOIN categorie_attestation ca
-            ON ta.id_categorie_attestation = ca.id
-
+        INNER JOIN titre_attestation ta ON dm.id_attestation = ta.id
+        INNER JOIN categorie_attestation ca ON ta.id_categorie_attestation = ca.id
         WHERE dm.deleted = 0
-        AND ta.deleted = 0
-        AND ca.deleted = 0
-        AND dm.token_id_cand = ?
+          AND ta.deleted = 0
+          AND ca.deleted = 0
+          AND dm.token_id_cand = ?
         `,
         [token_id],
         (err, results) => {
-
             if (err) {
                 console.error(err);
-                return res.status(500).json({
-                    error: 'Internal server error'
-                });
+                return res.status(500).json({ error: 'Internal server error' });
             }
-
             return res.json(results);
         }
     );
 });
 
+/*
+|--------------------------------------------------------------------------
+| POST /updateAttestations (Upload / Remplacement de fichier)
+|--------------------------------------------------------------------------
+*/
 AttestationsScreen.post(
     '/updateAttestations',
-
+   
     multer({
         storage: multer.diskStorage({
-
             destination: function (req, file, cb) {
+                if (!fs.existsSync(uploadPathAttestation)) {
+                    fs.mkdirSync(uploadPathAttestation, { recursive: true });
+                }
+                cb(null, uploadPathAttestation);
+            },
+            filename: function (req, file, cb) {
+                const ext = path.extname(file.originalname || "").toLowerCase();
+                const allowedExt = [".pdf", ".jpg", ".jpeg", ".png"];
 
-                const uploadPath = path.join(__dirname, "fils/Document");
-
-                // create folder if not exists
-                if (!fs.existsSync(uploadPath)) {
-                    fs.mkdirSync(uploadPath, { recursive: true });
+                if (!allowedExt.includes(ext)) {
+                    return cb(new Error("Format de fichier non autorisé"));
                 }
 
-                cb(null, uploadPath);
-            },
+                const timestamp = Math.floor(Date.now() / 1000);
+                const randomStr = Math.random().toString(36).substring(2, 8);
+                const fileName = `temp_${timestamp}_${randomStr}${ext}`;
 
-            filename: function (req, file, cb) {
-
-                const ext = (path.extname(file.originalname || "") || ".pdf").toLowerCase();
-
-                const nom_fichier =
-                    Date.now() +
-                    "_" +
-                    Math.floor(Math.random() * 1000000) +
-                    ext;
-
-                cb(null, nom_fichier);
+                cb(null, fileName);
             }
         }),
-
-        limits: {
-            fileSize: 10 * 1024 * 1024 // 10MB
-        }
-
-    }).single("fichier"),
+        limits: { fileSize: 10 * 1024 * 1024 }
+    }).single("document"),
 
     async (req, res) => {
+        let tempFilePath = null;
 
         try {
-
             const token_id = req.body.token_id;
             const id_attestation = req.body.id_attestation;
 
-            // ================= VALIDATION =================
-
             if (!token_id) {
-                return res.status(400).json({
-                    success: false,
-                    message: "token_id is required"
-                });
+                return res.status(400).json({ success: false, message: "token_id is required" });
             }
-
             if (!id_attestation) {
-                return res.status(400).json({
-                    success: false,
-                    message: "id_attestation is required"
-                });
+                return res.status(400).json({ success: false, message: "id_attestation is required" });
             }
-
             if (!req.file) {
-                return res.status(400).json({
-                    success: false,
-                    message: "fichier is required"
-                });
+                return res.status(400).json({ success: false, message: "fichier is required" });
             }
 
-            const nom_fichier = req.file.filename;
-            const fichierDir = path.join(__dirname, "fils/Document");
+            tempFilePath = req.file.path;
+            const originalExt = path.extname(req.file.originalname).toLowerCase();
 
-            // ================= GET TITRE =================
-
+            // 1. Récupérer le titre
             const attestationSql = `
-                SELECT titre
-                FROM titre_attestation
-                WHERE id = ?
-                AND deleted = 0
+                SELECT titre FROM titre_attestation WHERE id = ? AND deleted = 0
             `;
 
-            db.query(attestationSql, [id_attestation], (attErr, attRows) => {
+            const attRows = await new Promise((resolve, reject) => {
+                db.query(attestationSql, [id_attestation], (err, results) => {
+                    if (err) reject(err);
+                    else resolve(results);
+                });
+            });
 
-                if (attErr) {
+            if (!attRows.length) {
+                await new Promise((resolve) => {
+                    fs.unlink(tempFilePath, () => resolve());
+                });
+                return res.status(404).json({ success: false, message: "Attestation not found" });
+            }
 
-                    console.log(attErr);
+            const titre = attRows[0].titre;
+            const timestamp = Math.floor(Date.now() / 1000);
+            const nom_fichier = `${titre.replace(/\s+/g, '_').toLowerCase()}_${timestamp}${originalExt}`;
+            const finalFilePath = path.join(uploadPathAttestation, nom_fichier);
 
-                    return res.status(500).json({
-                        success: false,
-                        message: "Database error"
-                    });
-                }
+            // 2. Renommer le fichier
+            await new Promise((resolve, reject) => {
+                fs.rename(tempFilePath, finalFilePath, (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+            tempFilePath = null;
 
-                if (!attRows.length) {
+            // 3. Vérifier si un fichier existe déjà
+            const findCvSql = `
+                SELECT id, cvitae FROM cv_candidat 
+                WHERE token_id = ? AND titre = ? AND deleted = 0
+            `;
 
-                    return res.status(404).json({
-                        success: false,
-                        message: "Attestation not found"
-                    });
-                }
+            const cvRows = await new Promise((resolve, reject) => {
+                db.query(findCvSql, [token_id, titre], (err, results) => {
+                    if (err) reject(err);
+                    else resolve(results);
+                });
+            });
 
-                const titre = attRows[0].titre;
+            const updateDocManquant = `
+                UPDATE documents_manquants SET etats = 1 
+                WHERE deleted = 0 AND token_id_cand = ? AND id_attestation = ?
+            `;
 
-                // ================= CHECK EXISTING FILE =================
-
-                const findCvSql = `
-                    SELECT id, cvitae
-                    FROM cv_candidat
-                    WHERE token_id = ?
-                    AND titre = ?
-                    AND deleted = 0
+            // CAS 1 : INSERTION
+            if (!cvRows.length) {
+                const insertCV = `
+                    INSERT INTO cv_candidat (token_id, titre, cvitae, etats, deleted, created_at)
+                    VALUES (?, ?, ?, 1, 0, NOW())
                 `;
 
-                db.query(findCvSql, [token_id, titre], (findErr, cvRows) => {
-
-                    if (findErr) {
-
-                        console.log(findErr);
-
-                        return res.status(500).json({
-                            success: false,
-                            message: "Database error"
-                        });
-                    }
-
-                    // ================= UPDATE DOCUMENTS MANQUANTS =================
-
-                    const updateDocManquant = `
-                        UPDATE documents_manquants
-                        SET etats = 1
-                        WHERE deleted = 0
-                        AND token_id_cand = ?
-                        AND id_attestation = ?
-                    `;
-
-                    // =========================================================
-                    // INSERT NEW
-                    // =========================================================
-
-                    if (!cvRows.length) {
-
-                        const insertCV = `
-                            INSERT INTO cv_candidat (
-                                token_id,
-                                titre,
-                                cvitae,
-                                etats,
-                                deleted,
-                                created_at
-                            )
-                            VALUES (?, ?, ?, 1, 0, NOW())
-                        `;
-
-                        db.query(
-                            insertCV,
-                            [token_id, titre, nom_fichier],
-                            (insertErr, insertResult) => {
-
-                                if (insertErr) {
-
-                                    console.log(insertErr);
-
-                                    return res.status(500).json({
-                                        success: false,
-                                        message: "Insert error"
-                                    });
-                                }
-
-                                db.query(
-                                    updateDocManquant,
-                                    [token_id, id_attestation],
-                                    (err2) => {
-
-                                        if (err2) {
-
-                                            console.log(err2);
-
-                                            return res.status(500).json({
-                                                success: false,
-                                                message: "Update error"
-                                            });
-                                        }
-
-                                        return res.json({
-                                            success: true,
-                                            message: "Attestation inserted successfully",
-                                            fichier: nom_fichier,
-                                            cv_id: insertResult.insertId
-                                        });
-                                    }
-                                );
-                            }
-                        );
-
-                        return;
-                    }
-
-                    // =========================================================
-                    // UPDATE EXISTING
-                    // =========================================================
-
-                    const existing = cvRows[0];
-
-                    const updateCV = `
-                        UPDATE cv_candidat
-                        SET 
-                            cvitae = ?,
-                            etats = 1
-                        WHERE id = ?
-                        AND token_id = ?
-                        AND deleted = 0
-                    `;
-
-                    db.query(
-                        updateCV,
-                        [nom_fichier, existing.id, token_id],
-                        (updateErr) => {
-
-                            if (updateErr) {
-
-                                console.log(updateErr);
-
-                                return res.status(500).json({
-                                    success: false,
-                                    message: "Update error"
-                                });
-                            }
-
-                            db.query(
-                                updateDocManquant,
-                                [token_id, id_attestation],
-                                (err2) => {
-
-                                    if (err2) {
-
-                                        console.log(err2);
-
-                                        return res.status(500).json({
-                                            success: false,
-                                            message: "Document update error"
-                                        });
-                                    }
-
-                                    // ================= DELETE OLD FILE =================
-
-                                    if (existing.cvitae) {
-
-                                        const oldPath = path.join(
-                                            fichierDir,
-                                            existing.cvitae
-                                        );
-
-                                        fs.access(oldPath, fs.constants.F_OK, (accessErr) => {
-
-                                            if (!accessErr) {
-
-                                                fs.unlink(oldPath, (unlinkErr) => {
-
-                                                    if (unlinkErr) {
-                                                        console.log(unlinkErr);
-                                                    }
-                                                });
-                                            }
-                                        });
-                                    }
-
-                                    return res.json({
-                                        success: true,
-                                        message: "Attestation updated successfully",
-                                        fichier: nom_fichier,
-                                        cv_id: existing.id
-                                    });
-                                }
-                            );
-                        }
-                    );
+                const insertResult = await new Promise((resolve, reject) => {
+                    db.query(insertCV, [token_id, titre, nom_fichier], (err, result) => {
+                        if (err) reject(err);
+                        else resolve(result);
+                    });
                 });
+
+                await new Promise((resolve, reject) => {
+                    db.query(updateDocManquant, [token_id, id_attestation], (err) => {
+                        if (err) reject(err);
+                        else resolve();
+                    });
+                });
+
+                return res.json({
+                    success: true,
+                    message: "Attestation inserted successfully",
+                    fichier: nom_fichier,
+                    cv_id: insertResult.insertId
+                });
+            }
+
+            // CAS 2 : UPDATE
+            const existing = cvRows[0];
+            const updateCV = `
+                UPDATE cv_candidat SET cvitae = ?, etats = 1 
+                WHERE id = ? AND token_id = ? AND deleted = 0
+            `;
+
+            await new Promise((resolve, reject) => {
+                db.query(updateCV, [nom_fichier, existing.id, token_id], (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+
+            await new Promise((resolve, reject) => {
+                db.query(updateDocManquant, [token_id, id_attestation], (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+
+            // Supprimer l'ancien fichier
+            if (existing.cvitae) {
+                const oldPath = path.join(uploadPathAttestation, existing.cvitae);
+                fs.unlink(oldPath, (err) => {
+                    if (err) console.log('Ancien fichier introuvable');
+                });
+            }
+
+            return res.json({
+                success: true,
+                message: "Attestation updated successfully",
+                fichier: nom_fichier,
+                cv_id: existing.id
             });
 
         } catch (error) {
+            console.error('Erreur:', error);
 
-            console.log(error);
+            if (tempFilePath) {
+                fs.unlink(tempFilePath, () => {});
+            }
 
-            return res.status(500).json({
-                success: false,
-                message: "Server error"
-            });
+            return res.status(500).json({ success: false, message: "Server error" });
         }
     }
 );
-AttestationsScreen.post('/getAttestations', (req, res) => {
 
-    const { token_id } = req.body;
-
-    // ================= VALIDATION =================
+/*
+|--------------------------------------------------------------------------
+| POST /getAttestations
+|--------------------------------------------------------------------------
+*/
+AttestationsScreen.post('/getAttestations', auth, (req, res) => {
+    const token_id = req.user.token_id;
 
     if (!token_id) {
-
-        return res.status(400).json({
-            success: false,
-            message: "token_id required"
-        });
+        return res.status(400).json({ success: false, message: "token_id required" });
     }
-
-    // ================= GET FILES =================
 
     const sql = `
         SELECT 
             cv.id,
             cv.cvitae,
             cv.created_at,
-
             ta.id AS id_attestation,
             ta.titre,
             ta.titre2,
-
             ca.id AS id_categorie,
             ca.titre AS categorie
-
         FROM cv_candidat cv
-
-        INNER JOIN titre_attestation ta
-            ON cv.titre = ta.titre
-
-        INNER JOIN categorie_attestation ca
-            ON ta.id_categorie_attestation = ca.id
-
+        INNER JOIN titre_attestation ta ON cv.titre = ta.titre
+        INNER JOIN categorie_attestation ca ON ta.id_categorie_attestation = ca.id
         WHERE cv.token_id = ?
-        AND cv.etats = 1
-        AND cv.deleted = 0
-
+          AND cv.etats = 1
+          AND cv.deleted = 0
         ORDER BY cv.id DESC
     `;
 
     db.query(sql, [token_id], (err, results) => {
-
         if (err) {
-
             console.log(err);
-
-            return res.status(500).json({
-                success: false,
-                message: "Database error"
-            });
+            return res.status(500).json({ success: false, message: "Database error" });
         }
-
         if (!results.length) {
-
-            return res.status(404).json({
-                success: false,
-                message: "No attestations found"
-            });
+            return res.status(404).json({ success: false, message: "No attestations found" });
         }
 
-        return res.json({
-            success: true,
-            files: results
-        });
+        return res.json({ success: true, files: results });
     });
 });
-AttestationsScreen.post('/deleteAttestation', (req, res) => {
 
-    const { token_id, id_attestation } = req.body;
+/*
+|--------------------------------------------------------------------------
+| POST /deleteAttestation
+|--------------------------------------------------------------------------
+*/
+
+AttestationsScreen.post('/deleteAttestation', auth, (req, res) => {
+    const token_id = req.user.token_id;
+    const { id_attestation } = req.body;
+
+    console.log('Received deleteAttestation request with id_attestation:', id_attestation);
 
     if (!token_id || !id_attestation) {
         return res.status(400).json({
@@ -498,107 +330,47 @@ AttestationsScreen.post('/deleteAttestation', (req, res) => {
         });
     }
 
-    const fichierDir = path.join(__dirname, "fils/Document");
-
-    // 1️⃣ get titre
-    const getTitreSql = `
-        SELECT titre
-        FROM titre_attestation
-        WHERE id = ?
-        AND deleted = 0
-    `;
-
-    db.query(getTitreSql, [id_attestation], (err, rows) => {
-
-        if (err) {
-            console.log(err);
-            return res.status(500).json({ success: false });
-        }
-
-        if (!rows.length) {
-            return res.status(404).json({
-                success: false,
-                message: "Attestation not found"
-            });
-        }
-
-        const titre = rows[0].titre;
-
-        // 2️⃣ find cv
-        const findSql = `
-            SELECT id, cvitae
-            FROM cv_candidat
-            WHERE token_id = ?
-            AND titre = ?
-            AND deleted = 0
-        `;
-
-        db.query(findSql, [token_id, titre], (err2, cvRows) => {
-
-            if (err2) {
-                console.log(err2);
-                return res.status(500).json({ success: false });
+    db.query(
+        `SELECT titre FROM titre_attestation WHERE id = ? AND deleted = 0`,
+        [id_attestation],
+        (err, result) => {
+            if (err) {
+                console.log(err);
+                return res.status(500).json({ success: false, message: "Database error" });
             }
 
-            if (!cvRows.length) {
-                return res.status(404).json({
-                    success: false,
-                    message: "File not found"
-                });
+            if (!result.length) {
+                return res.status(404).json({ success: false, message: "Attestation not found" });
             }
 
-            const cv = cvRows[0];
+            const titre = result[0].titre;
 
-            // 3️⃣ soft delete
-            const updateSql = `
-                UPDATE cv_candidat
-                SET etats = 0, cvitae = NULL
-                WHERE id = ?
-                AND token_id = ?
-                AND deleted = 0
-            `;
-
-            db.query(updateSql, [cv.id, token_id], (err3) => {
-
-                if (err3) {
-                    console.log(err3);
-                    return res.status(500).json({ success: false });
-                }
-
-                // 4️⃣ update documents_manquants
-                const updateDoc = `
-                    UPDATE documents_manquants
-                    SET etats = 0
-                    WHERE token_id_cand = ?
-                    AND id_attestation = ?
-                    AND deleted = 0
-                `;
-
-                db.query(updateDoc, [token_id, id_attestation], (err4) => {
-
-                    if (err4) {
-                        console.log(err4);
+            db.query(
+                `UPDATE cv_candidat
+                 SET deleted = 2
+                 WHERE titre = ? AND token_id = ? AND deleted = 0`,
+                [titre, token_id],
+                (err2, result2) => {
+                    if (err2) {
+                        console.log(err2);
                         return res.status(500).json({ success: false });
                     }
 
-                    // 5️⃣ delete file
-                    const filePath = path.join(fichierDir, cv.cvitae || "");
-
-                    fs.access(filePath, fs.constants.F_OK, (exists) => {
-
-                        if (!exists) {
-                            fs.unlink(filePath, () => {});
-                        }
-
-                        return res.json({
-                            success: true,
-                            message: "Deleted successfully"
+                    if (result2.affectedRows === 0) {
+                        return res.status(404).json({
+                            success: false,
+                            message: "No matching CV found to delete"
                         });
+                    }
+
+                    return res.json({
+                        success: true,
+                        message: "Attestation deleted (soft delete)"
                     });
-                });
-            });
-        });
-    });
+                }
+            );
+        }
+    );
 });
 
 module.exports = AttestationsScreen;

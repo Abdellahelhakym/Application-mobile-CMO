@@ -68,6 +68,7 @@ export default function LoginScreen() {
 
       if (response.success) {
         await setTokenId(response.token_id);
+         
         router.replace("/candidat/tabs/DashboardScreen");
       } else {
         alert(response.error || response.message || "Email ou mot de passe incorrect");

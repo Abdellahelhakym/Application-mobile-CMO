@@ -11,40 +11,36 @@ import {
   Modal,
   Image,
   Dimensions,
-  Platform
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from 'expo-document-picker';
 import { WebView } from 'react-native-webview';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as WebBrowser from 'expo-web-browser'; // <-- Ajouté pour le rendu de PDF interne
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
 
-// Import de tes services
+// Import de vos services (retrait de getTypeDocument qui n'est plus nécessaire)
 import { getDocument, updateDocument, DeleteDocument } from '@/app/employeur/services/documents';
 import url from "@/app/services/url.js";
 
-// Liste complète de tes documents
-const DOCUMENT_TYPES: string[] = [
-  "Clôture offre France Travail",
-  "Attestation de vigilance URSSAF",
-  "Offre France Travail",
-  "Attestation sur l'honneur",
-  "Devis signé",
-  "Attestation de régularité fiscale",
-  "Déclaration d'hébergement collectif",
-  "Attestation d'affiliation",
-  "Procuration",
-  "Facture électricité/gaz",
-  "Certificat d'adressage",
-  "Déclaration sociale nominative",
-  "Bordereau de neutralisation",
-  "Contrat d'engagement",
-  "Fiche de poste",
-  "Relevé parcellaire",
-  "Devis provisoire"
-];
-
 type ViewerType = 'image' | 'pdf' | 'office' | 'other';
+
+// Interface ajustée selon le nouveau retour de l'API
+interface TypeDocument {
+  type_document_id: number;
+  type_document_titre: string;
+  type_document_visible: number;
+  type_document_deleted: number;
+  tri_ordre: number;
+  id: number | null; // ID du document utilisateur (null si non fourni)
+  titre: string | null;
+  document: string | null; // Nom du fichier sur le serveur
+  id_societe: string | null;
+  etat: number | null;
+  type_document: string | null;
+  deleted: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
 
 const getFileExtension = (fileName: string): string => {
   const parts = fileName.split('.');
@@ -59,14 +55,37 @@ const getViewerType = (fileName: string): ViewerType => {
   return 'other';
 };
 
+// Fonction de décodage des entités HTML
+const decodeHTML = (str: string): string => {
+  if (!str) return '';
+  return str
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    .replace(/&eacute;/g, 'é')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&agrave;/g, 'à')
+    .replace(/&acirc;/g, 'â')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&iuml;/g, 'ï')
+    .replace(/&ocirc;/g, 'ô')
+    .replace(/&ugrave;/g, 'ù')
+    .replace(/&ucirc;/g, 'û')
+    .replace(/&ccedil;/g, 'ç')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+};
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function EmployerDocumentsScreen() {
-  const insets = useSafeAreaInsets();
-  const [uploadedDocs, setUploadedDocs] = useState<Record<string, string>>({}); 
+  const [documentTypes, setDocumentTypes] = useState<TypeDocument[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // 👁️ États pour la visionneuse intégrée (utilisée pour les images / fallback)
+  // 👁️ États pour la visionneuse intégrée
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerLoading, setViewerLoading] = useState(true);
   const [viewerError, setViewerError] = useState(false);
@@ -75,33 +94,31 @@ export default function EmployerDocumentsScreen() {
   const [viewerType, setViewerType] = useState<ViewerType>('other');
 
   useEffect(() => {
-    fetchUserDocuments();
+    loadData();
   }, []);
 
-  const fetchUserDocuments = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const res = await getDocument();
       
-      if (res && res.success && Array.isArray(res.documents)) {
-        const docsMap: Record<string, string> = {};
-        
-        res.documents.forEach((doc: any) => {
-          if (!doc.deleted && doc.titre) {
-            docsMap[doc.titre] = doc.document; 
-          }
-        });
-        setUploadedDocs(docsMap);
+      // On charge l'unique API qui contient désormais l'ensemble des types et des documents associés
+      const docRes = await getDocument();
+      if (docRes && docRes.success && Array.isArray(docRes.documents)) {
+        const sortedTypes = docRes.documents
+          .filter((doc: TypeDocument) => !doc.type_document_deleted)
+          .sort((a: TypeDocument, b: TypeDocument) => a.tri_ordre - b.tri_ordre);
+          
+        setDocumentTypes(sortedTypes);
       }
     } catch (error) {
-      console.error("Erreur lors de la récupération des documents:", error);
-      Alert.alert("Erreur", "Impossible de charger vos documents.");
+      console.error("Erreur lors de l'initialisation des données :", error);
+      Alert.alert("Erreur", "Impossible de charger les documents.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePickAndUpload = async (docType: string) => {
+  const handlePickAndUpload = async (docType: TypeDocument) => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ["application/pdf", "image/*", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
@@ -121,26 +138,34 @@ export default function EmployerDocumentsScreen() {
       };
 
       setLoading(true);
-      const response = await updateDocument(fileToUpload, docType, docType);
+      
+      // On envoie l'ID du type de document cible
+      const response = await updateDocument(fileToUpload, String(docType.type_document_id));
 
       if (response && response.success) {
-        Alert.alert("Succès", `${docType} a bien été enregistré.`);
-        fetchUserDocuments(); 
+        Alert.alert("Succès", `Le document "${decodeHTML(docType.type_document_titre)}" a bien été enregistré.`);
+        await loadData(); 
       } else {
         Alert.alert("Erreur", response.message || "Une erreur est survenue lors de l'envoi.");
       }
     } catch (error) {
-      console.error("Erreur d'upload:", error);
+      console.error("Erreur d'upload :", error);
       Alert.alert("Erreur", "L'envoi a échoué.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (docType: string) => {
+  // Sécurisation de l'ID du document à supprimer
+  const handleDelete = async (docType: TypeDocument, userDocId: number | null) => {
+    if (!userDocId) {
+      Alert.alert("Erreur", "Impossible de trouver l'identifiant du document à supprimer.");
+      return;
+    }
+
     Alert.alert(
       "Confirmation",
-      `Voulez-vous vraiment supprimer le document : ${docType} ?`,
+      `Voulez-vous vraiment supprimer le document : ${decodeHTML(docType.type_document_titre)} ?`,
       [
         { text: "Annuler", style: "cancel" },
         { 
@@ -149,9 +174,9 @@ export default function EmployerDocumentsScreen() {
           onPress: async () => {
             try {
               setLoading(true);
-              await DeleteDocument(); 
+              await DeleteDocument(userDocId); 
               Alert.alert("Supprimé", "Document retiré avec succès.");
-              fetchUserDocuments();
+              await loadData();
             } catch (error) {
               console.error(error);
               Alert.alert("Erreur", "Impossible de supprimer le document.");
@@ -164,13 +189,11 @@ export default function EmployerDocumentsScreen() {
     );
   };
 
-  // 👁️ GESTION DU CLIC SUR L'ŒIL
-  const handleViewDocument = async (fileName: string, docType: string) => {
+  const handleViewDocument = async (fileName: string, docTitle: string) => {
     const currentPhotoUrl = url() + "documents/autre_type_entreprise/" + fileName + "?t=" + Date.now();
     const type = getViewerType(fileName);
 
     if (type === 'pdf' || type === 'office') {
-      // Ouvre le PDF de manière native dans l'application (sans écran noir)
       try {
         await WebBrowser.openBrowserAsync(currentPhotoUrl, {
           toolbarColor: '#1b2d5a',
@@ -179,12 +202,11 @@ export default function EmployerDocumentsScreen() {
           enableBarCollapsing: true,
         });
       } catch (error) {
-        console.error("Erreur WebBrowser:", error);
+        console.error("Erreur WebBrowser :", error);
         Alert.alert("Erreur", "Impossible d'ouvrir le document.");
       }
     } else {
-      // Reste sur le modal classique pour les images (.png, .jpg)
-      setViewerTitle(docType);
+      setViewerTitle(decodeHTML(docTitle)); 
       setViewerUrl(currentPhotoUrl);
       setViewerType(type);
       setViewerError(false);
@@ -205,10 +227,9 @@ export default function EmployerDocumentsScreen() {
     setViewerError(false);
   };
 
-  // Logique de secours de la WebView pour la production
   const remoteViewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(viewerUrl)}`;
 
-  if (loading && Object.keys(uploadedDocs).length === 0) {
+  if (loading && documentTypes.length === 0) {
     return (
       <View style={[styles.container, styles.center]}>
         <ActivityIndicator size="large" color="#2b5bbb" />
@@ -219,40 +240,41 @@ export default function EmployerDocumentsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.card}>
-        {DOCUMENT_TYPES.map((doc: string, index: number) => {
-          const isUploaded = !!uploadedDocs[doc];
-          const fileName = uploadedDocs[doc];
+        {documentTypes.map((docType: TypeDocument) => {
+          // Un document est considéré comme téléversé si l'ID et le nom du fichier existent dans l'objet de l'API
+          const isUploaded = docType.id !== null && docType.document !== null;
+          const fileName = docType.document;
 
           return (
-            <View key={index} style={styles.docItem}>
+            <View key={docType.type_document_id} style={styles.docItem}>
               <View style={styles.docHeader}>
                 <Text style={styles.docText}>
-                  {doc} {isUploaded && <Text style={{ color: "green" }}>✓</Text>}
+                  {decodeHTML(docType.type_document_titre)} {isUploaded && <Text style={{ color: "green" }}>✓</Text>}
                 </Text>
               </View>
 
               <View style={styles.actions}>
                 <TouchableOpacity 
                   style={[styles.importBtn, isUploaded && styles.replaceBtn]} 
-                  onPress={() => handlePickAndUpload(doc)}
+                  onPress={() => handlePickAndUpload(docType)}
                 >
-                  <Text style={styles.importText}>{isUploaded ? "Importé " : "Importer "}</Text>
+                  <Text style={styles.importText}>{isUploaded ? "Modifier " : "Importer "}</Text>
                   <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
                 </TouchableOpacity>
 
                 {isUploaded && fileName && (
                   <TouchableOpacity 
                     style={styles.iconCircleBlue}
-                    onPress={() => handleViewDocument(fileName, doc)}
+                    onPress={() => handleViewDocument(fileName, docType.type_document_titre)}
                   >
                     <Ionicons name="eye-outline" size={16} color="#2b5bbb" />
                   </TouchableOpacity>
                 )}
 
-                {isUploaded && (
+                {isUploaded && docType.id !== null && (
                   <TouchableOpacity 
                     style={styles.iconCircleRed}
-                    onPress={() => handleDelete(doc)}
+                    onPress={() => handleDelete(docType, docType.id)}
                   >
                     <Ionicons name="trash-outline" size={16} color="#b64a2f" />
                   </TouchableOpacity>
@@ -263,7 +285,7 @@ export default function EmployerDocumentsScreen() {
         })}
       </View>
 
-      {/* MODAL UTILISÉ UNIQUEMENT POUR LES IMAGES MAINTENANT */}
+      {/* MODAL IMAGE */}
       <Modal
         visible={viewerVisible}
         animationType="slide"
@@ -321,7 +343,7 @@ export default function EmployerDocumentsScreen() {
                   allowsInlineMediaPlayback
                   onLoadEnd={() => setViewerLoading(false)}
                   onError={() => { setViewerLoading(false); setViewerError(true); }}
-                  onHttpError={() => { setViewerLoading(false); setViewerError(true); }}
+                  onHttpError={() => { setLoading(false); setViewerError(true); }}
                   renderLoading={() => <View />}
                 />
                 {viewerLoading && (

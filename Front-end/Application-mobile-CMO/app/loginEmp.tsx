@@ -70,6 +70,7 @@ export default function LoginScreen() {
         if (raison_social) {
           await setRaison(raison_social);
         }
+       
         router.replace("/employeur/tabs/EmployerDashboard");
       } else {
         alert(response.error || response.message || "Email ou mot de passe incorrect");

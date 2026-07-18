@@ -175,10 +175,9 @@ EmployerDashboard.post('/phase1', auth, (req, res) => {
 //---------phase 2
 
 EmployerDashboard.post('/phase2', auth, (req, res) => {
-
     const token_id = req.user.token_id;
 
-  
+    // 1. Récupérer l'ID de l'employeur
     db.query(
         'SELECT id FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
         [token_id],
@@ -193,147 +192,109 @@ EmployerDashboard.post('/phase2', auth, (req, res) => {
                 return res.status(404).json({ error: 'Employer not found' });
             }
 
-                 const baseCondition = `
-                        c.deleted='0'
-                        AND c.etat_affect='1'
-                        AND c.id IN (
-                            SELECT a.id_candidat
-                            FROM affectation a
-                            WHERE a.deleted='0'
-                            AND a.id_fiche_poste IN (
-                                SELECT f.id_fiche_poste
-                                FROM fiche_poste f
-                                WHERE f.id_societe=?
-                            )
-                        )
-                    `;
+            // PHASE 2_1
+            db.query(`
+                SELECT COUNT(*) AS nbr 
+                FROM cmo_candidats 
+                WHERE deleted='0' AND etat_affect='1' AND statut_candidat<>'3'  
+                  AND id IN (
+                      SELECT id_candidat FROM affectation 
+                      WHERE deleted='0' AND statut_aff IN ('1','2','3','4') 
+                        AND id_fiche_poste IN (SELECT id_fiche_poste FROM fiche_poste WHERE id_societe=?)
+                  )
+            `, [idEmployer], (err, r1) => {
+                if (err) return res.status(500).json({ error: 'Database error p2_1' });
+                const phase2_1 = r1[0].nbr;
 
-                    // PHASE 2 - multiple stats
+                // PHASE 2_2
+                db.query(`
+                    SELECT COUNT(*) AS nbr 
+                    FROM cmo_candidats 
+                    WHERE deleted='0' AND etat_affect='1' AND statut_commande='15' 
+                      AND id IN (
+                          SELECT id_candidat FROM affectation 
+                          WHERE deleted='0' AND statut_aff='3' 
+                            AND id_fiche_poste IN (SELECT id_fiche_poste FROM fiche_poste WHERE id_societe=?)
+                      )
+                `, [idEmployer], (err, r2) => {
+                    if (err) return res.status(500).json({ error: 'Database error p2_2' });
+                    const phase2_2 = r2[0].nbr;
+
+                    // PHASE 2_3
                     db.query(`
-                        SELECT 
-                        SUM(CASE WHEN c.statut_commande='15' THEN 1 ELSE 0 END) AS phase2_2,
-                        SUM(CASE WHEN c.statut_commande='16' THEN 1 ELSE 0 END) AS phase2_4,
-                        SUM(CASE WHEN c.statut_commande='17' THEN 1 ELSE 0 END) AS phase2_5,
-                        SUM(CASE WHEN c.statut_commande='70' THEN 1 ELSE 0 END) AS phase2_6,
-                        SUM(CASE WHEN c.statut_candidat='3' THEN 1 ELSE 0 END) AS phase2_3
-                        FROM cmo_candidats c
-                        WHERE ${baseCondition}
-                        AND (
-                            c.statut_commande IN ('15','16','17','70')
-                            OR c.statut_candidat='3'
-                        )
-                    `, [idEmployer], (err, result) => {
+                        SELECT COUNT(*) AS nbr 
+                        FROM cmo_candidats 
+                        WHERE deleted='0' AND etat_affect='1' AND statut_commande='16' 
+                          AND id IN (
+                              SELECT id_candidat FROM affectation 
+                              WHERE deleted='0' AND statut_aff='3' 
+                                AND id_fiche_poste IN (SELECT id_fiche_poste FROM fiche_poste WHERE id_societe=?)
+                          )
+                    `, [idEmployer], (err, r3) => {
+                        if (err) return res.status(500).json({ error: 'Database error p2_3' });
+                        const phase2_3 = r3[0].nbr;
 
-                        if (err) return res.status(500).json({ error: 'Database error' });
-
-                        const data = result[0];
-
-                        // PHASE 2 - count global (statut_aff in 1,2,3,4)
+                        // PHASE 2_4
                         db.query(`
-                            SELECT COUNT(*) AS nbr
-                            FROM cmo_candidats c
-                            WHERE ${baseCondition}
-                            AND c.id IN (
-                                SELECT a.id_candidat
-                                FROM affectation a
-                                WHERE a.statut_aff IN ('1','2','3','4')
-                            )
-                        `, [idEmployer], (err, r1) => {
+                            SELECT COUNT(*) AS nbr 
+                            FROM cmo_candidats 
+                            WHERE deleted='0' AND etat_affect='1' AND statut_candidat='3' 
+                              AND id IN (
+                                  SELECT id_candidat FROM affectation 
+                                  WHERE deleted='0' AND statut_aff='3' 
+                                    AND id_fiche_poste IN (SELECT id_fiche_poste FROM fiche_poste WHERE id_societe=?)
+                              )
+                        `, [idEmployer], (err, r4) => {
+                            if (err) return res.status(500).json({ error: 'Database error p2_4' });
+                            const phase2_4 = r4[0].nbr;
 
-                            if (err) return res.status(500).json({ error: 'Database error' });
-
-                            const phase2_1 = r1[0].nbr;
-
+                            // PHASE 2_5
                             db.query(`
-                                SELECT COUNT(*) AS nbr
-                                FROM cmo_candidats c
-                                WHERE ${baseCondition}
-                                AND c.statut_commande='15'
-                                AND c.id IN (
-                                    SELECT a.id_candidat
-                                    FROM affectation a
-                                    WHERE a.statut_aff='3'
-                                )
-                            `, [idEmployer], (err, r2) => {
+                                SELECT COUNT(*) AS nbr 
+                                FROM cmo_candidats 
+                                WHERE deleted='0' AND etat_affect='1' AND statut_commande='17' 
+                                  AND id IN (
+                                      SELECT id_candidat FROM affectation 
+                                      WHERE deleted='0' AND statut_aff='3' 
+                                        AND id_fiche_poste IN (SELECT id_fiche_poste FROM fiche_poste WHERE id_societe=?)
+                                  )
+                            `, [idEmployer], (err, r5) => {
+                                if (err) return res.status(500).json({ error: 'Database error p2_5' });
+                                const phase2_5 = r5[0].nbr;
 
-                                if (err) return res.status(500).json({ error: 'Database error' });
-
-                                const phase2_2 = r2[0].nbr;
-
+                                // PHASE 2_6
                                 db.query(`
-                                    SELECT COUNT(*) AS nbr
-                                    FROM cmo_candidats c
-                                    WHERE ${baseCondition}
-                                    AND c.statut_commande='16'
-                                `, [idEmployer], (err, r3) => {
+                                    SELECT COUNT(*) AS nbr 
+                                    FROM cmo_candidats 
+                                    WHERE deleted='0' AND etat_affect='1' AND statut_commande='70' 
+                                      AND id IN (
+                                          SELECT id_candidat FROM affectation 
+                                          WHERE deleted='0' AND statut_aff='3' 
+                                            AND id_fiche_poste IN (SELECT id_fiche_poste FROM fiche_poste WHERE id_societe=?)
+                                      )
+                                `, [idEmployer], (err, r6) => {
+                                    if (err) return res.status(500).json({ error: 'Database error p2_6' });
+                                    const phase2_6 = r6[0].nbr;
 
-                                    if (err) return res.status(500).json({ error: 'Database error' });
-
-                                    const phase2_4 = r3[0].nbr;
-
-                                    db.query(`
-                                        SELECT COUNT(*) AS nbr
-                                        FROM cmo_candidats c
-                                        WHERE ${baseCondition}
-                                        AND c.statut_commande='17'
-                                    `, [idEmployer], (err, r4) => {
-
-                                        if (err) return res.status(500).json({ error: 'Database error' });
-
-                                        const phase2_5 = r4[0].nbr;
-
-                                        db.query(`
-                                            SELECT COUNT(*) AS nbr
-                                            FROM cmo_candidats c
-                                            WHERE ${baseCondition}
-                                            AND c.statut_commande='70'
-                                        `, [idEmployer], (err, r5) => {
-
-                                            if (err) return res.status(500).json({ error: 'Database error' });
-
-                                            const phase2_6 = r5[0].nbr;
-
-                                            db.query(`
-                                                SELECT COUNT(*) AS nbr
-                                                FROM cmo_candidats c
-                                                WHERE ${baseCondition}
-                                                AND c.statut_candidat='3'
-                                            `, [idEmployer], (err, r6) => {
-
-                                                if (err) return res.status(500).json({ error: 'Database error' });
-
-                                                const phase2_3 = r6[0].nbr;
-
-                                                return res.status(200).json({
-                                                    success: true,
-                                                    phase2_1,
-                                                    phase2_2,
-                                                    phase2_4,
-                                                    phase2_5,
-                                                    phase2_6,
-                                                    phase2_3
-                                                });
-
-                                            });
-
-                                        });
-
+                                    // Retour final de toutes les données séparées
+                                    return res.status(200).json({
+                                        success: true,
+                                        phase2_1,
+                                        phase2_2,
+                                        phase2_3,
+                                        phase2_4,
+                                        phase2_5,
+                                        phase2_6
                                     });
-
                                 });
-
                             });
-
                         });
-
                     });
-
-        });
-
-   
-
+                });
+            });
+        }
+    );
 });
-
 //---------phase 3
 EmployerDashboard.post('/phase3', auth, (req, res) => {
 

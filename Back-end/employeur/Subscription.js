@@ -33,7 +33,7 @@ subscription.post('/historique', auth, (req, res) => {
                     }
 
                     const id_formule = results[0]?.id_formule;
-
+/*
                     let pack;
 
                     switch (id_formule) {
@@ -52,10 +52,11 @@ subscription.post('/historique', auth, (req, res) => {
                         default:
                             pack = 'Unknown';
                     }
+                            */
 
                     res.json({
                         historique,
-                        pack
+                        id_formule
                     });
                 }
             );

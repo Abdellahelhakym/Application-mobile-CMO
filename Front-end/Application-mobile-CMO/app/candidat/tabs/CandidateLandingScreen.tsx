@@ -58,8 +58,16 @@ export default function ApplicationsScreen() {
   const [favorites, setFavorites] = useState<Record<number, boolean>>({});
   const [applications, setApplications] = useState<Application[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>({});
 
   const isFav = (id: number) => !!favorites[id];
+
+  const toggleExpanded = (id: number) => {
+    setExpandedCards((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   async function loadFavorites(ids: number[]) {
     try {
@@ -212,10 +220,32 @@ export default function ApplicationsScreen() {
               <Text style={styles.bold}>Région :</Text> {decodeHTML(app.lieu)}
             </Text>
 
-            {/* DESC */}
-            <Text style={styles.desc}>
-              {decodeHTML(app.descr)}
-            </Text>
+            {/* DESC - Aperçu ou complet */}
+            {expandedCards[app.id] ? (
+              <>
+                <Text style={styles.desc}>
+                  {decodeHTML(app.descr)}
+                </Text>
+                <TouchableOpacity 
+                  style={styles.readMoreBtn}
+                  onPress={() => toggleExpanded(app.id)}
+                >
+                  <Text style={styles.readMoreText}>Réduire</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.desc} numberOfLines={3}>
+                  {decodeHTML(app.descr)}
+                </Text>
+                <TouchableOpacity 
+                  style={styles.readMoreBtn}
+                  onPress={() => toggleExpanded(app.id)}
+                >
+                  <Text style={styles.readMoreText}>Lire la suite →</Text>
+                </TouchableOpacity>
+              </>
+            )}
 
           </View>
         ))}
@@ -294,6 +324,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 10,
     color: '#5b6a8e',
+    lineHeight: 18,
+  },
+  readMoreBtn: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#2b5bbb',
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  readMoreText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   empty: {
     alignItems: 'center',

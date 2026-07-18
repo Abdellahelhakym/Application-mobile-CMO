@@ -15,7 +15,9 @@ const loginRoute = require('./login');
 app.use('/login', loginRoute);
 
 
-//signup route
+//delete account route
+const deleteAccountRoute = require('./deleteAccount');
+app.use('/delete-account', deleteAccountRoute);
 
 
 //change password route
@@ -55,11 +57,33 @@ app.use('/candidat/favorites', favorites);
 const attestations = require('./candidat/AttestationsScreen');
 app.use('/candidat/attestations', attestations);
 
-app.use(
-  '/files',  
-  express.static(path.join(__dirname, 'candidat', 'fils'))
-);
+//----documents---
+const documentsCan = require('./candidat/documents');
+app.use('/candidat/documents', documentsCan);
 
+const MessagerieCan = require('./candidat/Messagerie');
+app.use('/candidat/messagerie', MessagerieCan);
+
+
+
+app.use(
+  '/documents/photos_candidats',
+  express.static(
+    path.resolve(
+      __dirname,
+      '../../crm_cmo/documents/photos_candidats'
+    )
+  )
+);
+app.use(
+  '/documents/attestations',
+  express.static(
+    path.resolve(
+      __dirname,
+      '../../crm_cmo/documents/attestations'
+    )
+  )
+);
 //---------------------employeur route----------------------------
 
 const employerDashboard = require('./employeur/EmployerDashboard');
@@ -89,12 +113,34 @@ app.use('/employeur/subscription', subscription);
 const documents = require('./employeur/documents');
 app.use('/employeur/documents', documents);
 
+const MessagerieEmp = require('./employeur/Messagerie');
+app.use('/employeur/messagerie', MessagerieEmp);
+
 app.use(
   '/documents/photos_employeur',
   express.static(
     path.resolve(
       __dirname,
       '../../crm_cmo/documents/photos_employeur'
+    )
+  )
+);
+app.use(
+  '/documents/autre_type_entreprise',
+  express.static(
+    path.resolve(
+      __dirname,
+      '../../crm_cmo/documents/autre_type_entreprise'
+    )
+  )
+);
+//new-------------------------------
+app.use(
+  '/documents/devis',
+  express.static(
+    path.resolve(
+      __dirname,
+      '../../crm_cmo/documents/devis'
     )
   )
 );

@@ -1230,6 +1230,7 @@ const EducationTab = ({
 
 export default function CVScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('identity');
+  const scrollRef = useRef<ScrollView>(null);
   const [mobilityOptions, setMobilityOptions] = useState<MobiliteOption[]>([]);
   const [sectorData, setSectorData] = useState<{
     categories: SectorCategory[];
@@ -1293,6 +1294,10 @@ const [langues, setLangues] = useState<string[]>([]);
     { id: 3, category: '', subCategory: '', job: '' },
   ]);
 
+  // 🔧 Réinitialiser le scroll au haut quand l'onglet change
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, [activeTab]);
 
   // Chargement langues depuis l'API.
   // Regle: 0 => decoche, 1 => coche, liste vide => tout decoche.
@@ -1946,6 +1951,7 @@ useEffect(() => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
       >
         <ScrollView
+          ref={scrollRef}
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"

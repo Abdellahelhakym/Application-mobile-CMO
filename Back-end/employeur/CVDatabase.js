@@ -23,7 +23,7 @@ CVDatabase.post('/candidat', (req, res) => {
             console.log('Received CV database request');
 
             const candidats = await query(
-                'SELECT id , token_id, prenom, nom, niveau_etude, experience FROM cmo_candidats WHERE deleted = 0'
+                'SELECT id , photo , token_id, prenom, nom, niveau_etude, experience FROM cmo_candidats WHERE deleted = 0'
             );
 
             const secteurs = await query(
@@ -102,6 +102,7 @@ CVDatabase.post('/candidat', (req, res) => {
             const response = candidats.map((candidat) => ({
                 id: candidat.id,
                 token_id: candidat.token_id,
+                photo: candidat.photo || null,
                 prenom: candidat.prenom || null,
                 nom: candidat.nom || null,
                 secteur_activite: secteursByToken[candidat.token_id] || [],

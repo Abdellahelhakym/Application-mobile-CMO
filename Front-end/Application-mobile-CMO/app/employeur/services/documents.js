@@ -67,8 +67,9 @@ export async function DeleteImage() {
 
 export async function updateDocument(
   document,
-  titre = "Sans titre",
-  typeDocument = "Autre"
+
+  id_typeDocument ,
+ 
 ) {
   try {
     const token_id = await getTokenId();
@@ -77,8 +78,8 @@ export async function updateDocument(
 
     formData.append("token_id", token_id);
     formData.append("document", document);
-    formData.append("titre", titre);
-    formData.append("type_document", typeDocument);
+
+    formData.append("id_typeDocument", id_typeDocument);
 
     const response = await fetch(
       url() + "employeur/documents/updateDocument",
@@ -115,7 +116,8 @@ export async function getDocument() {
     }
 }
 
-export async function DeleteDocument() {
+
+export async function DeleteDocument(id_document) {
     try {
         const token_id = await getTokenId();
         const response = await fetch(url() + "employeur/documents/deleteDocument", {
@@ -123,7 +125,7 @@ export async function DeleteDocument() {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ token_id }),
+            body: JSON.stringify({ token_id, id_document }),
         });
         const data = await response.json();
         return data;
