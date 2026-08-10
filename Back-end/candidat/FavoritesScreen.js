@@ -1,17 +1,32 @@
+
 const express = require('express');
 const db = require('../db');
 
 const favorites = express.Router();
 const auth = require('../middleware/auth');
+
+
+// ======================================================
+// TEST ROUTE
+// ======================================================
+
 favorites.get('/', auth, (req, res) => {
-    res.send('Favorites route');
+    res.send('Favorites route v2');
 });
+
+
+// ======================================================
+// RÉCUPÉRER LES OFFRES FAVORITES
+// ======================================================
 
 favorites.post('/', auth, (req, res) => {
 
     const token_id = req.user.token_id;
 
-    console.log('Received favorites request with token_id');
+    console.log(
+        'Received favorites request with token_id:',
+        token_id
+    );
 
     if (!token_id) {
         return res.status(400).json({
@@ -19,65 +34,56 @@ favorites.post('/', auth, (req, res) => {
         });
     }
 
-    db.query(
-        'SELECT id_offre FROM favoris_offres WHERE token_id = ? AND deleted = 0',
-        [token_id],
-        (err, results) => {
+    const query = `
+        SELECT
+            o.id,
+            o.titre,
+            o.type_contrat,
+            o.duree,
+            o.sous_descr,
+            o.lieu,
 
-            if (err) {
-                console.error(err);
-                return res.status(500).json({
-                    error: 'Internal server error'
-                });
-            }
+            m.titre AS metier_titre,
+            m.icone AS metier_icone,
 
-            if (results.length === 0) {
-                return res.json([]);
-            }
+            r.titre AS region_titre
 
-            const offerIds = results.map(item => item.id_offre);
+        FROM favoris_offres f
 
-            const query = `
-                SELECT 
-                    o.id,
-                    o.titre,
-                    o.type_contrat,
-                    o.duree,
-                    o.lieu,
-                    o.descr,
-                    o.date,
+        INNER JOIN offres_emploi o
+            ON o.id = f.id_offre
+            AND o.deleted = '0'
 
-                    c.titre AS categorie
+        LEFT JOIN metiers m
+            ON m.id = o.id_metiers
+            AND m.deleted = '0'
 
-                FROM offres_emploi o
+        LEFT JOIN regions r
+            ON r.id = o.lieu
+            AND r.deleted = '0'
 
-                INNER JOIN metier m 
-                    ON o.id_metiers = m.id
+        WHERE f.token_id = ?
+        AND f.deleted = '0'
 
-                INNER JOIN sous_categorie_metier sc 
-                    ON m.id_sous = sc.id
+        ORDER BY f.id DESC
+    `;
 
-                INNER JOIN categorie_metier c 
-                    ON sc.id_categorie = c.id
+    db.query(query, [token_id], (err, results) => {
 
-                WHERE o.id IN (?)
-                AND o.deleted = 0
-            `;
+        if (err) {
+            console.error('Erreur SQL favorites:', err);
 
-            db.query(query, [offerIds], (err, offers) => {
-
-                if (err) {
-                    console.error(err);
-                    return res.status(500).json({
-                        error: 'Internal server error'
-                    });
-                }
-                console.log('Favorites offers retrieved successfully' , offers);
-
-                return res.json(offers);
+            return res.status(500).json({
+                error: 'Internal server error'
             });
         }
-    );
+
+       
+
+        return res.json(results);
+    });
 });
 
+
 module.exports = favorites;
+

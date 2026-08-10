@@ -21,8 +21,8 @@ const uploadPathDocument = path.resolve(
 );
 
 // Test route
-documents.get('/', auth, (req, res) => {
-    res.send('Documents & Images route');
+documents.get('/', (req, res) => {
+    res.send('Documents employeur V2');
 });
 
 /*
@@ -190,51 +190,79 @@ documents.post('/deleteImage', auth, (req, res) => {
 |--------------------------------------------------------------------------
 */
 
-
 documents.post('/getDocument', auth, (req, res) => {
-    const token_id = req.user.token_id; // Correspond à $row_edit11['id'] (id_societe)
+    const token_id = req.user.token_id;
 
-
+    // Vérifier le token avant de faire la requête
     if (!token_id) {
         return res.status(400).json({
             success: false,
             message: 'token_id (id_societe) requis'
         });
     }
-    
 
-    // On sélectionne toutes les colonnes des deux tables.
-    // On utilise des alias (t.* et d.*) pour éviter que les colonnes ayant le même nom (comme 'id') ne s'écrasent.
-    const query = `
-        SELECT 
-            t.id AS type_document_id,
-            t.titre AS type_document_titre,
-            t.visible AS type_document_visible,
-            t.deleted AS type_document_deleted,
-            t.tri_ordre,
-            d.* -- Récupère absolument toutes les colonnes de la table 'documents' (SELECT * FROM documents)
-        FROM type_document_entreprise0 t
-        LEFT JOIN documents d 
-            ON d.titre = t.id 
-            AND d.id_societe = ? 
-            AND d.deleted = '0'
-        WHERE t.deleted = '0'
-          AND t.visible = '0'
-        ORDER BY t.tri_ordre ASC
-    `;
+    // Récupérer l'id de la société
+    db.query(
+        `SELECT id 
+         FROM mco_entreprise 
+         WHERE token_id = ? 
+           AND deleted = 0`,
+        [token_id],
+        (err, results) => {
 
-    db.query(query, [token_id], (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ success: false, error: "Erreur base de données" });
+            if (err) {
+                console.error(err);
+                return res.status(500).json({
+                    success: false,
+                    message: "Erreur base de données"
+                });
+            }
+
+            if (!results.length) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Société non trouvée"
+                });
+            }
+
+            const id = results[0].id;
+
+            // Récupérer les documents de cette société
+            const query = `
+                SELECT 
+                    t.id AS type_document_id,
+                    t.titre AS type_document_titre,
+                    t.visible AS type_document_visible,
+                    t.deleted AS type_document_deleted,
+                    t.tri_ordre,
+                    d.*
+                FROM type_document_entreprise0 t
+                LEFT JOIN documents d 
+                    ON d.titre = t.id 
+                    AND d.id_societe = ? 
+                    AND d.deleted = '0'
+                WHERE t.deleted = '0'
+                  AND t.visible = '0'
+                ORDER BY t.tri_ordre ASC
+            `;
+
+            db.query(query, [id], (err, results) => {
+
+                if (err) {
+                    console.error(err);
+                    return res.status(500).json({
+                        success: false,
+                        message: "Erreur base de données"
+                    });
+                }
+
+                return res.json({
+                    success: true,
+                    documents: results
+                });
+            });
         }
-
-        // On renvoie exactement le résultat
-        return res.json({
-            success: true,
-            documents: results
-        });
-    });
+    );
 });
 
 /*

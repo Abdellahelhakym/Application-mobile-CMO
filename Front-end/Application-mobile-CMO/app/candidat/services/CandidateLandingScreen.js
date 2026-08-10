@@ -41,6 +41,25 @@ export async function addtoFavorites(id_offre, titre_offre) {
         throw error;
     }
 }
+export async function removeFavorite(id_offre, titre_offre) {
+    try {
+        const token_id = await getTokenId();
+        const response = await fetch(url() + "candidat/candidature/removeFavorite", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                
+            },
+            body: JSON.stringify({ token_id, id_offre, titre_offre }),
+        });
+        const data = await response.json();
+        return data;
+
+    } catch (error) {
+        console.error("Error removing favorite:", error);
+        throw error;
+    }
+}
 
 
 export async function isfavorite(id_offre) {

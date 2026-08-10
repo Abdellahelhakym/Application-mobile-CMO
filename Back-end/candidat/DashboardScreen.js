@@ -191,7 +191,7 @@ dashboard.post('/categorieMetier', auth, (req, res) => {
 
     db.query(
         `
-        SELECT * FROM categorie_metier
+        SELECT * FROM categorie_metier_app
         WHERE deleted = '0'
         `,
         [id],

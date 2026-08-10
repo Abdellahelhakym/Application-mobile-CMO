@@ -1,12 +1,11 @@
 import url from "@/app/services/url.js";
 import { getTokenId } from "./token_id";
 
-
 //-----------------------------------------------------------
 //---------------------documents-----------------------------
 //-----------------------------------------------------------
 
-// ✅ updateDocument avec logging pour déboguer
+// ✅ updateDocument avec Header Authorization + FormData
 export async function updateDocument(document, id_attestation) {
   try {
     console.log('📤 updateDocument appelé avec:', { id_attestation });
@@ -15,7 +14,6 @@ export async function updateDocument(document, id_attestation) {
     console.log('✅ token_id reçu:', token_id);
 
     const formData = new FormData();
-
     formData.append("token_id", token_id);
     formData.append("document", document);
     formData.append("id_attestation", String(id_attestation));
@@ -26,19 +24,20 @@ export async function updateDocument(document, id_attestation) {
 
     const response = await fetch(apiUrl, {
       method: "POST",
+      headers: {
+        // Envoi du token dans le header Authorization au cas où le middleware auth l'exige
+        "Authorization": `Bearer ${token_id}`,
+      },
       body: formData,
     });
 
     console.log('📨 Réponse status:', response.status);
 
-    // ✅ Lire comme texte d'abord pour déboguer
     const responseText = await response.text();
     console.log('📨 Réponse brute (premiers 500 chars):', responseText.substring(0, 500));
 
-    // Vérifier si c'est du JSON
     if (!responseText.startsWith('{') && !responseText.startsWith('[')) {
       console.error('❌ La réponse n\'est pas du JSON!');
-      console.error('Réponse complète:', responseText);
       throw new Error(`Erreur API (status ${response.status}): ${responseText.substring(0, 300)}`);
     }
 
@@ -48,7 +47,6 @@ export async function updateDocument(document, id_attestation) {
     return data;
   } catch (error) {
     console.error("❌ Error uploading document:", error);
-    console.error("Error details:", JSON.stringify(error, null, 2));
     throw error;
   }
 }
@@ -60,6 +58,7 @@ export async function getDocument() {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "Authorization": `Bearer ${token_id}`,
             },
             body: JSON.stringify({ token_id }),
         });
@@ -71,7 +70,6 @@ export async function getDocument() {
     }
 }
 
-// ✅ CORRECTION : DeleteDocument prend id_attestation
 export async function DeleteDocument(id_attestation) {
     try {
         console.log('🗑️ DeleteDocument appelé avec:', { id_attestation });
@@ -81,6 +79,7 @@ export async function DeleteDocument(id_attestation) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "Authorization": `Bearer ${token_id}`,
             },
             body: JSON.stringify({ 
                 token_id,
@@ -114,6 +113,7 @@ export async function getListFils() {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "Authorization": `Bearer ${token_id}`,
             },
             body: JSON.stringify({ token_id }),
         });
@@ -132,6 +132,7 @@ export async function getCategorie() {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "Authorization": `Bearer ${token_id}`,
             },
             body: JSON.stringify({ token_id }),
         });

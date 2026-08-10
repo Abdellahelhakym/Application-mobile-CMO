@@ -8,13 +8,19 @@ import {
   View,
 } from 'react-native';
 
-import { updateDocument, getDocument, DeleteDocument, getCategorie, getListFils } from '@/app/candidat/services/AttestationsScreen';
+import {
+  updateDocument,
+  getDocument,
+  DeleteDocument,
+  getCategorie,
+  getListFils,
+} from '@/app/candidat/services/AttestationsScreen';
 import url from '@/app/services/url';
 import * as DocumentPicker from 'expo-document-picker';
-import * as WebBrowser from 'expo-web-browser'; // <-- Importation d'Expo WebBrowser
+import * as WebBrowser from 'expo-web-browser';
 import { Eye, Trash2, Upload } from 'lucide-react-native';
 
-// 🔧 Fonction pour décoder les entités HTML courantes
+// 🔧 Fonction pour décoder les entités HTML
 const decodeHTML = (str: string): string => {
   if (!str) return '';
   return str
@@ -67,11 +73,12 @@ export default function AttestationsScreen() {
       const itemList = Array.isArray(list) ? list : [];
 
       const docsMap: Record<number, string> = {};
-      
-      if (attestations?.success && Array.isArray(attestations.files)) {
-        attestations.files.forEach((file: any) => {
-          if (file?.id_attestation != null && file?.cvitae) {
-            docsMap[Number(file.id_attestation)] = file.cvitae;
+
+      // 🛠️ Mappage corrigé selon la structure de getDocument
+      if (attestations?.success && Array.isArray(attestations.attestations)) {
+        attestations.attestations.forEach((file: any) => {
+          if (file?.id_attestation != null && file?.nom_fichier) {
+            docsMap[Number(file.id_attestation)] = file.nom_fichier;
           }
         });
       }
@@ -118,16 +125,15 @@ export default function AttestationsScreen() {
       };
 
       await updateDocument(file as any, item.id_attestation);
-      
+
       Alert.alert('Enregistré', 'Document envoyé avec succès.');
-      loadFiles(); 
+      loadFiles();
     } catch (error) {
       console.error('❌ Error uploading file:', error);
       Alert.alert('Erreur', `Impossible d'envoyer le document.`);
     }
   };
 
-  // 🔧 Remplacement de Linking par WebBrowser pour ouvrir le document dans l'application
   const handleView = async (item: AttestationItem) => {
     const fileName = uploadedDocs[item.id_attestation];
     if (!fileName) {
@@ -135,18 +141,18 @@ export default function AttestationsScreen() {
       return;
     }
 
-    const currentPhotoUrl = url() + "documents/attestations/" + fileName + "?t=" + Date.now();
-    
+    const currentPhotoUrl = `${url()}documents/attestations/${fileName}?t=${Date.now()}`;
+
     try {
       await WebBrowser.openBrowserAsync(currentPhotoUrl, {
-        toolbarColor: "#2b5bbb", // Couleur assortie à tes boutons
-        controlsColor: "#ffffff",
+        toolbarColor: '#2b5bbb',
+        controlsColor: '#ffffff',
         showTitle: true,
         enableBarCollapsing: true,
       });
     } catch (error) {
       console.log("Erreur lors de l'ouverture du document :", error);
-      Alert.alert("Erreur", "Impossible d'ouvrir le document.");
+      Alert.alert('Erreur', "Impossible d'ouvrir le document.");
     }
   };
 
@@ -163,7 +169,7 @@ export default function AttestationsScreen() {
             try {
               await DeleteDocument(item.id_attestation);
               Alert.alert('Supprimé', 'Document supprimé avec succès.');
-              loadFiles(); 
+              loadFiles();
             } catch (error) {
               console.log('Error deleting document:', error);
               Alert.alert('Erreur', 'Impossible de supprimer le document.');
@@ -177,19 +183,14 @@ export default function AttestationsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-
         {categories.map((category) => (
           <View key={category.id} style={styles.card}>
-
-            {/* 🛠️ Application de decodeHTML sur le titre de la catégorie */}
             <Text style={styles.sectionTitle}>
               {decodeHTML(category.titre)}
             </Text>
 
             {items.filter((item) => item.id_categorie === category.id).length === 0 ? (
-              <Text style={styles.empty}>
-                Aucun document
-              </Text>
+              <Text style={styles.empty}>Aucun document</Text>
             ) : (
               items
                 .filter((item) => item.id_categorie === category.id)
@@ -199,22 +200,19 @@ export default function AttestationsScreen() {
 
                   return (
                     <View key={item.id} style={styles.itemRow}>
-
-                      {/* 🛠️ Application de decodeHTML sur le titre de l'item */}
                       <Text style={styles.itemText}>
                         {decodeHTML(item.titre)}
                         {isUploaded && <Text style={{ color: 'green' }}> ✓</Text>}
                       </Text>
 
-                      {/* 🛠️ Application de decodeHTML sur le sous-titre si présent */}
                       {item.titre2 ? (
-                        <Text style={styles.itemSubtitle}>{decodeHTML(item.titre2)}</Text>
+                        <Text style={styles.itemSubtitle}>
+                          {decodeHTML(item.titre2)}
+                        </Text>
                       ) : null}
 
                       {isUploaded ? (
-                        <Text style={styles.fileName}>
-                          {fileName}
-                        </Text>
+                        <Text style={styles.fileName}>{fileName}</Text>
                       ) : (
                         <Text style={styles.fileNameEmpty}>Aucun fichier</Text>
                       )}
@@ -225,7 +223,7 @@ export default function AttestationsScreen() {
                           onPress={() => handleUpload(item)}
                         >
                           <Text style={styles.uploadText}>
-                            {isUploaded ? 'Importé' : 'Importer'}
+                            {isUploaded ? 'Changer' : 'Importer'}
                           </Text>
                           <Upload size={16} color="#fff" />
                         </TouchableOpacity>
@@ -252,10 +250,8 @@ export default function AttestationsScreen() {
                   );
                 })
             )}
-
           </View>
         ))}
-
       </ScrollView>
     </View>
   );
@@ -266,16 +262,45 @@ const styles = StyleSheet.create({
   content: { padding: 15, gap: 15, paddingBottom: 60 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 15 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1b2d5a', marginBottom: 12 },
-  empty: { fontSize: 13, color: '#7a8ab8', fontStyle: 'italic' }, 
-  itemRow: { backgroundColor: '#f6f8ff', borderWidth: 1, borderColor: '#e1e9fb', borderRadius: 16, padding: 12, marginBottom: 10 },
+  empty: { fontSize: 13, color: '#7a8ab8', fontStyle: 'italic' },
+  itemRow: {
+    backgroundColor: '#f6f8ff',
+    borderWidth: 1,
+    borderColor: '#e1e9fb',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
+  },
   itemText: { color: '#1b2d5a', fontWeight: '600', fontSize: 14, marginBottom: 4 },
   itemSubtitle: { fontSize: 12, color: '#5b6a8e', marginBottom: 8 },
   fileName: { fontSize: 12, color: '#2b5bbb', fontWeight: '500', marginBottom: 10 },
   fileNameEmpty: { fontSize: 12, color: '#7a8ab8', marginBottom: 10 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5 },
-  uploadBtn: { flexDirection: 'row', gap: 6, backgroundColor: '#2b5bbb', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, alignItems: 'center' },
+  uploadBtn: {
+    flexDirection: 'row',
+    gap: 6,
+    backgroundColor: '#2b5bbb',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
   replaceBtn: { backgroundColor: '#6c757d' },
   uploadText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  iconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#dfe8ff', justifyContent: 'center', alignItems: 'center' },
-  iconDanger: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#ffd9c9', justifyContent: 'center', alignItems: 'center' },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#dfe8ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconDanger: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ffd9c9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

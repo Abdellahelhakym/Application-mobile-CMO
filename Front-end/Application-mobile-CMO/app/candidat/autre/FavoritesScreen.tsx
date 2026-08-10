@@ -1,25 +1,40 @@
 import React, { useEffect, useState } from "react";
 import {
-    FlatList,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    RefreshControl // Optionnel, mais FlatList gère ça directement avec onRefresh
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import { AlertCircle, Star } from "lucide-react-native";
 
 import { getFavorites } from "@/app/candidat/services/FavoritesScreen";
-
 import {
-    addtoFavorites,
-    isfavorite
+  removeFavorite,
 } from "@/app/candidat/services/CandidateLandingScreen";
 
+/* =========================
+   DÉCODAGE DES ENTITÉS HTML
+========================= */
+function decodeHTML(str?: string): string {
+  if (!str) return "";
+  return str
+    .replace(/&agrave;/g, "à")
+    .replace(/&eacute;/g, "é")
+    .replace(/&egrave;/g, "è")
+    .replace(/&ecirc;/g, "ê")
+    .replace(/&ocirc;/g, "ô")
+    .replace(/&icirc;/g, "î")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
 
 /* =========================
-   TYPE
+   TYPE RÉEL DE L'API
 ========================= */
 interface Favorite {
   id: number;
@@ -27,9 +42,13 @@ interface Favorite {
   type_contrat: string;
   duree: string;
   lieu: string;
-  categorie: string;
-  descr: string;
-  date: string;
+  descr?: string;
+  date?: string;
+  categorie?: string;
+  // Champs optionnels au cas où l'API évolue ou si vous les recevez sur d'autres endpoints
+  sous_descr?: string;
+  metier_titre?: string | null;
+  region_titre?: string | null;
 }
 
 /* =========================
@@ -37,11 +56,7 @@ interface Favorite {
 ========================= */
 export default function FavoritesScreen() {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
-  const [favoriteState, setFavoriteState] = useState<Record<number, boolean>>({});
-  // 1. Ajout de l'état pour l'indicateur de chargement
-  const [refreshing, setRefreshing] = useState(false); 
-
-  const isFav = (id: number) => !!favoriteState[id];
+  const [refreshing, setRefreshing] = useState(false);
 
   /* =========================
      LOAD FAVORITES FROM API
@@ -60,113 +75,93 @@ export default function FavoritesScreen() {
     }
   }
 
-  // 2. Fonction déclenchée lors du Pull to Refresh
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadFavorites(); // Attend que les données soient rechargées
-    setRefreshing(false); // Arrête l'animation de chargement
+    await loadFavorites();
+    setRefreshing(false);
   };
 
   useEffect(() => {
     loadFavorites();
   }, []);
 
-  useEffect(() => {
-    if (favorites.length > 0) {
-      refreshFavoriteState(favorites.map((item) => item.id));
-    }
-  }, [favorites]);
+  /* =========================
+     SUPPRIMER UN FAVORI
+  ========================= */
+  async function handleRemoveFavorite(id: number, titre: string) {
+    const previousFavorites = [...favorites];
+    setFavorites((prev) => prev.filter((item) => item.id !== id));
 
-  async function refreshFavoriteState(ids: number[]) {
     try {
-      const results = await Promise.all(
-        ids.map(async (id) => {
-          const res = await isfavorite(id);
-          const isFavorite = !!(
-            res?.isFavorite ?? res?.favorite ?? res?.data?.isFavorite
-          );
-          return [id, isFavorite] as const;
-        })
-      );
-
-      const next: Record<number, boolean> = {};
-      results.forEach(([id, isFavorite]) => {
-        if (isFavorite) {
-          next[id] = true;
-        }
-      });
-
-      setFavoriteState(next);
+      await removeFavorite(id, titre);
     } catch (error) {
-      console.log("Error loading favorite state:", error);
-    }
-  }
-
-  async function handleToggleFavorite(id: number, titre: string) {
-    try {
-      const response = await addtoFavorites(id, titre);
-      console.log("Toggle favorite response:", response);
-
-      const res = await isfavorite(id);
-      const isFavorite = !!(
-        res?.isFavorite ?? res?.favorite ?? res?.data?.isFavorite
-      );
-
-      setFavoriteState((prev) => ({
-        ...prev,
-        [id]: isFavorite,
-      }));
-    } catch (error) {
-      console.log("Error toggling favorite:", error);
+      console.log("Error removing favorite:", error);
+      setFavorites(previousFavorites);
     }
   }
 
   /* =========================
      RENDER ITEM
   ========================= */
-  const renderItem = ({ item }: any) => (
-    <View style={styles.card}>
-      <View style={styles.topRow}>
-        <TouchableOpacity
-          style={styles.star}
-          onPress={() => handleToggleFavorite(item.id, item.titre)}
-        >
-          <Star
-            size={16}
-            color={isFav(item.id) ? "#d8c83b" : "#9ca3af"}
-            fill={isFav(item.id) ? "#d8c83b" : "transparent"}
-          />
-        </TouchableOpacity>
+  const renderItem = ({ item }: { item: Favorite }) => {
+    // Récupération de la catégorie (soit categorie, soit metier_titre)
+    const categoryName = item.categorie || item.metier_titre;
 
-        <View style={styles.category}>
-          <Text style={styles.categoryText}>{item.categorie}</Text>
+    // Récupération de la description (soit descr, soit sous_descr)
+    const rawDescription = item.descr || item.sous_descr || "";
+    const descriptionText = decodeHTML(rawDescription.trim());
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.topRow}>
+          <TouchableOpacity
+            style={styles.star}
+            onPress={() => handleRemoveFavorite(item.id, item.titre)}
+          >
+            <Star size={16} color="#d8c83b" fill="#d8c83b" />
+          </TouchableOpacity>
+
+          {categoryName ? (
+            <View style={styles.category}>
+              <Text style={styles.categoryText}>
+                {decodeHTML(categoryName)}
+              </Text>
+            </View>
+          ) : null}
         </View>
-      </View>
 
-      <View style={styles.headerRow}>
-        <View style={styles.headerText}>
-          <Text style={styles.title}>{item.titre}</Text>
-          <Text style={styles.ref}>Date : {item.date}</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>{decodeHTML(item.titre)}</Text>
+          </View>
         </View>
+
+        {item.type_contrat ? (
+          <Text style={styles.text}>
+            <Text style={styles.bold}>Type contrat :</Text>{" "}
+            {decodeHTML(item.type_contrat)}
+          </Text>
+        ) : null}
+
+        {item.duree ? (
+          <Text style={styles.text}>
+            <Text style={styles.bold}>Durée :</Text> {decodeHTML(item.duree)}
+          </Text>
+        ) : null}
+
+        <Text style={styles.text}>
+          <Text style={styles.bold}>Lieu :</Text>{" "}
+          {decodeHTML(item.region_titre || item.lieu)}
+        </Text>
+
+        {descriptionText ? (
+          <Text numberOfLines={3} style={styles.desc}>
+            {descriptionText}
+          </Text>
+        ) : null}
       </View>
-
-      <Text style={styles.text}>
-        <Text style={styles.bold}>Type contrat :</Text> {item.type_contrat}
-      </Text>
-
-      <Text style={styles.text}>
-        <Text style={styles.bold}>Duree :</Text> {item.duree}
-      </Text>
-
-      <Text style={styles.text}>
-        <Text style={styles.bold}>Lieu :</Text> {item.lieu}
-      </Text>
-
-      <Text numberOfLines={3} style={styles.desc}>
-        {item.descr}
-      </Text>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -175,15 +170,12 @@ export default function FavoritesScreen() {
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
-        
-        // 3. Ajout des props indispensables ici :
         refreshing={refreshing}
         onRefresh={onRefresh}
-        
         ListEmptyComponent={
           <View style={styles.empty}>
             <AlertCircle size={50} color="#aaa" />
-            <Text>Aucun favori</Text>
+            <Text style={styles.emptyText}>Aucun favori</Text>
           </View>
         }
       />
@@ -192,7 +184,7 @@ export default function FavoritesScreen() {
 }
 
 /* =========================
-   STYLE (UNCHANGED)
+   STYLES
 ========================= */
 const styles = StyleSheet.create({
   container: {
@@ -212,6 +204,7 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
   },
   star: {
@@ -233,6 +226,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 5,
   },
   headerText: {
     flex: 1,
@@ -240,16 +234,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 16,
+    fontWeight: "600",
     color: "#1b2d5a",
-  },
-  ref: {
-    fontSize: 12,
-    marginTop: 5,
-    color: "#2b5bbb",
   },
   text: {
     fontSize: 12,
     color: "#1b2d5a",
+    marginTop: 2,
   },
   bold: {
     fontWeight: "bold",
@@ -257,10 +248,14 @@ const styles = StyleSheet.create({
   desc: {
     fontSize: 12,
     marginTop: 10,
-    color: "#1b2d5a",
+    color: "#4a5568",
   },
   empty: {
     alignItems: "center",
     marginTop: 50,
+  },
+  emptyText: {
+    marginTop: 10,
+    color: "#6b7280",
   },
 });

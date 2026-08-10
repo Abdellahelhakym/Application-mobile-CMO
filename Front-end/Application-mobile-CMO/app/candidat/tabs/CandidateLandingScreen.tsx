@@ -1,40 +1,48 @@
 import React, { useCallback, useEffect, useState } from 'react';
-
 import {
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  RefreshControl 
+  RefreshControl,
+  Alert
 } from 'react-native';
-
-import { AlertCircle, Star } from 'lucide-react-native';
-
+import { AlertCircle, Star, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
-
+import { getToutMobilite } from "@/app/candidat/services/CVScreen";
 import {
   addtoFavorites,
-  getCandidatures,
-  isfavorite
+  removeFavorite,
+  getCandidatures
 } from "@/app/candidat/services/CandidateLandingScreen";
 
+// --- INTERFACES ---
 interface Application {
   id: number;
   titre: string;
-  reference: string;
   type_contrat: string;
   duree: string;
-  lieu: string;
-  categorie: string;
-  descr: string;
+  sous_descr: string | null;
+  lieu: string | number;
+  metier_titre: string | null;
+  metier_icone: string | null;
+  region_titre: string | null;
+  date_postulation: string;
+  favori_id: number | null;
 }
 
-// 🔧 Décodage des entités HTML (gère les accents comme dans "Chef d’équipe restauration rapide")
-const decodeHTML = (str: string): string => {
+interface Mobilite {
+  id: number;
+  titre: string;
+  deleted: number;
+}
+
+// --- UTILITAIRE DE DÉCODAGE HTML ---
+const decodeHTML = (str: string | undefined | null): string => {
   if (!str) return '';
   return str
-    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
     .replace(/&eacute;/g, 'é')
     .replace(/&egrave;/g, 'è')
     .replace(/&ecirc;/g, 'ê')
@@ -42,6 +50,7 @@ const decodeHTML = (str: string): string => {
     .replace(/&agrave;/g, 'à')
     .replace(/&acirc;/g, 'â')
     .replace(/&icirc;/g, 'î')
+    .replace(/&Icirc;/g, 'Î')
     .replace(/&iuml;/g, 'ï')
     .replace(/&ocirc;/g, 'ô')
     .replace(/&ugrave;/g, 'ù')
@@ -50,17 +59,17 @@ const decodeHTML = (str: string): string => {
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
+    .replace(/&#039;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>');
 };
 
+// --- COMPOSANT PRINCIPAL ---
 export default function ApplicationsScreen() {
-  const [favorites, setFavorites] = useState<Record<number, boolean>>({});
   const [applications, setApplications] = useState<Application[]>([]);
+  const [mobilites, setMobilites] = useState<Record<number, string>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>({});
-
-  const isFav = (id: number) => !!favorites[id];
 
   const toggleExpanded = (id: number) => {
     setExpandedCards((prev) => ({
@@ -69,74 +78,97 @@ export default function ApplicationsScreen() {
     }));
   };
 
-  async function loadFavorites(ids: number[]) {
+  // --- GESTION DES FAVORIS ---
+  const handleToggleFavorite = async (app: Application) => {
+    const isFav = app.favori_id !== null;
+    const oldFavoriId = app.favori_id;
+
+    // 1. Mise à jour VISUELLE IMMÉDIATE (Optimistic UI)
+    setApplications((prevApps) =>
+      prevApps.map((item) => {
+        if (item.id === app.id) {
+          return {
+            ...item,
+            favori_id: isFav ? null : 999, // bascule entre null et une valeur non-null
+          };
+        }
+        return item;
+      })
+    );
+
+    // 2. Appel API en arrière-plan
     try {
-      const results = await Promise.all(
-        ids.map(async (id) => {
-          const res = await isfavorite(id);
-          const isFavorite = !!(
-            res?.isFavorite ?? res?.favorite ?? res?.data?.isFavorite
-          );
-          return [id, isFavorite] as const;
+      if (isFav) {
+        console.log("Suppression favori ID :", app.id);
+        await removeFavorite(app.id, app.titre);
+      } else {
+        console.log("Ajout favori ID :", app.id);
+        await addtoFavorites(app.id, app.titre);
+      }
+    } catch (error) {
+      console.error("Erreur API favoris :", error);
+      Alert.alert("Erreur", "Impossible de mettre à jour le favori.");
+
+      // 3. Annulation en cas d'erreur de l'API (Retour à l'état précédent)
+      setApplications((prevApps) =>
+        prevApps.map((item) => {
+          if (item.id === app.id) {
+            return {
+              ...item,
+              favori_id: oldFavoriId,
+            };
+          }
+          return item;
         })
       );
-
-      const next: Record<number, boolean> = {};
-      results.forEach(([id, isFavorite]) => {
-        if (isFavorite) {
-          next[id] = true;
-        }
-      });
-
-      setFavorites(next);
-    } catch (e) {
-      console.error(e);
     }
-  }
+  };
 
-  async function handleAddToFavorites(id: number, titre: string) {
-    try {
-      const response = await addtoFavorites(id, titre);
-      
-      const res = await isfavorite(id);
-      const isFavorite = !!(
-        res?.isFavorite ?? res?.favorite ?? res?.data?.isFavorite
-      );
+  // Helper pour trouver le libellé du lieu
+  const getLieuLabel = (lieu: string | number): string => {
+    if (lieu === null || lieu === undefined) return '';
 
-      setFavorites((prev) => ({
-        ...prev,
-        [id]: isFavorite,
-      }));
-    } catch (error) {
-      console.error("Error adding to favorites:", error);
+    const lieuId = Number(lieu);
+    if (!isNaN(lieuId) && mobilites[lieuId]) {
+      return decodeHTML(mobilites[lieuId]);
     }
-  }
 
-  // GET DATA
+    return decodeHTML(String(lieu));
+  };
+
+  // Récupération des données
   async function getData() {
     try {
-      const payload = await getCandidatures();
+      const [payload, mobilitesRes] = await Promise.all([
+        getCandidatures(),
+        getToutMobilite().catch(() => [])
+      ]);
 
+      // Traitement des mobilités
+      const mobList: Mobilite[] = Array.isArray(mobilitesRes)
+        ? mobilitesRes
+        : Array.isArray(mobilitesRes?.data)
+        ? mobilitesRes.data
+        : [];
+
+      const mobMap: Record<number, string> = {};
+      mobList.forEach((m) => {
+        mobMap[m.id] = m.titre;
+      });
+      setMobilites(mobMap);
+
+      // Traitement des candidatures
       const list: Application[] = Array.isArray(payload)
         ? payload
         : Array.isArray(payload?.data)
         ? payload.data
         : Array.isArray(payload?.candidatures)
         ? payload.candidatures
-        : Array.isArray(payload?.offres)
-        ? payload.offres
-        : Array.isArray(payload?.offers)
-        ? payload.offers
-        : Array.isArray(payload?.results)
-        ? payload.results
         : [];
 
       setApplications(list);
-      if (list.length > 0) {
-        await loadFavorites(list.map((item) => item.id));
-      }
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching data:", error);
     }
   }
 
@@ -152,12 +184,8 @@ export default function ApplicationsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (applications.length === 0) {
-        getData();
-      } else {
-        loadFavorites(applications.map((item) => item.id));
-      }
-    }, [applications])
+      getData();
+    }, [])
   );
 
   return (
@@ -174,87 +202,91 @@ export default function ApplicationsScreen() {
     >
       <View style={styles.content}>
 
-        {applications.map((app) => (
-          <View key={app.id} style={styles.card}>
+        {applications.map((app) => {
+          const isFav = app.favori_id !== null;
+          const isExpanded = !!expandedCards[app.id];
 
-            {/* TOP */}
-            <View style={styles.topRow}>
+          return (
+            <View key={app.id} style={styles.card}>
 
-              <TouchableOpacity
-                style={styles.star}
-                onPress={() => handleAddToFavorites(app.id, app.titre)}
-              >
-                <Star
-                  size={16}
-                  color={isFav(app.id) ? "#d8c83b" : "#9ca3af"}
-                  fill={isFav(app.id) ? "#d8c83b" : "transparent"}
-                />
-              </TouchableOpacity>
+              {/* SECTION HAUTE : Favori et Métier */}
+              <View style={styles.topRow}>
+                <TouchableOpacity
+                  style={styles.star}
+                  activeOpacity={0.6}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  onPress={() => handleToggleFavorite(app)}
+                >
+                  <Star
+                    size={20}
+                    color={isFav ? "#d8c83b" : "#9ca3af"}
+                    fill={isFav ? "#d8c83b" : "transparent"}
+                  />
+                </TouchableOpacity>
 
-              <View style={styles.categorie}>
-                <Text style={styles.categorieText}>
-                  {decodeHTML(app.categorie)}
-                </Text>
+                {app.metier_titre && (
+                  <View style={styles.categorie}>
+                    <Text style={styles.categorieText}>
+                      {decodeHTML(app.metier_titre)}
+                    </Text>
+                  </View>
+                )}
               </View>
+
+              {/* TITRE ET RÉFÉRENCE */}
+              <Text style={styles.titre}>
+                {decodeHTML(app.titre)}
+              </Text>
+              <Text style={styles.ref}>
+                Référence : #{'18093' + app.id}
+              </Text>
+
+              {/* INFORMATIONS CLÉS */}
+              <Text style={styles.text}>
+                <Text style={styles.bold}>Type de contrat :</Text> {decodeHTML(app.type_contrat)}
+              </Text>
+              <Text style={styles.text}>
+                <Text style={styles.bold}>Durée :</Text> {decodeHTML(app.duree)}
+              </Text>
+              <Text style={styles.text}>
+                <Text style={styles.bold}>Lieu :</Text> {getLieuLabel(app.lieu)}
+              </Text>
+
+              {/* DESCRIPTION (sous_descr) */}
+              {app.sous_descr && (
+                <>
+                  <Text 
+                    style={styles.sousDescr}
+                    numberOfLines={isExpanded ? undefined : 4} 
+                    ellipsizeMode="tail"
+                  >
+                    {decodeHTML(app.sous_descr)}
+                  </Text>
+                  
+                  <TouchableOpacity 
+                    style={styles.readMoreBtn}
+                    onPress={() => toggleExpanded(app.id)}
+                  >
+                    <Text style={styles.readMoreText}>
+                      {isExpanded ? "Réduire " : "Lire la suite "}
+                    </Text>
+                    {isExpanded ? 
+                      <ChevronUp size={14} color="#ffffff" /> : 
+                      <ChevronDown size={14} color="#ffffff" />
+                    }
+                  </TouchableOpacity>
+                </>
+              )}
+
             </View>
+          );
+        })}
 
-            {/* titre */}
-            <Text style={styles.titre}>
-              {decodeHTML(app.titre)}
-            </Text>
-
-            <Text style={styles.ref}>
-              Référence : #{'18093' + app.id}
-            </Text>
-
-            {/* INFO */}
-            <Text style={styles.text}>
-              <Text style={styles.bold}>Type de contrat :</Text> {decodeHTML(app.type_contrat)}
-            </Text>
-
-            <Text style={styles.text}>
-              <Text style={styles.bold}>Durée :</Text> {decodeHTML(app.duree)}
-            </Text>
-
-            <Text style={styles.text}>
-              <Text style={styles.bold}>Région :</Text> {decodeHTML(app.lieu)}
-            </Text>
-
-            {/* DESC - Aperçu ou complet */}
-            {expandedCards[app.id] ? (
-              <>
-                <Text style={styles.desc}>
-                  {decodeHTML(app.descr)}
-                </Text>
-                <TouchableOpacity 
-                  style={styles.readMoreBtn}
-                  onPress={() => toggleExpanded(app.id)}
-                >
-                  <Text style={styles.readMoreText}>Réduire</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.desc} numberOfLines={3}>
-                  {decodeHTML(app.descr)}
-                </Text>
-                <TouchableOpacity 
-                  style={styles.readMoreBtn}
-                  onPress={() => toggleExpanded(app.id)}
-                >
-                  <Text style={styles.readMoreText}>Lire la suite →</Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-          </View>
-        ))}
-
-        {/* EMPTY */}
+        {/* ÉTAT VIDE */}
         {applications.length === 0 && (
           <View style={styles.empty}>
             <AlertCircle size={50} color="#aaa" />
-            <Text style={{ marginTop: 8, color: '#6b7280' }}>Aucune offre</Text>
+            <Text style={{ marginTop: 8, color: '#6b7280' }}>Aucune candidature trouvée</Text>
           </View>
         )}
 
@@ -263,7 +295,7 @@ export default function ApplicationsScreen() {
   );
 }
 
-/* ================= STYLE ================= */
+// --- STYLES ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -271,68 +303,80 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 15,
-    paddingBottom: 110, 
+    paddingBottom: 110,
   },
   card: {
     backgroundColor: 'white',
     padding: 15,
     borderRadius: 20,
     marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 10,
   },
   star: {
     backgroundColor: '#f6f8ff',
     padding: 8,
     borderRadius: 20,
+    zIndex: 10, // S'assure que le bouton est cliquable
   },
   categorie: {
     backgroundColor: '#fff1dc',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 20,
   },
   categorieText: {
     fontSize: 12,
     color: '#b87900',
+    fontWeight: '500',
   },
   titre: {
     fontSize: 16,
     color: '#1b2d5a',
-    fontWeight: '600'
+    fontWeight: '600',
+    marginBottom: 2,
   },
   ref: {
     fontSize: 12,
-    marginTop: 5,
     color: '#2b5bbb',
-    marginBottom: 5,
+    marginBottom: 8,
+    fontWeight: '500',
   },
   text: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#1b2d5a',
-    lineHeight: 18,
+    lineHeight: 19,
+    marginBottom: 2,
   },
   bold: {
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: '#1b2d5a',
   },
-  desc: {
-    fontSize: 12,
-    marginTop: 10,
+  sousDescr: {
+    fontSize: 13,
+    marginTop: 12,
     color: '#5b6a8e',
     lineHeight: 18,
   },
   readMoreBtn: {
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    marginTop: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 15,
     backgroundColor: '#2b5bbb',
-    borderRadius: 20,
+    borderRadius: 15,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
   },
   readMoreText: {
     fontSize: 12,
@@ -341,6 +385,7 @@ const styles = StyleSheet.create({
   },
   empty: {
     alignItems: 'center',
-    marginTop: 80,
+    marginTop: 100,
+    paddingHorizontal: 20,
   },
 });

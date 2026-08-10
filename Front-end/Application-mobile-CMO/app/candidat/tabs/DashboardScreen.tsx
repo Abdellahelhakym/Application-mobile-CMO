@@ -23,6 +23,45 @@ import {
 import { getNotification } from '../../candidat/services/messagerie'; 
 import { getListFils } from "@/app/candidat/services/AttestationsScreen";
 
+// 🔧 Décodage des entités HTML & nettoyage des préfixes (ex: "BTP - ") et retours à la ligne
+const decodeHTML = (str: string): string => {
+  if (!str) return '';
+  return str
+    .trim() // Supprime les espaces et \n au début/fin
+    .replace(/\n/g, '') // Supprime les retours à la ligne
+    .replace(/^BTP\s*-\s*/i, '') // ✂️ Supprime "BTP - " au début du titre
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(Number(dec)))
+    .replace(/&Eacute;/g, 'É')
+    .replace(/&eacute;/g, 'é')
+    .replace(/&Egrave;/g, 'È')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&Ecirc;/g, 'Ê')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&Agrave;/g, 'À')
+    .replace(/&agrave;/g, 'à')
+    .replace(/&Acirc;/g, 'Â')
+    .replace(/&acirc;/g, 'â')
+    .replace(/&Icirc;/g, 'Î')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&Iuml;/g, 'Ï')
+    .replace(/&iuml;/g, 'ï')
+    .replace(/&Ocirc;/g, 'Ô')
+    .replace(/&ocirc;/g, 'ô')
+    .replace(/&Ugrave;/g, 'Ù')
+    .replace(/&ugrave;/g, 'ù')
+    .replace(/&Ucirc;/g, 'Û')
+    .replace(/&ucirc;/g, 'û')
+    .replace(/&Ccedil;/g, 'Ç')
+    .replace(/&ccedil;/g, 'ç')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+};
+
 type DashboardDataType = {
     user: {
         nom: string;
@@ -227,7 +266,6 @@ export default function DashboardScreen() {
 
     const loadDashboard = React.useCallback(async () => {
         try {
-            // Ajout de categorieMetier au Promise.all
             const [data, secteursRaw, categoriesRaw, docs, notifRes] = await Promise.all([
                 getDashboardData(),
                 getSecteursActivite(),
@@ -241,13 +279,14 @@ export default function DashboardScreen() {
             // --- Jointure et formatage des secteurs d'activités ---
             if (Array.isArray(secteursRaw) && Array.isArray(categoriesRaw)) {
                 const formattedSecteurs: SecteurActivite[] = secteursRaw.map((secteur) => {
-                    // Trouver le métier correspondant par l'ID (titre dans le JSON secteur correspond à l'id de categorieMetier)
                     const matchingCategory = categoriesRaw.find(
                         (cat) => cat.id === secteur.titre
                     );
+                    const rawTitle = matchingCategory ? matchingCategory.titre : `Secteur #${secteur.titre}`;
+
                     return {
                         id_categorie: secteur.titre,
-                        categorie: matchingCategory ? matchingCategory.titre : `Secteur #${secteur.titre}`,
+                        categorie: decodeHTML(rawTitle), // 👈 Nettoyage + Décodage HTML
                         total_candidatures: secteur.postuler || 0,
                     };
                 });
