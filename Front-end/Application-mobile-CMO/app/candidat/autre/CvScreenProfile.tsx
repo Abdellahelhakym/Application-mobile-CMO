@@ -22,25 +22,14 @@ import {
 import url from "@/app/services/url";
 import { getImage } from "../services/document";
 
-// Helper pour garantir qu'on a bien une chaîne de caractères (même si l'API renvoie un objet)
-const safeString = (val: any): string => {
-  if (!val) return '';
-  if (typeof val === 'string') return val;
-  if (typeof val === 'number') return String(val);
-  if (typeof val === 'object') {
-    return val.libelle || val.nom || val.title || val.name || val.region || JSON.stringify(val);
-  }
-  return '';
-};
-
-// Décodage complet des entités HTML
-const decodeHTML = (str: any): string => {
-  const text = safeString(str);
-  if (!text) return '';
-  
-  return text
+// 🔧 Décodage complet des entités HTML
+const decodeHTML = (str: string | undefined | null): string => {
+  if (!str) return '';
+  return str
+    // Entités numériques (décimales et hexadécimales)
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
     .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    // Ponctuation et symboles courants
     .replace(/&rsquo;/g, "'")
     .replace(/&lsquo;/g, "'")
     .replace(/&nbsp;/g, ' ')
@@ -53,6 +42,7 @@ const decodeHTML = (str: any): string => {
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    // Accents français
     .replace(/&eacute;/g, 'é')
     .replace(/&Eacute;/g, 'É')
     .replace(/&egrave;/g, 'è')
@@ -99,26 +89,21 @@ export default function ProfileScreen() {
     try {
       const info = await getInformations();
       const i = Array.isArray(info) ? info[0] : info?.data?.[0] ?? info;
-      setNom([i?.civilite, i?.prenom, i?.nom].map(safeString).filter(Boolean).join(" "));
-      setEmail(safeString(i?.email));
-      setPhone(safeString(i?.tel));
-      setVille(safeString(i?.ville));
-      setPays(safeString(i?.pays));
+      setNom([i?.civilite, i?.prenom, i?.nom].filter(Boolean).join(" "));
+      setEmail(i?.email ?? "");
+      setPhone(i?.tel ?? "");
+      setVille(i?.ville ?? "");
+      setPays(i?.pays ?? "");
 
       const img = await getImage();
       const imageUrl = img?.image
         ? url() + "documents/photos_candidats/" + img.image
         : "";
-      setPhoto(imageUrl || safeString(i?.photo));
+      setPhoto(imageUrl || i?.photo || "");
 
       const mob = await getMobiliteUser();
-      
-      // Extraction sécurisée des objets de mobilité et niveau d'étude
-      const rawMob = mob?.mobilite?.[0]?.region ?? mob?.mobilite?.[0] ?? mob?.mobilite;
-      setMobilite(safeString(rawMob));
-
-      const rawNiveau = mob?.niveau_etude ?? mob?.niveau;
-      setNiveauEtude(safeString(rawNiveau));
+      setMobilite(mob?.mobilite?.[0]?.region ?? "");
+      setNiveauEtude(mob?.niveau_etude ?? "");
 
       const exp = await getExperiences();
       setExperiences(Array.isArray(exp) ? exp : exp?.data ?? []);
@@ -129,7 +114,7 @@ export default function ProfileScreen() {
       const list = await getListFils();
       setAttestations(Array.isArray(list) ? list : list?.data ?? []);
     } catch (error) {
-      console.log("Erreur de chargement:", error);
+      console.log("Erreur:", error);
     } finally {
       setLoading(false);
     }
@@ -212,7 +197,7 @@ export default function ProfileScreen() {
             <View style={styles.sectionBar} />
             <Text style={styles.sectionTitle}>Niveau d'études</Text>
           </View>
-          <Text style={styles.value}>{decodeHTML(niveauEtude) || "—"}</Text>
+          <Text style={styles.value}>{decodeHTML(niveauEtude) || "-"}</Text>
         </View>
 
         {/* ── EXPÉRIENCES ── */}
@@ -237,7 +222,7 @@ export default function ProfileScreen() {
                     {decodeHTML(exp.societe)}{exp.ville_pays ? ` · ${decodeHTML(exp.ville_pays)}` : ""}
                   </Text>
                   <Text style={styles.expDate}>
-                    {safeString(exp.date1)}{exp.date2 ? ` – ${safeString(exp.date2)}` : ""}
+                    {exp.date1}{exp.date2 ? ` – ${exp.date2}` : ""}
                   </Text>
                   {exp.description ? (
                     <Text style={styles.expDesc}>{decodeHTML(exp.description)}</Text>
@@ -262,8 +247,8 @@ export default function ProfileScreen() {
             </View>
           ) : (
             formations.map((edu, index) => {
-              const dateDebut = [edu.mois_debut, edu.annee_debut].map(safeString).filter(Boolean).join("/");
-              const dateFin = [edu.mois_obtention, edu.annee_obtention].map(safeString).filter(Boolean).join("/");
+              const dateDebut = [edu.mois_debut, edu.annee_debut].filter(Boolean).join("/");
+              const dateFin = [edu.mois_obtention, edu.annee_obtention].filter(Boolean).join("/");
               const period = [dateDebut, dateFin].filter(Boolean).join(" – ");
 
               return (
@@ -357,6 +342,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  infoIcon: {
+    fontSize: 14,
   },
   infoText: {
     fontSize: 13,

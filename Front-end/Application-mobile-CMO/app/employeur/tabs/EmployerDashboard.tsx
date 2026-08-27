@@ -150,7 +150,7 @@ export default function EmployerDashboard() {
             </View>
           </View>
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.btnOutline} onPress={() => Linking.openURL("tel:+33788361923")}>
+            <TouchableOpacity disabled={true} style={styles.btnOutline} onPress={() => Linking.openURL("tel:+33788361923")}>
               <Phone size={16} color="#2b5bbb" /><Text style={styles.btnText}>Conseiller</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.btnOutline} onPress={() => router.push("/employeur/autre/Chat")}>
