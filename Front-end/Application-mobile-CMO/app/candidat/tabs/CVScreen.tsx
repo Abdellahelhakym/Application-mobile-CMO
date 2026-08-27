@@ -39,10 +39,8 @@ import {
   addFormation,
   deleteExperiences,
   deleteFormation,
- 
   getExperiences,
   getFormations,
- 
   getInformations,
   getLangues,
   getMobiliteUser,
@@ -51,7 +49,6 @@ import {
   getToutMobilite,
   updateExperiences,
   updateFormation,
- 
   updateInformations,
   updateLangues,
   updateMobilite,
@@ -59,35 +56,134 @@ import {
   updateSecteur
 } from "@/app/candidat/services/CVScreen";
 import url from "@/app/services/url.js";
-import { getImage , updateImage , DeleteImage} from "../services/document";
+import { DeleteImage, getImage, updateImage } from "../services/document";
+import { fixUtf8Encoding } from "@/app/candidat/services/decode"; 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-// 🔧 Fonction de décodage des entités HTML (nommées et numériques)
-// 🔧 Fonction de décodage des entités HTML mise à jour
-const decodeHTML = (str: string): string => {
-  if (!str) return '';
-  return str
-    // 1. Décodage des entités numériques (ex: &#039; -> ', &#233; -> é)
-    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
-    // 2. Décodage des entités nommées classiques (accents français)
-    .replace(/&eacute;/g, 'é')
-    .replace(/&Eacute;/g, 'É')
-    .replace(/&egrave;/g, 'è')
-    .replace(/&ecirc;/g, 'ê')
-    .replace(/&euml;/g, 'ë')
-    .replace(/&agrave;/g, 'à')
-    .replace(/&acirc;/g, 'â')
-    .replace(/&ocirc;/g, 'ô') // ✨ Ajouté pour Auvergne-Rhône-Alpes
-    .replace(/&Ocirc;/g, 'Ô')
-    .replace(/&icirc;/g, 'î')
-    .replace(/&iuml;/g, 'ï')
-    .replace(/&ucirc;/g, 'û')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+
+// 🔧 Fonction de décodage des entités HTML (amélioration pour UTF-8)
+const decodeHTML = (value: unknown): string => {
+  if (value == null) return '';
+
+  let str = String(value);
+
+  try {
+    if (/[ÃÂâ]/.test(str)) {
+      const bytes = Uint8Array.from(
+        Array.from(str, char => char.charCodeAt(0) & 0xff)
+      );
+
+      const decoded = new TextDecoder('utf-8').decode(bytes);
+
+      if (!decoded.includes('\uFFFD')) {
+        str = decoded;
+      }
+    }
+  } catch (error) {
+    console.log('Erreur décodage UTF-8:', error);
+  }
+
+  str = str.replace(/&#(\d+);/g, (_, dec) =>
+    String.fromCodePoint(Number(dec))
+  );
+
+  str = str.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+    String.fromCodePoint(parseInt(hex, 16))
+  );
+
+ const htmlEntities: Record<string, string> = {
+  '&eacute;': 'é',
+  '&Eacute;': 'É',
+  '&egrave;': 'è',
+  '&Egrave;': 'È',
+  '&ecirc;': 'ê',
+  '&Ecirc;': 'Ê',
+  '&euml;': 'ë',
+  '&Euml;': 'Ë',
+  '&agrave;': 'à',
+  '&Agrave;': 'À',
+  '&acirc;': 'â',
+  '&Acirc;': 'Â',
+  '&auml;': 'ä',
+  '&Auml;': 'Ä',
+  '&ocirc;': 'ô',
+  '&Ocirc;': 'Ô',
+  '&ouml;': 'ö',
+  '&Ouml;': 'Ö',
+  '&iacute;': 'í',
+  '&Iacute;': 'Í',
+  '&icirc;': 'î',
+  '&Icirc;': 'Î',
+  '&iuml;': 'ï',
+  '&Iuml;': 'Ï',
+  '&ucirc;': 'û',
+  '&Ucirc;': 'Û',
+  '&uacute;': 'ú',
+  '&Uacute;': 'Ú',
+  '&ugrave;': 'ù',
+  '&Ugrave;': 'Ù',
+  '&uuml;': 'ü',
+  '&Uuml;': 'Ü',
+  '&ccedil;': 'ç',
+  '&Ccedil;': 'Ç',
+  '&ntilde;': 'ñ',
+  '&Ntilde;': 'Ñ',
+
+  '&amp;': '&',
+  '&quot;': '"',
+  '&apos;': "'",
+  '&#039;': "'",
+
+  '&lt;': '<',
+  '&gt;': '>',
+  '&nbsp;': ' ',
+  '&ensp;': ' ',
+  '&emsp;': ' ',
 };
+
+
+  Object.entries(htmlEntities).forEach(([entity, char]) => {
+    str = str.split(entity).join(char);
+  });
+
+  return str;
+};
+
+
+
+// 🔧 Fonction d'encodage HTML pour envoyer les données
+const encodeHTML = (str: string): string => {
+  if (!str) return '';
+
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+    'é': '&eacute;',
+    'è': '&egrave;',
+    'ê': '&ecirc;',
+    'à': '&agrave;',
+    'â': '&acirc;',
+    'ô': '&ocirc;',
+    'ù': '&ugrave;',
+    'û': '&ucirc;',
+    'ç': '&ccedil;',
+  };
+
+  return str.replace(/[&<>"'éèêàâôùûç]/g, (char) => map[char] || char);
+};
+
+// 🔧 Empêche le double encodage avant sauvegarde.
+// On décode d'abord toute valeur (au cas où elle contiendrait déjà des
+// entités HTML issues de l'API ou d'une saisie précédente), puis on
+// encode une seule fois avant l'envoi. C'est ce qui évitait que "ville"
+// s'affiche bien (champ rarement ré-encodé) mais que "description"
+// (texte plus long, réutilisé entre add/update) se retrouve doublement
+// encodé -> d&#039;&eacute;t&eacute; au lieu de d'été.
+const encodeForSave = (value: string): string => encodeHTML(decodeHTML(value));
+
 interface Experience {
   id: number;
   position: string;
@@ -165,7 +261,6 @@ const TABS: { key: TabKey; label: string }[] = [
 
 const PERMITS = ['AM', 'A1', 'A2', 'A', 'B1', 'B', 'C1', 'C', 'D1', 'D', 'BE', 'C1E', 'CE', 'D1E', 'DE'];
 const NAUTIC_PERMITS = ['Permis côtier', 'Permis fluvial', 'Permis eaux intérieures', 'Permis hauturier'];
-// Langues UI + mapping vers les cles API.
 const LANGUAGES = ['Allemand', 'Anglais', 'Arabe', 'Chinois', 'Danois', 'Espagnol', 'Finnois', 'Français', 'Italien', 'Néerlandais', 'Norvégien', 'Polonais', 'Portugais', 'Russe'];
 const LANGUAGE_KEYS: Record<string, string> = {
   Allemand: 'lang_de',
@@ -187,6 +282,18 @@ const LANGUAGE_KEYS: Record<string, string> = {
 const CONTRACT_OPTIONS = ['', 'CDD', 'CDI', 'SAISONIER', 'ALTERNANCE', 'STAGE','MI-TEMPS','INTERIM','LIBERAL'];
 const EDUCATION_LEVELS = ['', 'Niveau Bac', 'Bac', 'Bac +2', 'Bac +3', 'Bac +5 ','Bac+7'];
 const EXPERIENCE_LEVELS = ['', 'Moins d\'1 an', 'Entre 1 et 2 ans', 'Entre 3 et 5 ans', 'Entre 5 et 10 ans', 'plus de 10 ans'];
+
+// 🔧 Niveaux de diplôme pour la formation (liste déroulante)
+const DEGREE_LEVELS = [
+  '',
+  'BAC',
+  'BAC+2/equivalent',
+  'BAC+3/equivalent',
+
+  'BAC+5/equivalent',
+ 
+  'BAC+7/equivalent',
+];
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -242,7 +349,6 @@ const InputField = ({
     style={[styles.input, multiline ? styles.inputMultiline : undefined]}
   />
 );
-
 
 const Card = ({ children, style }: { children: React.ReactNode; style?: object }) => (
   <View style={[styles.card, style]}>{children}</View>
@@ -344,10 +450,8 @@ const CheckItem = ({
   </TouchableOpacity>
 );
 
-// ─── Sélecteur d'onglets en dropdown ───────────────────────────────────────────
-// Remplace l'ancienne barre d'onglets horizontale : un seul bouton affiche
-// l'onglet actif, et un menu déroulant animé permet de choisir un autre onglet.
-// La logique de navigation (activeTab / setActiveTab) reste strictement identique.
+// ─── Sélecteur d'onglets en dropdown AMÉLIORÉ ───────────────────────────────────
+// Affiche l'onglet actif dans le bouton et avec une couleur différente dans le menu
 const TabDropdownSelector = ({
   activeTab,
   setActiveTab,
@@ -364,7 +468,6 @@ const TabDropdownSelector = ({
   const animValue = useRef(new Animated.Value(0)).current;
 
   const activeLabel = tabs.find((t) => t.key === activeTab)?.label ?? '';
-  const otherTabs = tabs.filter((t) => t.key !== activeTab);
 
   const openDropdown = () => {
     buttonRef.current?.measureInWindow((x, y, width, height) => {
@@ -458,19 +561,28 @@ const TabDropdownSelector = ({
               },
             ]}
           >
-            {otherTabs.map((tab, index) => (
-              <TouchableOpacity
-                key={tab.key}
-                style={[
-                  styles.tabSelectorItem,
-                  index === otherTabs.length - 1 ? styles.tabSelectorItemLast : undefined,
-                ]}
-                activeOpacity={0.6}
-                onPress={() => handleSelect(tab.key)}
-              >
-                <Text style={styles.tabSelectorItemText}>{tab.label}</Text>
-              </TouchableOpacity>
-            ))}
+            {tabs.map((tab, index) => {
+              const isActive = tab.key === activeTab;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[
+                    styles.tabSelectorItem,
+                    index === tabs.length - 1 ? styles.tabSelectorItemLast : undefined,
+                    isActive ? styles.tabSelectorItemActive : undefined,
+                  ]}
+                  activeOpacity={0.6}
+                  onPress={() => handleSelect(tab.key)}
+                >
+                  <Text style={[
+                    styles.tabSelectorItemText,
+                    isActive ? styles.tabSelectorItemTextActive : undefined,
+                  ]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </Animated.View>
         </Pressable>
       </Modal>
@@ -490,14 +602,12 @@ const IdentityTab = ({
   photoUpload: { uri: string; name: string; type: string } | null;
   setPhotoUpload: React.Dispatch<React.SetStateAction<{ uri: string; name: string; type: string } | null>>;
 }) => {
-  // ─── Même logique d'états que ProfileScreen ──────────────────────────────
   const [photo, setPhoto] = useState('');
   const [avatarLoading, setAvatarLoading] = useState(false);
 
   const set = (key: string) => (v: string) =>
     setFormData((p: any) => ({ ...p, [key]: v }));
 
-  // ─── Même logique de chargement que ProfileScreen ────────────────────────
   const fetchProfileImage = async () => {
     try {
       const imageData = await getImage();
@@ -514,7 +624,6 @@ const IdentityTab = ({
     fetchProfileImage();
   }, []);
 
-  // ─── Sélection d'une nouvelle photo locale ─────────────────────────────────
   const handlePickPhoto = async () => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -532,8 +641,6 @@ const IdentityTab = ({
       if (result.canceled || !result.assets?.length) return;
 
       const asset = result.assets[0];
-     
-      // On met directement l'URI locale dans l'état photo pour un affichage instantané
       setPhoto(asset.uri);
 
       const image = {
@@ -547,33 +654,29 @@ const IdentityTab = ({
     }
   };
 
-  // ─── Sauvegarde des données et envoi de l'image ──────────────────────────
   const handleSaveInformations = async () => {
     try {
       const codePostalValue = formData.postalCode ? Number(formData.postalCode) : 0;
 
+      // 🔧 Décoder puis encoder les données une seule fois avant envoi
       await updateInformations(
-        formData.civility,
-        formData.firstName,
-        formData.lastName,
-        formData.email,
-        formData.phone,
-        formData.phone2,
-        formData.address,
+        encodeForSave(formData.civility),
+        encodeForSave(formData.firstName),
+        encodeForSave(formData.lastName),
+        encodeForSave(formData.email),
+        encodeForSave(formData.phone),
+        encodeForSave(formData.phone2),
+        encodeForSave(formData.address),
         codePostalValue,
-        formData.city,
-        formData.country,
-        formData.socialSecurity
+        encodeForSave(formData.city),
+        encodeForSave(formData.country),
+        encodeForSave(formData.socialSecurity)
       );
 
       if (photoUpload) {
-        // On affiche l'indicateur uniquement pendant l'upload réseau vers le serveur
         setAvatarLoading(true);
-
         await updateImage(photoUpload as any);
         setPhotoUpload(null);
-       
-        // Après l'upload réussi, on recharge l'URI officielle depuis le serveur
         await fetchProfileImage();
         setAvatarLoading(false);
       }
@@ -592,8 +695,6 @@ const IdentityTab = ({
           {'Photo de profil'}
         </SectionTitle>
         <View style={styles.photoContainer}>
-         
-          {/* 🎯 Même structure de boîte et de styles que ProfileScreen */}
           <View style={styles.photoBox}>
             {photo ? (
               <>
@@ -637,7 +738,6 @@ const IdentityTab = ({
         </View>
       </Card>
 
-      {/* Reste du formulaire inchangé */}
       <Card>
         <SectionTitle icon={<User size={18} color={C.blue} />}>
           {'Informations'}
@@ -738,8 +838,6 @@ const MobilityTab = ({
   const handleSaveMobilite = async () => {
     try {
       const disponibiliteValue = formData.availabilityChoice === 'Oui' ? 1 : 0;
-     
-      // ✨ Correction ici : on décode le titre de l'option pour correspondre à la valeur décodée choisie
       const selectedMobilite = mobilityOptions.find(
         (item) => decodeHTML(item.titre) === formData.mobilityZone
       );
@@ -747,10 +845,10 @@ const MobilityTab = ({
 
       await updateMobilite(
         mobiliteId,
-        formData.educationLevel,
-        formData.experienceLevel,
-        formData.contract1,
-        formData.contract2,
+        encodeForSave(formData.educationLevel),
+        encodeForSave(formData.experienceLevel),
+        encodeForSave(formData.contract1),
+        encodeForSave(formData.contract2),
         disponibiliteValue,
         formData.availabilityDate
       );
@@ -771,7 +869,6 @@ const MobilityTab = ({
         <Label>{'Mobilité'}</Label>
         <SelectPicker
           value={formData.mobilityZone}
-          // ✨ Correction ici : application du decodeHTML sur chaque option
           options={['', ...mobilityOptions.map((item) => decodeHTML(item.titre))]}
           onChange={set('mobilityZone')}
         />
@@ -897,7 +994,6 @@ const PermitsTab = ({ formData, setFormData }: { formData: any; setFormData: any
   );
 };
 
-// Affichage des langues avec cases cochees et sauvegarde.
 const LanguagesTab = ({
   langues,
   onToggle,
@@ -934,6 +1030,7 @@ const LanguagesTab = ({
     </View>
   );
 };
+
 const SectorsTab = ({
   sectors,
   setSectors,
@@ -975,7 +1072,7 @@ const SectorsTab = ({
   };
 
   const remove = (id: number) => {
-    if (sectors.length <= 1) return; // Modifié à 1 pour permettre de vider s'il y en a trop
+    if (sectors.length <= 1) return;
     setSectors((p) => p.filter((s) => s.id !== id));
   };
 
@@ -1003,7 +1100,6 @@ const SectorsTab = ({
 
   return (
     <View style={{ gap: 16 }}>
-      {/* En-tête avec bouton Ajouter */}
       <View style={styles.rowBetween}>
         <View style={styles.sectionTitleRow}>
           <View style={styles.sectionTitleIcon}>
@@ -1017,7 +1113,6 @@ const SectorsTab = ({
         <Card key={sector.id}>
           <View style={styles.rowBetween}>
             <Label>{`Secteur d'activité ${index + 1}`}</Label>
-           
           </View>
 
           <View style={styles.sectorColumn}>
@@ -1074,8 +1169,6 @@ const ExperienceTab = ({
 
   const update = (id: number, key: keyof Experience, value: string) =>
     setExperiences((p) => p.map((e) => (e.id === id ? { ...e, [key]: value } : e)));
-
-  const remove = (exp: Experience) => onDelete(exp);
 
   return (
     <View style={{ gap: 16 }}>
@@ -1159,8 +1252,6 @@ const EducationTab = ({
   const update = (id: number, key: keyof Education, value: string) =>
     setEducation((p) => p.map((e) => (e.id === id ? { ...e, [key]: value } : e)));
 
-  const remove = (edu: Education) => onDelete(edu);
-
   return (
     <View style={{ gap: 16 }}>
       <View style={styles.rowBetween}>
@@ -1182,7 +1273,11 @@ const EducationTab = ({
           <InputField value={edu.school} onChangeText={(v) => update(edu.id, 'school', v)} placeholder="Ex: Lycée professionnel" />
 
           <Label>{'Diplôme'}</Label>
-          <InputField value={edu.degree} onChangeText={(v) => update(edu.id, 'degree', v)} placeholder="Ex: CAP Mécanique" />
+          <SelectPicker
+            value={edu.degree}
+            options={DEGREE_LEVELS}
+            onChange={(v) => update(edu.id, 'degree', v)}
+          />
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
@@ -1242,8 +1337,7 @@ export default function CVScreen() {
     jobs: [],
   });
 
-  // ✅ FIX: Single declaration of langues state — only here in CVScreen
-const [langues, setLangues] = useState<string[]>([]);
+  const [langues, setLangues] = useState<string[]>([]);
   const [photoUpload, setPhotoUpload] = useState<{ uri: string; name: string; type: string } | null>(null);
   const [formData, setFormData] = useState({
     civility: '',
@@ -1294,18 +1388,17 @@ const [langues, setLangues] = useState<string[]>([]);
     { id: 3, category: '', subCategory: '', job: '' },
   ]);
 
-  // 🔧 Réinitialiser le scroll au haut quand l'onglet change
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   }, [activeTab]);
 
-  // Chargement langues depuis l'API.
-  // Regle: 0 => decoche, 1 => coche, liste vide => tout decoche.
+  // Toutes les autres useEffect restent identiques...
+  // (Le reste du code des useEffect est identique à l'original)
+
   useEffect(() => {
     const loadLangues = async () => {
       try {
         const data = await getLangues();
-
         const langInfo = Array.isArray(data)
           ? data[0]
           : data?.data?.[0] ?? data;
@@ -1348,17 +1441,17 @@ const [langues, setLangues] = useState<string[]>([]);
               ? rawPhoto
               : url() + "documents/photos_candidats/" + rawPhoto)
             : prev.photo,
-          civility: info.civilite ?? prev.civility,
-          firstName: info.prenom ?? prev.firstName,
-          lastName: info.nom ?? prev.lastName,
-          email: info.email ?? prev.email,
-          phone: info.tel ?? prev.phone,
-          phone2: info.tel2 ?? prev.phone2,
-          address: info.adresse ?? info.adresse_postale ?? prev.address,
+          civility: decodeHTML(info.civilite ?? prev.civility),
+          firstName: decodeHTML(info.prenom ?? prev.firstName),
+          lastName: decodeHTML(info.nom ?? prev.lastName),
+          email: decodeHTML(info.email ?? prev.email),
+          phone: decodeHTML(info.tel ?? prev.phone),
+          phone2: decodeHTML(info.tel2 ?? prev.phone2),
+          address: decodeHTML(info.adresse ?? info.adresse_postale ?? prev.address),
           postalCode: info.code_postal != null ? String(info.code_postal) : prev.postalCode,
-          city: info.ville ?? prev.city,
-          country: info.pays ?? prev.country,
-          socialSecurity: info.num_secur_social ?? prev.socialSecurity,
+          city: decodeHTML(info.ville ?? prev.city),
+          country: decodeHTML(info.pays ?? prev.country),
+          socialSecurity: decodeHTML(info.num_secur_social ?? prev.socialSecurity),
         }));
       } catch (error) {
         return;
@@ -1389,52 +1482,50 @@ const [langues, setLangues] = useState<string[]>([]);
 
     loadImage();
   }, []);
-// Appliquer decodeHTML aux titres et valeurs
-useEffect(() => {
-  const loadMobilite = async () => {
-    try {
-      const [tout, user] = await Promise.all([
-        getToutMobilite(),
-        getMobiliteUser(),
-      ]);
- 
-      const allOptions: MobiliteOption[] = Array.isArray(tout)
-        ? tout
-        : tout?.data || [];
- 
-      // ✅ DÉCODAGE: Décoder les titres HTML des options de mobilité
-      const decodedOptions = allOptions
-        .filter((item) => item?.deleted !== 1)
-        .map((item) => ({
-          ...item,
-          titre: decodeHTML(item?.titre ?? ''),
+
+  useEffect(() => {
+    const loadMobilite = async () => {
+      try {
+        const [tout, user] = await Promise.all([
+          getToutMobilite(),
+          getMobiliteUser(),
+        ]);
+
+        const allOptions: MobiliteOption[] = Array.isArray(tout)
+          ? tout
+          : tout?.data || [];
+
+        const decodedOptions = allOptions
+          .filter((item) => item?.deleted !== 1)
+          .map((item) => ({
+            ...item,
+            titre: decodeHTML(item?.titre ?? ''),
+          }));
+
+        setMobilityOptions(decodedOptions);
+
+        const userMobilite = user?.mobilite?.[0];
+        const disponibiliteValue = user?.disponibilite;
+        const disponibiliteChoice =
+          disponibiliteValue === 1 || disponibiliteValue === '1' ? 'Oui' : 'Non';
+
+        setFormData((prev) => ({
+          ...prev,
+          mobilityZone: decodeHTML(userMobilite?.region ?? '') || prev.mobilityZone,
+          educationLevel: decodeHTML(user?.niveau_etude ?? '') || prev.educationLevel,
+          experienceLevel: decodeHTML(user?.experience ?? '') || prev.experienceLevel,
+          contract1: decodeHTML(user?.contrat_prefere1 ?? '') || prev.contract1,
+          contract2: decodeHTML(user?.contrat_prefere2 ?? '') || prev.contract2,
+          availabilityChoice: disponibiliteChoice,
+          availabilityDate: user?.date_disponibilite ?? prev.availabilityDate,
         }));
- 
-      setMobilityOptions(decodedOptions);
- 
-      const userMobilite = user?.mobilite?.[0];
-      const disponibiliteValue = user?.disponibilite;
-      const disponibiliteChoice =
-        disponibiliteValue === 1 || disponibiliteValue === '1' ? 'Oui' : 'Non';
- 
-      // ✅ DÉCODAGE: Tous les champs qui viennent du serveur
-      setFormData((prev) => ({
-        ...prev,
-        mobilityZone: decodeHTML(userMobilite?.region ?? '') || prev.mobilityZone,
-        educationLevel: decodeHTML(user?.niveau_etude ?? '') || prev.educationLevel,
-        experienceLevel: decodeHTML(user?.experience ?? '') || prev.experienceLevel,
-        contract1: decodeHTML(user?.contrat_prefere1 ?? '') || prev.contract1,
-        contract2: decodeHTML(user?.contrat_prefere2 ?? '') || prev.contract2,
-        availabilityChoice: disponibiliteChoice,
-        availabilityDate: user?.date_disponibilite ?? prev.availabilityDate,
-      }));
-    } catch (error) {
-      return;
-    }
-  };
- 
-  loadMobilite();
-}, []);
+      } catch (error) {
+        return;
+      }
+    };
+
+    loadMobilite();
+  }, []);
 
   useEffect(() => {
     const loadPermis = async () => {
@@ -1485,7 +1576,6 @@ useEffect(() => {
     loadPermis();
   }, []);
 
-  // Chargement des experiences utilisateur.
   useEffect(() => {
     const loadExperiences = async () => {
       try {
@@ -1507,13 +1597,13 @@ useEffect(() => {
           const [cityPart, countryPart] = rawVillePays.split(',').map((v) => v.trim());
           return {
             id: item.id ?? Date.now(),
-            position: item.titre ?? '',
-            company: item.societe ?? '',
-            city: cityPart ?? '',
-            country: item.pays ?? countryPart ?? '',
+            position: decodeHTML(item.titre ?? ''),
+            company: decodeHTML(item.societe ?? ''),
+            city: decodeHTML(cityPart ?? ''),
+            country: decodeHTML(item.pays ?? countryPart ?? ''),
             startDate: toMdYy(item.date1),
             endDate: toMdYy(item.date2),
-            description: item.description ?? '',
+            description: decodeHTML(item.description ?? ''),
             isNew: false,
           } as Experience;
         });
@@ -1527,7 +1617,6 @@ useEffect(() => {
     loadExperiences();
   }, []);
 
-  // Chargement des formations utilisateur.
   useEffect(() => {
     const loadFormations = async () => {
       try {
@@ -1536,13 +1625,13 @@ useEffect(() => {
 
         const mapped = items.map((item: any) => ({
           id: item.id ?? Date.now(),
-          school: item.ecole ?? '',
-          degree: item.diplome ?? '',
+          school: decodeHTML(item.ecole ?? ''),
+          degree: decodeHTML(item.diplome ?? ''),
           startMonth: item.mois_debut != null ? String(item.mois_debut).padStart(2, '0') : '',
           startYear: item.annee_debut != null ? String(item.annee_debut) : '',
           endMonth: item.mois_obtention != null ? String(item.mois_obtention).padStart(2, '0') : '',
           endYear: item.annee_obtention != null ? String(item.annee_obtention) : '',
-          description: item.description ?? '',
+          description: decodeHTML(item.description ?? ''),
           isNew: false,
         } as Education));
 
@@ -1555,35 +1644,33 @@ useEffect(() => {
     loadFormations();
   }, []);
 
- 
-useEffect(() => {
-  const loadSecteurs = async () => {
-    try {
-      const data = await getSecteur();
-     
-      // ✅ DÉCODAGE: Décoder tous les titres HTML
-      setSectorData({
-        categories: (data?.secteurs ?? []).map((cat: SectorCategory) => ({
-          ...cat,
-          titre: decodeHTML(cat.titre ?? ''),
-        })),
-        subCategories: (data?.sousCategories ?? []).map((sub: SectorSubCategory) => ({
-          ...sub,
-          titre: decodeHTML(sub.titre ?? ''),
-        })),
-        jobs: (data?.metiers ?? []).map((job: SectorJob) => ({
-          ...job,
-          titre: decodeHTML(job.titre ?? ''),
-        })),
-      });
-    } catch (error) {
-      setSectorData({ categories: [], subCategories: [], jobs: [] });
-    }
-  };
- 
-  loadSecteurs();
-}, []);
-  // Chargement des choix utilisateur (id_metier) et mapping vers categorie/sous-categorie/metier.
+  useEffect(() => {
+    const loadSecteurs = async () => {
+      try {
+        const data = await getSecteur();
+
+        setSectorData({
+          categories: (data?.secteurs ?? []).map((cat: SectorCategory) => ({
+            ...cat,
+            titre: decodeHTML(cat.titre ?? ''),
+          })),
+          subCategories: (data?.sousCategories ?? []).map((sub: SectorSubCategory) => ({
+            ...sub,
+            titre: decodeHTML(sub.titre ?? ''),
+          })),
+          jobs: (data?.metiers ?? []).map((job: SectorJob) => ({
+            ...job,
+            titre: decodeHTML(job.titre ?? ''),
+          })),
+        });
+      } catch (error) {
+        setSectorData({ categories: [], subCategories: [], jobs: [] });
+      }
+    };
+
+    loadSecteurs();
+  }, []);
+
   useEffect(() => {
     const loadSecteurUser = async () => {
       try {
@@ -1612,9 +1699,16 @@ useEffect(() => {
           })
           .filter(Boolean) as Sector[];
 
-        const filled = mapped.length ? mapped : [{ id: Date.now(), category: '', subCategory: '', job: '' }];
+        // 🔧 On ne garde jamais plus de 3 secteurs affichés/enregistrés
+        const filled = mapped.slice(0, 3);
+
         while (filled.length < 3) {
-          filled.push({ id: Date.now() + filled.length, category: '', subCategory: '', job: '' });
+          filled.push({
+            id: Date.now() + filled.length,
+            category: '',
+            subCategory: '',
+            job: '',
+          });
         }
 
         setSectors(filled);
@@ -1685,7 +1779,6 @@ useEffect(() => {
         if (!hasAnyField) continue;
 
         const villePays = buildVillePays(exp.city, exp.country);
-
         const date1 = toApiDate(exp.startDate);
         const date2 = toApiDate(exp.endDate);
 
@@ -1699,8 +1792,9 @@ useEffect(() => {
             exp.country,
             exp.description
           );
+
         } else {
-          await updateExperiences(
+         await updateExperiences(
             exp.id,
             date1,
             date2,
@@ -1710,6 +1804,7 @@ useEffect(() => {
             exp.country,
             exp.description
           );
+
         }
       }
 
@@ -1728,42 +1823,49 @@ useEffect(() => {
     }
   };
 
-  const handleUpdateExperience = async (exp: Experience) => {
-    try {
-      const villePays = buildVillePays(exp.city, exp.country);
+const handleUpdateExperience = async (exp: Experience) => {
+  try {
+    const villePays = buildVillePays(exp.city, exp.country);
+    const date1 = toApiDate(exp.startDate);
+    const date2 = toApiDate(exp.endDate);
 
-      const date1 = toApiDate(exp.startDate);
-      const date2 = toApiDate(exp.endDate);
+    if (exp.isNew) {
+      await addExperience(
+        date1,
+        date2,
+        exp.position,
+        exp.company,
+        villePays,
+        exp.country,
+        exp.description
+      );
 
-      if (exp.isNew) {
-        await addExperience(
-          date1,
-          date2,
-          exp.position,
-          exp.company,
-          villePays,
-          exp.country,
-          exp.description
-        );
-        setExperiences((p) => p.map((e) => (e.id === exp.id ? { ...e, isNew: false } : e)));
-      } else {
-        await updateExperiences(
-          exp.id,
-          date1,
-          date2,
-          exp.position,
-          exp.company,
-          villePays,
-          exp.country,
-          exp.description
-        );
-      }
-
-      Alert.alert('Enregistré', 'Expérience mise à jour.');
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible de mettre à jour l\'expérience.');
+      setExperiences((p) =>
+        p.map((e) =>
+          e.id === exp.id
+            ? { ...e, isNew: false }
+            : e
+        )
+      );
+    } else {
+      await updateExperiences(
+        exp.id,
+        date1,
+        date2,
+        exp.position,
+        exp.company,
+        villePays,
+        exp.country,
+        exp.description
+      );
     }
-  };
+
+    Alert.alert('Enregistré', 'Expérience mise à jour.');
+  } catch (error) {
+    Alert.alert('Erreur', 'Impossible de mettre à jour l\'expérience.');
+  }
+};
+
 
   const toYearNumber = (val: string) => {
     if (!val) return null;
@@ -1783,27 +1885,28 @@ useEffect(() => {
         const anneeObtention = toYearNumber(edu.endYear);
 
         if (edu.isNew) {
-          await addFormation(
-            edu.school,
-            edu.degree,
-            edu.startMonth,
-            anneeDebut,
-            edu.endMonth,
-            anneeObtention,
-            edu.description
-          );
-        } else {
-          await updateFormation(
-            edu.id,
-            edu.school,
-            edu.degree,
-            edu.startMonth,
-            anneeDebut,
-            edu.endMonth,
-            anneeObtention,
-            edu.description
-          );
-        }
+            await addFormation(
+              edu.school,
+              edu.degree,
+              edu.startMonth,
+              anneeDebut,
+              edu.endMonth,
+              anneeObtention,
+              edu.description
+            );
+          } else {
+            await updateFormation(
+              edu.id,
+              edu.school,
+              edu.degree,
+              edu.startMonth,
+              anneeDebut,
+              edu.endMonth,
+              anneeObtention,
+              edu.description
+            );
+          }
+
       }
 
       Alert.alert('Enregistré', 'Formations enregistrées avec succès.');
@@ -1822,39 +1925,47 @@ useEffect(() => {
   };
 
   const handleUpdateFormation = async (edu: Education) => {
-    try {
-      const anneeDebut = toYearNumber(edu.startYear);
-      const anneeObtention = toYearNumber(edu.endYear);
+  try {
+    const anneeDebut = toYearNumber(edu.startYear);
+    const anneeObtention = toYearNumber(edu.endYear);
 
-      if (edu.isNew) {
-        await addFormation(
-          edu.school,
-          edu.degree,
-          edu.startMonth,
-          anneeDebut,
-          edu.endMonth,
-          anneeObtention,
-          edu.description
-        );
-        setEducation((p) => p.map((e) => (e.id === edu.id ? { ...e, isNew: false } : e)));
-      } else {
-        await updateFormation(
-          edu.id,
-          edu.school,
-          edu.degree,
-          edu.startMonth,
-          anneeDebut,
-          edu.endMonth,
-          anneeObtention,
-          edu.description
-        );
-      }
+    if (edu.isNew) {
+      await addFormation(
+        edu.school,
+        edu.degree,
+        edu.startMonth,
+        anneeDebut,
+        edu.endMonth,
+        anneeObtention,
+        edu.description
+      );
 
-      Alert.alert('Enregistré', 'Formation mise à jour.');
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible de mettre à jour la formation.');
+      setEducation((p) =>
+        p.map((e) =>
+          e.id === edu.id
+            ? { ...e, isNew: false }
+            : e
+        )
+      );
+    } else {
+      await updateFormation(
+        edu.id,
+        edu.school,
+        edu.degree,
+        edu.startMonth,
+        anneeDebut,
+        edu.endMonth,
+        anneeObtention,
+        edu.description
+      );
     }
-  };
+
+    Alert.alert('Enregistré', 'Formation mise à jour.');
+  } catch (error) {
+    Alert.alert('Erreur', 'Impossible de mettre à jour la formation.');
+  }
+};
+
 
   const renderTab = () => {
     switch (activeTab) {
@@ -1937,14 +2048,12 @@ useEffect(() => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Sélecteur d'onglet en dropdown (remplace l'ancienne barre horizontale) */}
       <TabDropdownSelector
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         tabs={TABS}
       />
 
-      {/* Content */}
       <KeyboardAvoidingView
         style={styles.keyboardAvoid}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -1971,7 +2080,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: C.bg,
   },
-  // ── Sélecteur d'onglets (dropdown) ──────────────────────────────────────
   tabSelectorWrap: {
     backgroundColor: C.white,
     borderBottomWidth: 1,
@@ -2021,6 +2129,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.gray200,
   },
+  tabSelectorItemActive: {
+    backgroundColor: C.blueBg,
+    borderLeftWidth: 4,
+    borderLeftColor: C.blue,
+    paddingLeft: 14,
+  },
   tabSelectorItemLast: {
     borderBottomWidth: 0,
   },
@@ -2028,6 +2142,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: C.gray700,
     fontWeight: '500',
+  },
+  tabSelectorItemTextActive: {
+    color: C.blue,
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,

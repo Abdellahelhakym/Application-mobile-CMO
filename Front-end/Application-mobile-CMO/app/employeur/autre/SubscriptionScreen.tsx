@@ -10,7 +10,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Linking,
-  RefreshControl, // 👈 Importation de RefreshControl
+  RefreshControl,
 } from 'react-native';
 import { getHestory } from '@/app/employeur/services/SubscriptionScreen';
 
@@ -28,7 +28,6 @@ interface HistoryItem {
   deleted: number;
 }
 
-// ── Data Statique avec les liens Stripe intégrés ──────────────────────────────
 const plans = [
   {
     id: 'start',
@@ -76,7 +75,6 @@ const plans = [
   },
 ];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function StatusBadge({ statut }: { statut: number }) {
   const isAccepted = statut === 1; 
   return (
@@ -87,8 +85,6 @@ function StatusBadge({ statut }: { statut: number }) {
     </View>
   );
 }
-
-
 
 function formatDate(dateString: string) {
   if (!dateString) return '-';
@@ -113,15 +109,13 @@ function getPackNameByIdFormule(id_formule: number): string {
   }
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
 export default function SubscriptionScreen() {
   const [view, setView] = useState<'dashboard' | 'plans'>('dashboard');
   const [currentPack, setCurrentPack] = useState<string>('DEVIS PERSONNALISÉ');
   const [historyList, setHistoryList] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [refreshing, setRefreshing] = useState<boolean>(false); // 👈 État pour le rafraîchissement mécanique
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  // 1. Isoler le chargement des données
   const loadSubscriptionData = async (showGlobalLoader = true) => {
     try {
       if (showGlobalLoader) setLoading(true);
@@ -142,7 +136,7 @@ export default function SubscriptionScreen() {
       console.error("Erreur lors de la récupération de l'historique:", error);
     } finally {
       setLoading(false);
-      setRefreshing(false); // Arrête le spinner du RefreshControl
+      setRefreshing(false);
     }
   };
 
@@ -150,13 +144,11 @@ export default function SubscriptionScreen() {
     loadSubscriptionData(true);
   }, []);
 
-  // 2. Gestionnaire du Pull-to-Refresh
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadSubscriptionData(false); // On passe false pour ne pas ré-afficher le gros ActivityIndicator central
+    loadSubscriptionData(false);
   }, []);
 
-  // Fonction pour gérer la redirection vers Stripe
   const handlePlanSelection = async (plan: typeof plans[0]) => {
     if (currentPack === plan.name) return;
     if (plan.isCustom) return;
@@ -186,11 +178,11 @@ export default function SubscriptionScreen() {
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#eef3ff" />
         <View style={styles.plansHeader}>
-          <TouchableOpacity onPress={() => setView('dashboard')} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => setView('dashboard')} style={styles.backBtn} activeOpacity={0.7}>
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
           <Text style={styles.plansTitle}>Choisir un pack</Text>
-          <View style={{ width: 38 }} />
+          <View style={{ width: 40 }} />
         </View>
         <ScrollView contentContainerStyle={styles.plansContent}>
           {sortedPlans.map((plan) => {
@@ -266,8 +258,8 @@ export default function SubscriptionScreen() {
             <RefreshControl 
               refreshing={refreshing} 
               onRefresh={onRefresh} 
-              colors={["#2b5bbb"]} // Android
-              tintColor="#2b5bbb"  // iOS
+              colors={["#2b5bbb"]}
+              tintColor="#2b5bbb"
             />
           }
         >
@@ -303,7 +295,6 @@ export default function SubscriptionScreen() {
                 </View>
                 <View style={styles.invoiceBottom}>
                   <Text style={styles.invoiceAmount}>{inv.montant} € HT</Text>
-              
                 </View>
               </View>
             ))
@@ -314,7 +305,6 @@ export default function SubscriptionScreen() {
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#eef3ff' },
   centerState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -348,9 +338,38 @@ const styles = StyleSheet.create({
   badgeTextOrange: { color: '#c07000' },
   actionBtn: { backgroundColor: '#2b5bbb', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 5 },
   actionBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  plansHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14 },
-  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', shadowColor: '#1b2d5a', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: 2 },
-  backArrow: { fontSize: 20, color: '#1b2d5a' },
+  
+  // ── Modifié : Style du Header & Bouton de retour ────────────────────────────
+  plansHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 16, 
+    paddingVertical: 14 
+  },
+  backBtn: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    backgroundColor: '#fff', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    shadowColor: '#1b2d5a', 
+    shadowOpacity: 0.08, 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowRadius: 6, 
+    elevation: 2 
+  },
+  backArrow: { 
+    fontSize: 22, 
+    color: '#1b2d5a', 
+    fontWeight: '600',
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+    lineHeight: 24,
+    marginTop: -2,
+  },
   plansTitle: { fontSize: 17, color: '#1b2d5a', fontWeight: '700' },
   plansContent: { padding: 16, gap: 16, paddingBottom: 100 },
   planCard: { borderRadius: 18, borderWidth: 1, borderColor: '#e1e9fb', overflow: 'hidden', backgroundColor: '#eef3ff' },

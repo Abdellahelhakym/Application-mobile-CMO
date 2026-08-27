@@ -1,10 +1,11 @@
-import { getDashboardData } from "@/app/candidat/services/DashboardScreen";
-import { getPsaudo } from "@/app/candidat/services/token_id";
+import { getDashboardData ,getPsaudo} from "@/app/candidat/services/DashboardScreen";
+
 import { Feather } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { fixUtf8Encoding } from "@/app/candidat/services/decode"; 
 
 const TITLES: Record<string, string> = {
   DashboardScreen: "Accueil",
@@ -23,15 +24,43 @@ export default function Layout() {
 
   useEffect(() => {
     let isMounted = true;
+
     const loadUserName = async () => {
-      const cached = getPsaudo();
-      if (cached && isMounted) setUserName(cached);
-      const data = await getDashboardData();
-      const fetched = data?.user?.nom;
-      if (fetched && isMounted) setUserName(fetched);
+      try {
+        const cached = await getPsaudo();
+
+        console.log("PSEUDO RESPONSE:", cached);
+        console.log("PSEUDO TYPE:", typeof cached?.pseudo);
+
+        if (
+          isMounted &&
+          cached &&
+          typeof cached.pseudo === "string"
+        ) {
+          // 👈 Utilisation de fixUtf8Encoding pour corriger les accents du pseudo
+          setUserName(fixUtf8Encoding(cached.pseudo));
+        }
+
+        const data = await getDashboardData();
+        const fetched = data?.user?.nom;
+
+        if (
+          isMounted &&
+          typeof fetched === "string"
+        ) {
+          // 👈 Utilisation de fixUtf8Encoding pour le nom venant du dashboard
+          setUserName(fixUtf8Encoding(fetched));
+        }
+      } catch (error) {
+        console.error("Erreur loadUserName:", error);
+      }
     };
+
     loadUserName();
-    return () => { isMounted = false; };
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (

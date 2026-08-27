@@ -3,6 +3,7 @@ const db = require('../db');
 
 const dashboard = express.Router();
 const auth = require('../middleware/auth');
+const { decodeObject, decodeArray } = require('../middleware/encoding');
 
 dashboard.get('/', auth, (req, res) => {
     res.send('Dashboard route');
@@ -10,16 +11,21 @@ dashboard.get('/', auth, (req, res) => {
 
 dashboard.post('/', auth, (req, res) => {
 
-const token_id = req.user.token_id;
+    const token_id = req.user.token_id;
 
     console.log('Received dashboard request with token_id');
 
-    
-    // USER
+    // CANDIDAT
     db.query(
-        'SELECT pseudo FROM users WHERE token_id = ? AND deleted = 0',
+        `SELECT 
+            nom,
+            prenom,
+            verifier,
+            CONCAT(prenom, ' ', nom) AS pseudo
+         FROM cmo_candidats
+         WHERE token_id = ? AND deleted = 0`,
         [token_id],
-        (err, userResults) => {
+        (err, candidatResults) => {
 
             if (err) {
                 console.error(err);
@@ -28,19 +34,23 @@ const token_id = req.user.token_id;
                 });
             }
 
-            if (userResults.length === 0) {
+            if (candidatResults.length === 0) {
                 return res.status(404).json({
-                    error: 'User not found'
+                    error: 'Candidat not found'
                 });
             }
 
-            const pseudo = userResults[0].pseudo;
+            const candidat = candidatResults[0];
 
-            // CANDIDAT
+            const pseudo = candidat.pseudo;
+
+            const verifier = candidat.verifier || 0;
+
+            // TOTAL CANDIDATURES
             db.query(
-                'SELECT verifier FROM cmo_candidats WHERE token_id = ? AND deleted = 0',
+                'SELECT COUNT(*) AS total FROM postuler WHERE token_id = ? AND deleted = 0',
                 [token_id],
-                (err, candidatResults) => {
+                (err, sentResults) => {
 
                     if (err) {
                         console.error(err);
@@ -49,16 +59,13 @@ const token_id = req.user.token_id;
                         });
                     }
 
-                    const verifier =
-                        candidatResults.length > 0
-                            ? candidatResults[0].verifier
-                            : 0;
+                    const sentCount = sentResults[0].total;
 
-                    // TOTAL CANDIDATURES
+                    // CANDIDATURES REPONDUES
                     db.query(
-                        'SELECT COUNT(*) AS total FROM postuler WHERE token_id = ? AND deleted = 0',
+                        'SELECT COUNT(*) AS total FROM postuler WHERE statut = 1 AND token_id = ? AND deleted = 0',
                         [token_id],
-                        (err, sentResults) => {
+                        (err, repliedResults) => {
 
                             if (err) {
                                 console.error(err);
@@ -67,13 +74,13 @@ const token_id = req.user.token_id;
                                 });
                             }
 
-                            const sentCount = sentResults[0].total;
+                            const repliedCount = repliedResults[0].total;
 
-                            // CANDIDATURES REPONDUES
+                            // FAVORIS
                             db.query(
-                                'SELECT COUNT(*) AS total FROM postuler WHERE statut = 1 AND token_id = ? AND deleted = 0',
+                                'SELECT COUNT(*) AS total FROM favoris_offres WHERE token_id = ? AND deleted = 0',
                                 [token_id],
-                                (err, repliedResults) => {
+                                (err, favoritesResults) => {
 
                                     if (err) {
                                         console.error(err);
@@ -82,13 +89,13 @@ const token_id = req.user.token_id;
                                         });
                                     }
 
-                                    const repliedCount = repliedResults[0].total;
+                                    const favoritesCount = favoritesResults[0].total;
 
-                                    // FAVORIS
+                                    // DOCUMENTS MANQUANTS
                                     db.query(
-                                        'SELECT COUNT(*) AS total FROM favoris_offres WHERE token_id = ? AND deleted = 0',
+                                        'SELECT titre_attestation FROM documents_manquants WHERE token_id_cand = ? AND deleted = 0',
                                         [token_id],
-                                        (err, favoritesResults) => {
+                                        (err, documentsManquantsResults) => {
 
                                             if (err) {
                                                 console.error(err);
@@ -97,65 +104,76 @@ const token_id = req.user.token_id;
                                                 });
                                             }
 
-                                            const favoritesCount = favoritesResults[0].total;
-
-                                            // DOCUMENTS MANQUANTS
-                                            db.query(
-                                                    'SELECT titre_attestation FROM documents_manquants WHERE token_id_cand = ? AND deleted = 0',
-                                                    [token_id],
-                                                    (err, documentsManquantsResults) => {
-
-                                                        if (err) {
-                                                            console.error(err);
-                                                            return res.status(500).json({
-                                                                error: 'Internal server error'
-                                                            });
-                                                        }
-
-                                                        const documentsManquants = (documentsManquantsResults || []).map(
-                                                            doc => doc.titre_attestation
-                                                        );
-                                                        
-
-                                                        const dashboardData = {
-
-                                                            user: {
-                                                                nom: pseudo,
-                                                            },
-
-                                                            inscriptionStatus: {
-                                                                verification: verifier,
-                                                            },
-
-                                                            candidatureStats: {
-                                                                sent: sentCount,
-                                                                replied: repliedCount,
-                                                                favorites: favoritesCount,
-                                                            },
-
-                                                            
-
-                                                            documentsManquants: documentsManquants
-                                                        };
-
-                                                        return res.json(dashboardData);
-
-                                                    }
+                                            const documentsManquants =
+                                                (documentsManquantsResults || []).map(
+                                                    doc => doc.titre_attestation
                                                 );
 
+                                            const dashboardData = {
+
+                                                user: {
+                                                    nom: pseudo
+                                                },
+
+                                                inscriptionStatus: {
+                                                    verification: verifier
+                                                },
+
+                                                candidatureStats: {
+                                                    sent: sentCount,
+                                                    replied: repliedCount,
+                                                    favorites: favoritesCount
+                                                },
+
+                                                documentsManquants:
+                                                    documentsManquants
+                                            };
+
+                                            return res.json(dashboardData);
+                                        }
+                                    );
                                 }
                             );
-
                         }
                     );
-
                 }
             );
-
         }
     );
-        });
 });
+
+
+dashboard.post('/pseudo', auth, (req, res) => {
+    const token_id = req.user.token_id;
+
+    db.query(
+        `SELECT CONCAT(prenom, ' ', nom) AS pseudo
+         FROM cmo_candidats
+         WHERE token_id = ? AND deleted = 0`,
+        [token_id],
+        (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({
+                    error: 'Internal server error'
+                });
+            }
+
+            if (results.length === 0) {
+                return res.status(404).json({
+                    error: 'Candidat not found'
+                });
+            }
+
+            const decodedResult = decodeObject(results[0]);
+
+            return res.json({
+                pseudo: decodedResult.pseudo
+            });
+        }
+    );
+});
+
 
 dashboard.post('/secteurs', auth, (req, res) => {
 

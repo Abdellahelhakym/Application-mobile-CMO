@@ -4,12 +4,13 @@ const db = require('./db');
 const passwordRouter = express.Router();
 
 passwordRouter.get('/candidat', (req, res) => {
-  res.send('password change route');
+    res.send('password change route');
 });
 
+// ROUTE CHANGEMENT DE MOT DE PASSE CANDIDAT
 passwordRouter.post('/candidat', async (req, res) => {
-    const { token_id , currentPassword, newPassword } = req.body;
-    console.log('Received password change request with body:');
+    const { token_id, currentPassword, newPassword } = req.body;
+    console.log('Received password change request for candidat');
 
     if (!token_id || !currentPassword || !newPassword) {
         return res.status(400).json({
@@ -34,15 +35,20 @@ passwordRouter.post('/candidat', async (req, res) => {
                     message: 'Utilisateur non trouvé'
                 });
             }
+
             const user = results[0];
 
-            const isMatch = await bcrypt.compare(currentPassword, user.password);
+            // Remplacement du préfixe PHP $2y$ par $2b$ pour la compatibilité avec bcrypt Node.js
+            const compatibleHash = user.password ? user.password.replace('$2y$', '$2b$') : '';
+
+            const isMatch = await bcrypt.compare(currentPassword, compatibleHash);
             if (!isMatch) {
                 return res.status(401).json({
                     success: false,
                     message: 'Mot de passe actuel incorrect'
                 });
             }
+
             const hashedPassword = await bcrypt.hash(newPassword, 10);
 
             db.query(
@@ -63,11 +69,12 @@ passwordRouter.post('/candidat', async (req, res) => {
             );
         }
     );
-
 });
+
+// ROUTE CHANGEMENT DE MOT DE PASSE EMPLOYEUR
 passwordRouter.post('/employeur', async (req, res) => {
-    const { token_id , currentPassword, newPassword } = req.body;
-    console.log('Received password change request with body:');
+    const { token_id, currentPassword, newPassword } = req.body;
+    console.log('Received password change request for employeur');
 
     if (!token_id || !currentPassword || !newPassword) {
         return res.status(400).json({
@@ -92,15 +99,20 @@ passwordRouter.post('/employeur', async (req, res) => {
                     message: 'Utilisateur non trouvé'
                 });
             }
+
             const user = results[0];
 
-            const isMatch = await bcrypt.compare(currentPassword, user.password);
+            // Remplacement du préfixe PHP $2y$ par $2b$ pour la compatibilité avec bcrypt Node.js
+            const compatibleHash = user.password ? user.password.replace('$2y$', '$2b$') : '';
+
+            const isMatch = await bcrypt.compare(currentPassword, compatibleHash);
             if (!isMatch) {
                 return res.status(401).json({
                     success: false,
                     message: 'Mot de passe actuel incorrect'
                 });
             }
+
             const hashedPassword = await bcrypt.hash(newPassword, 10);
 
             db.query(
@@ -121,16 +133,15 @@ passwordRouter.post('/employeur', async (req, res) => {
             );
         }
     );
-
 });
 
+// ROUTE MOT DE PASSE OUBLIÉ
 passwordRouter.post('/candidat/forget', async (req, res) => {
     const { email } = req.body;
-
-
     console.log('Received password reset request with body:', email);
 
-    const response = await fetch("http://192.168.1.19:3000/test", {
+    try {
+        await fetch("http://192.168.1.19:3000/test", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -138,17 +149,21 @@ passwordRouter.post('/candidat/forget', async (req, res) => {
             body: JSON.stringify({ email })
         });
 
-
-    res.json({
-        success: true,
-        message: 'Password reset request received'
-    });
+        return res.json({
+            success: true,
+            message: 'Password reset request received'
+        });
+    } catch (error) {
+        console.error('Error during password reset request:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erreur serveur lors de la réinitialisation'
+        });
+    }
 });
-
 
 passwordRouter.get('/test', (req, res) => {
     res.send('password change test nooooooooooooooooooow');
 });
-
 
 module.exports = passwordRouter;

@@ -22,28 +22,61 @@ import {
 import url from "@/app/services/url";
 import { getImage } from "../services/document";
 
-// 🔧 Décodage des entités HTML (gère les accents comme dans "Chef d’équipe restauration rapide")
-const decodeHTML = (str: string): string => {
-  if (!str) return '';
-  return str
-    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
-    .replace(/&eacute;/g, 'é')
-    .replace(/&egrave;/g, 'è')
-    .replace(/&ecirc;/g, 'ê')
-    .replace(/&euml;/g, 'ë')
-    .replace(/&agrave;/g, 'à')
-    .replace(/&acirc;/g, 'â')
-    .replace(/&icirc;/g, 'î')
-    .replace(/&iuml;/g, 'ï')
-    .replace(/&ocirc;/g, 'ô')
-    .replace(/&ugrave;/g, 'ù')
-    .replace(/&ucirc;/g, 'û')
-    .replace(/&ccedil;/g, 'ç')
-    .replace(/&amp;/g, '&')
+// Helper pour garantir qu'on a bien une chaîne de caractères (même si l'API renvoie un objet)
+const safeString = (val: any): string => {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number') return String(val);
+  if (typeof val === 'object') {
+    return val.libelle || val.nom || val.title || val.name || val.region || JSON.stringify(val);
+  }
+  return '';
+};
+
+// Décodage complet des entités HTML
+const decodeHTML = (str: any): string => {
+  const text = safeString(str);
+  if (!text) return '';
+  
+  return text
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&rsquo;/g, "'")
+    .replace(/&lsquo;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&ndash;/g, '–')
+    .replace(/&mdash;/g, '—')
+    .replace(/&hellip;/g, '…')
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+    .replace(/&gt;/g, '>')
+    .replace(/&eacute;/g, 'é')
+    .replace(/&Eacute;/g, 'É')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&Egrave;/g, 'È')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&Ecirc;/g, 'Ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&agrave;/g, 'à')
+    .replace(/&Agrave;/g, 'À')
+    .replace(/&acirc;/g, 'â')
+    .replace(/&Acirc;/g, 'Â')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&Icirc;/g, 'Î')
+    .replace(/&iuml;/g, 'ï')
+    .replace(/&Iuml;/g, 'Ï')
+    .replace(/&ôcirc;/g, 'ô')
+    .replace(/&ocirc;/g, 'ô')
+    .replace(/&Ocirc;/g, 'Ô')
+    .replace(/&ugrave;/g, 'ù')
+    .replace(/&Ugrave;/g, 'Ù')
+    .replace(/&ucirc;/g, 'û')
+    .replace(/&Ucirc;/g, 'Û')
+    .replace(/&ccedil;/g, 'ç')
+    .replace(/&Ccedil;/g, 'Ç');
 };
 
 export default function ProfileScreen() {
@@ -66,21 +99,26 @@ export default function ProfileScreen() {
     try {
       const info = await getInformations();
       const i = Array.isArray(info) ? info[0] : info?.data?.[0] ?? info;
-      setNom([i?.civilite, i?.prenom, i?.nom].filter(Boolean).join(" "));
-      setEmail(i?.email ?? "");
-      setPhone(i?.tel ?? "");
-      setVille(i?.ville ?? "");
-      setPays(i?.pays ?? "");
+      setNom([i?.civilite, i?.prenom, i?.nom].map(safeString).filter(Boolean).join(" "));
+      setEmail(safeString(i?.email));
+      setPhone(safeString(i?.tel));
+      setVille(safeString(i?.ville));
+      setPays(safeString(i?.pays));
 
       const img = await getImage();
       const imageUrl = img?.image
         ? url() + "documents/photos_candidats/" + img.image
         : "";
-      setPhoto(imageUrl || i?.photo || "");
+      setPhoto(imageUrl || safeString(i?.photo));
 
       const mob = await getMobiliteUser();
-      setMobilite(mob?.mobilite?.[0]?.region ?? "");
-      setNiveauEtude(mob?.niveau_etude ?? "");
+      
+      // Extraction sécurisée des objets de mobilité et niveau d'étude
+      const rawMob = mob?.mobilite?.[0]?.region ?? mob?.mobilite?.[0] ?? mob?.mobilite;
+      setMobilite(safeString(rawMob));
+
+      const rawNiveau = mob?.niveau_etude ?? mob?.niveau;
+      setNiveauEtude(safeString(rawNiveau));
 
       const exp = await getExperiences();
       setExperiences(Array.isArray(exp) ? exp : exp?.data ?? []);
@@ -91,7 +129,7 @@ export default function ProfileScreen() {
       const list = await getListFils();
       setAttestations(Array.isArray(list) ? list : list?.data ?? []);
     } catch (error) {
-      console.log("Erreur:", error);
+      console.log("Erreur de chargement:", error);
     } finally {
       setLoading(false);
     }
@@ -174,7 +212,7 @@ export default function ProfileScreen() {
             <View style={styles.sectionBar} />
             <Text style={styles.sectionTitle}>Niveau d'études</Text>
           </View>
-          <Text style={styles.value}>{decodeHTML(niveauEtude) || "-"}</Text>
+          <Text style={styles.value}>{decodeHTML(niveauEtude) || "—"}</Text>
         </View>
 
         {/* ── EXPÉRIENCES ── */}
@@ -199,7 +237,7 @@ export default function ProfileScreen() {
                     {decodeHTML(exp.societe)}{exp.ville_pays ? ` · ${decodeHTML(exp.ville_pays)}` : ""}
                   </Text>
                   <Text style={styles.expDate}>
-                    {exp.date1}{exp.date2 ? ` – ${exp.date2}` : ""}
+                    {safeString(exp.date1)}{exp.date2 ? ` – ${safeString(exp.date2)}` : ""}
                   </Text>
                   {exp.description ? (
                     <Text style={styles.expDesc}>{decodeHTML(exp.description)}</Text>
@@ -223,15 +261,30 @@ export default function ProfileScreen() {
               <Text style={styles.emptyText}>Aucune formation enregistrée</Text>
             </View>
           ) : (
-            formations.map((edu, index) => (
-              <View key={index} style={styles.expCard}>
-                <View style={styles.expDot} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.expTitle}>{decodeHTML(edu.diplome)}</Text>
-                  <Text style={styles.expSub}>{decodeHTML(edu.ecole)}</Text>
+            formations.map((edu, index) => {
+              const dateDebut = [edu.mois_debut, edu.annee_debut].map(safeString).filter(Boolean).join("/");
+              const dateFin = [edu.mois_obtention, edu.annee_obtention].map(safeString).filter(Boolean).join("/");
+              const period = [dateDebut, dateFin].filter(Boolean).join(" – ");
+
+              return (
+                <View key={index} style={styles.expCard}>
+                  <View style={styles.expDot} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.expTitle}>
+                      {decodeHTML(edu.ecole)}{edu.diplome ? ` - ${decodeHTML(edu.diplome)}` : ""}
+                    </Text>
+                    
+                    {period ? (
+                      <Text style={styles.expDate}>{period}</Text>
+                    ) : null}
+
+                    {edu.description ? (
+                      <Text style={styles.expDesc}>{decodeHTML(edu.description)}</Text>
+                    ) : null}
+                  </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
 
@@ -304,9 +357,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-  },
-  infoIcon: {
-    fontSize: 14,
   },
   infoText: {
     fontSize: 13,

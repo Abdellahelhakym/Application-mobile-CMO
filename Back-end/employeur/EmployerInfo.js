@@ -2,47 +2,96 @@ const express = require('express');
 const db = require('../db');
 
 const EmployerInfo = express.Router();
-
 const auth = require('../middleware/auth');
+const { decodeObject, encodeObject, encodeForLegacyWeb } = require('../middleware/encoding');
 
-
+/**
+ * ============================================================
+ * GET TEST
+ * ============================================================
+ */
 EmployerInfo.get('/', auth, (req, res) => {
-    res.send('Employer Info route');
+    res.send('Employer Info route V4');
 });
 
+/**
+ * ============================================================
+ * GET INFORMATIONS EMPLOYEUR
+ * ============================================================
+ */
 EmployerInfo.post('/getInfo', auth, (req, res) => {
+    const token_id = req.user.token_id;
 
-   const token_id = req.user.token_id;
-    console.log('Received employer info request with token_id');
-   
+    console.log(
+        'Received employer info request with token_id:',
+        token_id
+    );
 
     db.query(
         'SELECT * FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
         [token_id],
         (err, results) => {
             if (err) {
-                console.error(err);
-                return res.status(500).json({ error: 'Internal server error' });
+                console.error(
+                    'Erreur SELECT mco_entreprise :',
+                    err
+                );
+
+                return res.status(500).json({
+                    error: 'Internal server error'
+                });
             }
+
             if (results.length === 0) {
-                return res.status(404).json({ error: 'Employer not found' });
+                return res.status(404).json({
+                    error: 'Employer not found'
+                });
             }
+
             const employerInfo = results[0];
-            res.json(employerInfo);
+
+            console.log(
+                'Données BASE :',
+                employerInfo
+            );
+
+            // Correction de l'encodage pour le mobile
+            const fixedEmployerInfo = decodeObject(employerInfo);
+
+            console.log(
+                'Données envoyées au MOBILE :',
+                fixedEmployerInfo
+            );
+
+            return res.json(fixedEmployerInfo);
         }
     );
-
 });
 
+/**
+ * ============================================================
+ * UPDATE INFORMATIONS EMPLOYEUR
+ * ============================================================
+ */
 EmployerInfo.post('/updateInfo', auth, (req, res) => {
-    // 1. On récupère token_id et l'objet data depuis le body
     const { data } = req.body;
- const token_id = req.user.token_id;
-    if ( !data) {
-        return res.status(400).json({ error: ' Data are required' });
+
+    console.log(
+        'Données reçues du MOBILE :',
+        data
+    );
+
+    const token_id = req.user.token_id;
+
+    if (!data) {
+        return res.status(400).json({
+            error: 'Data are required'
+        });
     }
 
-    // 2. On extrait les colonnes directement depuis l'objet data
+    // Encodage complet de l'objet pour la base legacy
+    const encodedData = encodeObject(data);
+
     const {
         raison_social,
         prenom_responsable,
@@ -51,13 +100,17 @@ EmployerInfo.post('/updateInfo', auth, (req, res) => {
         siret,
         num_tel,
         num_tel2,
+        email,
+        email2,
         adresse,
         code_postal,
         ville,
         pays_origine
-    } = data;
+    } = encodedData;
 
-    // 3. Ta requête SQL UPDATE
+    /**
+     * UPDATE mco_entreprise
+     */
     const sqlQuery = `
         UPDATE mco_entreprise 
         SET 
@@ -68,14 +121,16 @@ EmployerInfo.post('/updateInfo', auth, (req, res) => {
             siret = ?, 
             num_tel = ?, 
             num_tel2 = ?, 
+            email = ?, 
+            email2 = ?, 
             adresse = ?, 
             code_postal = ?, 
             ville = ?, 
             pays_origine = ?
-        WHERE token_id = ? AND deleted = 0
+        WHERE token_id = ? 
+        AND deleted = 0
     `;
 
-    // 4. Les paramètres envoyés dans le bon ordre
     const queryParams = [
         raison_social,
         prenom_responsable,
@@ -84,40 +139,80 @@ EmployerInfo.post('/updateInfo', auth, (req, res) => {
         siret,
         num_tel,
         num_tel2,
+        email,
+        email2,
         adresse,
         code_postal,
         ville,
         pays_origine,
-        token_id // Utilisé pour le WHERE
+        token_id
     ];
 
-     const pseudo = prenom_responsable + ' ' + responsable;
+    console.log(
+        'Données envoyées à la BASE :',
+        queryParams
+    );
 
-    db.query(sqlQuery, queryParams, (err, results) => {
-        if (err) {
-            console.error("Erreur d'update mco_entreprise :", err);
-            return res.status(500).json({ error: 'Internal server error' });
-        }
-        
-        if (results.affectedRows === 0) {
-            return res.status(404).json({ error: 'Employer not found' });
-        }
-
-        // Mettre à jour le pseudo dans la table mco_users
-        const updatePseudoQuery = `
-            UPDATE users 
-            SET pseudo = ? 
-            WHERE token_id = ? AND deleted = 0
-        `;
-        db.query(updatePseudoQuery, [pseudo, token_id], (err, results) => {
+    db.query(
+        sqlQuery,
+        queryParams,
+        (err, results) => {
             if (err) {
-                console.error("Erreur de mise à jour du pseudo :", err);
-                return res.status(500).json({ error: 'Internal server error' });
-            }
-        });
+                console.error(
+                    'Erreur update mco_entreprise :',
+                    err
+                );
 
-        res.json({ message: 'Employer info updated successfully' });
-    });
+                return res.status(500).json({
+                    error: 'Internal server error'
+                });
+            }
+
+            if (results.affectedRows === 0) {
+                return res.status(404).json({
+                    error: 'Employer not found'
+                });
+            }
+
+            // Pseudo (construit à partir des valeurs déjà encodées)
+            const pseudoMobile = `${data.prenom_responsable || ''} ${data.responsable || ''}`.trim();
+            const pseudoDb = encodeForLegacyWeb(pseudoMobile);
+
+            const updatePseudoQuery = `
+                UPDATE users 
+                SET pseudo = ? 
+                WHERE token_id = ? 
+                AND deleted = 0
+            `;
+
+            db.query(
+                updatePseudoQuery,
+                [pseudoDb, token_id],
+                (err, pseudoResults) => {
+                    if (err) {
+                        console.error(
+                            'Erreur de mise à jour du pseudo :',
+                            err
+                        );
+
+                        return res.status(500).json({
+                            error: 'Internal server error'
+                        });
+                    }
+
+                    console.log(
+                        'Pseudo envoyé à la base :',
+                        pseudoDb
+                    );
+
+                    return res.json({
+                        success: true,
+                        message: 'Employer info updated successfully'
+                    });
+                }
+            );
+        }
+    );
 });
 
 module.exports = EmployerInfo;

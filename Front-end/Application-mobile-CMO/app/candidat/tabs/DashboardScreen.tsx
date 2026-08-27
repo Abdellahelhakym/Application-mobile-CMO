@@ -15,6 +15,7 @@ import {
 
 import Svg, { Path, Text as SvgText } from "react-native-svg";
 import { Bell, MessageSquare, Phone} from "lucide-react-native";
+import { fixUtf8Encoding } from "@/app/candidat/services/decode"; 
 import {
     getDashboardData,
     getSecteursActivite,
@@ -380,7 +381,7 @@ export default function DashboardScreen() {
 
                         <View style={{ flex: 1 }}>
                             <Text style={styles.title}>
-                                Bonjour M. {dashboardData.user.nom}
+                               Bonjour M. {fixUtf8Encoding(dashboardData.user.nom)}
                             </Text>
 
                             <Text style={styles.subtitle}>

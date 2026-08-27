@@ -74,7 +74,6 @@ export default function AttestationsScreen() {
 
       const docsMap: Record<number, string> = {};
 
-      // 🛠️ Mappage corrigé selon la structure de getDocument
       if (attestations?.success && Array.isArray(attestations.attestations)) {
         attestations.attestations.forEach((file: any) => {
           if (file?.id_attestation != null && file?.nom_fichier) {
@@ -196,7 +195,6 @@ export default function AttestationsScreen() {
                 .filter((item) => item.id_categorie === category.id)
                 .map((item) => {
                   const isUploaded = !!uploadedDocs[item.id_attestation];
-                  const fileName = uploadedDocs[item.id_attestation];
 
                   return (
                     <View key={item.id} style={styles.itemRow}>
@@ -210,12 +208,6 @@ export default function AttestationsScreen() {
                           {decodeHTML(item.titre2)}
                         </Text>
                       ) : null}
-
-                      {isUploaded ? (
-                        <Text style={styles.fileName}>{fileName}</Text>
-                      ) : (
-                        <Text style={styles.fileNameEmpty}>Aucun fichier</Text>
-                      )}
 
                       <View style={styles.actions}>
                         <TouchableOpacity
@@ -273,8 +265,6 @@ const styles = StyleSheet.create({
   },
   itemText: { color: '#1b2d5a', fontWeight: '600', fontSize: 14, marginBottom: 4 },
   itemSubtitle: { fontSize: 12, color: '#5b6a8e', marginBottom: 8 },
-  fileName: { fontSize: 12, color: '#2b5bbb', fontWeight: '500', marginBottom: 10 },
-  fileNameEmpty: { fontSize: 12, color: '#7a8ab8', marginBottom: 10 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5 },
   uploadBtn: {
     flexDirection: 'row',

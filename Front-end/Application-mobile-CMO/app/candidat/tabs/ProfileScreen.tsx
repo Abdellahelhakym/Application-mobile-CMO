@@ -8,12 +8,15 @@ import {
   Text,
   TouchableOpacity,
   View,
-  RefreshControl // <-- 1. Importation de RefreshControl
+  RefreshControl
 } from 'react-native';
 
-import { router, useFocusEffect } from 'expo-router'; // <-- 2. Nettoyage et utilisation de expo-router
+import { router, useFocusEffect } from 'expo-router';
+import { decode } from 'html-entities'; // 👈 Importation du décodeur HTML
+import { fixUtf8Encoding } from "@/app/candidat/services/decode"; 
 
 import {
+  Bot,
   FileText,
   Heart,
   Lock,
@@ -22,13 +25,16 @@ import {
   Phone,
   Settings,
   Trash2,
-  User
+  User,
+  UserRoundCheck
 } from 'lucide-react-native';
 
+import { getInformations } from "@/app/candidat/services/CVScreen";
 import { Feather } from '@expo/vector-icons';
 import { getImage } from "../services/document";
-import { getProfile } from "@/app/candidat/services/ProfileScreen";
+import { getProfile, getPaysAutoriser } from "@/app/candidat/services/ProfileScreen";
 import { deleteAccount } from "@/app/candidat/services/deleteAccount";
+
 import url from "@/app/services/url";
 
 export default function ProfileScreen() {
@@ -40,18 +46,45 @@ export default function ProfileScreen() {
   });
   const [photo, setPhoto] = useState('');
   const [avatarLoading, setAvatarLoading] = useState(false);
-  
-  // <-- 3. État pour gérer l'animation du loader de rafraîchissement
   const [refreshing, setRefreshing] = useState(false);
+  
+  // État pour gérer la visibilité du bouton Assistance
+  const [isAssistanceAllowed, setIsAssistanceAllowed] = useState(false);
 
   const getData = useCallback(async () => {
     try {
-      const [profile, imageData] = await Promise.all([
+      // 1. Appels API en parallèle
+      const [profile, imageData, infoData, paysAutorises] = await Promise.all([
         getProfile(),
         getImage(),
+        getInformations(),
+        getPaysAutoriser(),
       ]);
 
-      setProfileData(profile);
+      // Récupération du pays du candidat depuis getInformations
+      const rawUserPays = infoData && infoData.length > 0 ? infoData[0].pays : profile?.pays || '';
+      
+      // 👈 Décodage HTML puis correction de l'encodage UTF-8 (mojibake)
+      const cleanPays = fixUtf8Encoding(decode(rawUserPays));
+      const cleanPseudo = fixUtf8Encoding(decode(profile?.pseudo || ''));
+
+      setProfileData({
+        ...profile,
+        pseudo: cleanPseudo,
+        pays: cleanPays,
+      });
+
+      // 2. Vérification si le pays de l'utilisateur est autorisé
+      if (cleanPays && Array.isArray(paysAutorises)) {
+        const isAllowed = paysAutorises.some(
+          (item) =>
+            item.deleted === 0 &&
+            fixUtf8Encoding(decode(item.nom_pays)).trim().toLowerCase() === cleanPays.trim().toLowerCase()
+        );
+        setIsAssistanceAllowed(isAllowed);
+      } else {
+        setIsAssistanceAllowed(false);
+      }
 
       const imageUrl = imageData?.image
         ? url() + "documents/photos_candidats/" + imageData.image
@@ -62,7 +95,6 @@ export default function ProfileScreen() {
     }
   }, []);
 
-  // <-- 4. Fonction exécutée lors du Pull-to-Refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await getData();
@@ -114,13 +146,12 @@ export default function ProfileScreen() {
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
-      // <-- 5. Intégration du RefreshControl
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={["#2b5bbb"]} // Android
-          tintColor="#2b5bbb"   // iOS
+          colors={["#2b5bbb"]}
+          tintColor="#2b5bbb"
         />
       }
     >
@@ -185,6 +216,17 @@ export default function ProfileScreen() {
           <Settings size={20} color="#2b5bbb" />
           <Text style={styles.btnText}>CV</Text>
         </TouchableOpacity>
+
+        {/* Condition basée sur le résultat du contrôle API */}
+        {isAssistanceAllowed && (
+          <TouchableOpacity
+            style={styles.btn}
+            onPress={() => router.push('/candidat/autre/AssistanceCMO')}
+          >
+            <UserRoundCheck size={20} color="#2b5bbb" />
+            <Text style={styles.btnText}>Assistance CMO</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={styles.btn}
@@ -251,7 +293,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 15,
-    paddingBottom: 110, // Un peu plus d'espace en bas pour le confort de scroll
+    paddingBottom: 110,
     gap: 15,
   },
   card: {

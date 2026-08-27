@@ -16,11 +16,19 @@ import { Phone, MessageSquare, ChevronDown, Eye, Download } from 'lucide-react-n
 import { Feather } from '@expo/vector-icons'; 
 import { useRouter } from 'expo-router'; 
 import * as WebBrowser from 'expo-web-browser';
-import { getCommandes, getDevis, AccepterRefuserDevis } from '@/app/employeur/services/MyOffers';
+import { getCommandes, getDevis, AccepterRefuserDevis, getStatutFiche } from '@/app/employeur/services/MyOffers';
 
 import url from "@/app/services/url.js";
 
-// 🔧 Fonction globale de décodage des entités HTML (gère minuscules et majuscules ex: &Eacute;)
+// Interface pour typer les statuts de la fiche
+interface StatutItem {
+  id: number;
+  titre: string;
+  couleur: string;
+  deleted: number;
+}
+
+// 🔧 Fonction globale de décodage des entités HTML
 const decodeHTML = (str: string): string => {
   if (!str) return '';
   return str
@@ -40,7 +48,7 @@ const decodeHTML = (str: string): string => {
     .replace(/&gt;/gi, '>');
 };
 
-// 🔧 Fonction pour formater les dates MySQL (YYYY-MM-DD...) en (DD/MM/YYYY)
+// 🔧 Fonction pour formater les dates MySQL
 const formatDate = (dateString: string | undefined | null): string => {
   if (!dateString) return '-';
   
@@ -77,11 +85,32 @@ const formatDate = (dateString: string | undefined | null): string => {
   }
 };
 
+// 🎨 Mappage des couleurs HTML/Bootstrap vers des codes Hexadécimaux
+const getBadgeStyles = (colorType: string) => {
+  switch (colorType) {
+    case 'primary':
+      return { bg: '#e7f1ff', text: '#0d6efd', border: '#b6d4fe' };
+    case 'success':
+      return { bg: '#e8f5e9', text: '#198754', border: '#a3cfbb' };
+    case 'danger':
+      return { bg: '#f8d7da', text: '#dc3545', border: '#f5c2c7' };
+    case 'warning':
+      return { bg: '#fff3cd', text: '#ffc107', border: '#ffe69c' };
+    case 'info':
+      return { bg: '#cff4fc', text: '#0dcaf0', border: '#9eeaf9' };
+    case 'dark':
+      return { bg: '#e2e3e5', text: '#212529', border: '#c4c8cb' };
+    default:
+      return { bg: '#f8f9fa', text: '#6c757d', border: '#dee2e6' };
+  }
+};
+
 export default function MyOffersScreen() {
   const router = useRouter(); 
   const [activeTab, setActiveTab] = useState<'commands' | 'quotes'>('commands');
   const [commandes, setCommandes] = useState<any[]>([]);
   const [devis, setDevis] = useState<any[]>([]);
+  const [statutsList, setStatutsList] = useState<StatutItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false); 
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null); 
@@ -90,6 +119,21 @@ export default function MyOffersScreen() {
   const [selectedCommande, setSelectedCommande] = useState<any | null>(null);
   const [entriesOpen, setEntriesOpen] = useState(false);
   const [entriesValue, setEntriesValue] = useState<'10' | '20' | '30' | '40' | 'all'>('10');
+
+  // 🔄 Charger la liste globale des statuts
+  const fetchStatuts = async () => {
+    try {
+      const res = await getStatutFiche();
+      const list = Array.isArray(res) ? res : (res?.data || []);
+      setStatutsList(list);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des statuts:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchStatuts();
+  }, []);
 
   // 🔄 Fonction de chargement des données avec sécurité anti-doublons
   const fetchData = async (showLoadingIndicator = true) => {
@@ -100,7 +144,6 @@ export default function MyOffersScreen() {
         const res = await getCommandes();
         const rawData = Array.isArray(res) ? res : (res?.data || []);
         
-        // FIX: Filtrer les doublons basés sur l'ID unique 'id_fiche_poste'
         const uniqueCommandes: any[] = [];
         const seenIds = new Set();
         rawData.forEach((item: any) => {
@@ -108,7 +151,6 @@ export default function MyOffersScreen() {
             seenIds.add(item.id_fiche_poste);
             uniqueCommandes.push(item);
           } else if (item && !item.id_fiche_poste) {
-            // Sécurité au cas où l'id_fiche_poste est manquant temporairement
             uniqueCommandes.push(item);
           }
         });
@@ -118,7 +160,6 @@ export default function MyOffersScreen() {
         const res = await getDevis();
         const rawData = Array.isArray(res) ? res : (res?.data || []);
         
-        // FIX: Filtrer les doublons pour les devis basés sur 'id_devis' ou 'id'
         const uniqueDevis: any[] = [];
         const seenDevisIds = new Set();
         rawData.forEach((item: any) => {
@@ -151,11 +192,29 @@ export default function MyOffersScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchData(false); 
+    await Promise.all([fetchData(false), fetchStatuts()]);
     setRefreshing(false);
   };
 
-  // 📄 Ouvre le fichier PDF du devis dans une WebView du navigateur (in-app)
+  // 🔍 Helper : Récupérer le libellé et la couleur d'un statut par son ID
+  const getStatusInfo = (statusId: any) => {
+    const parsedId = Number(statusId);
+    const found = statutsList.find((s) => Number(s.id) === parsedId);
+
+    if (found) {
+      return {
+        titre: decodeHTML(found.titre),
+        couleur: found.couleur,
+      };
+    }
+
+    return {
+      titre: statusId ? `Statut #${statusId}` : '-',
+      couleur: 'default',
+    };
+  };
+
+  // 📄 Ouvre le fichier PDF du devis
   const openDevisFile = async (fileName: string | undefined | null, idDevis: number) => {
     if (!fileName) {
       Alert.alert('Erreur', 'Aucun fichier disponible pour ce devis.');
@@ -357,7 +416,6 @@ export default function MyOffersScreen() {
             <View>
               <View style={styles.verticalTableContainer}>
                 {displayedData.map((row, rowIndex) => {
-                  // FIX: Génération d'une clé unique robuste pour la carte parente
                   const rowUniqueKey = activeTab === 'quotes' 
                     ? `quote-${row?.id_devis || row?.id || rowIndex}`
                     : `command-${row?.id_fiche_poste || rowIndex}`;
@@ -370,12 +428,33 @@ export default function MyOffersScreen() {
                           value = row?.id_fiche_poste;
                         }
 
+                        const cellKey = `${rowUniqueKey}-col-${col.key || colIndex}`;
+
+                        // 🏷️ Rendu personnalisé du statut avec la couleur dynamique
+                        if (col.key === 'statut_fiche' || (col.key === 'statut' && activeTab === 'quotes')) {
+                          const statusId = row?.statut ?? row?.statut_fiche ?? value;
+                          const statusInfo = getStatusInfo(statusId);
+                          const badgeTheme = getBadgeStyles(statusInfo.couleur);
+
+                          return (
+                            <View key={cellKey} style={styles.verticalRow}>
+                              <Text style={styles.verticalLabel}>{col.label}</Text>
+                              <View
+                                style={[
+                                  styles.statusBadge,
+                                  { backgroundColor: badgeTheme.bg, borderColor: badgeTheme.border },
+                                ]}
+                              >
+                                <Text style={[styles.statusBadgeText, { color: badgeTheme.text }]}>
+                                  {statusInfo.titre}
+                                </Text>
+                              </View>
+                            </View>
+                          );
+                        }
+
                         let displayValue = '-';
-                        if (col.key === 'statut_fiche') {
-                          displayValue = row?.statut_titre || (value !== undefined && value !== null ? `État ${value}` : '-');
-                        } else if (col.key === 'statut' && activeTab === 'quotes') {
-                          displayValue = row?.statut_titre || (Number(value) === 1 ? 'Accepté' : Number(value) === 0 ? 'Refusé' : value ?? '-');
-                        } else if (col.key === 'nbr_poste') {
+                        if (col.key === 'nbr_poste') {
                           displayValue = row?.nbr_poste ?? row?.nombre_poste ?? row?.nbr_postes ?? '-';
                         } else if (col.key === 'contrat_duree') {
                           const contratStr = row?.contrat || '';
@@ -392,7 +471,6 @@ export default function MyOffersScreen() {
                         }
 
                         const cleanedText = typeof displayValue === 'string' ? decodeHTML(displayValue) : displayValue;
-                        const cellKey = `${rowUniqueKey}-col-${col.key || colIndex}`;
 
                         if (col.key === 'download' && activeTab === 'quotes') {
                           const idDevis = row?.id_devis || row?.id;
@@ -492,7 +570,7 @@ export default function MyOffersScreen() {
         </View>
       </ScrollView>
 
-      {/* MODAL */}
+      {/* MODAL DETAILS */}
       <Modal
         visible={detailsVisible}
         transparent
@@ -589,6 +667,17 @@ const styles = StyleSheet.create({
   detailsBadgeText: {
     fontSize: 11,
     color: '#2b5bbb',
+    fontWeight: '600',
+  },
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignSelf: 'flex-end',
+  },
+  statusBadgeText: {
+    fontSize: 11,
     fontWeight: '600',
   },
   verticalTableContainer: { gap: 12 },

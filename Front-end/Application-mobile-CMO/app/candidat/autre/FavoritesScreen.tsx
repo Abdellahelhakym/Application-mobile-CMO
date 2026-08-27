@@ -7,7 +7,7 @@ import {
   View,
 } from "react-native";
 
-import { AlertCircle, Star } from "lucide-react-native";
+import { AlertCircle, Star, ChevronDown, ChevronUp } from "lucide-react-native";
 
 import { getFavorites } from "@/app/candidat/services/FavoritesScreen";
 import {
@@ -17,20 +17,50 @@ import {
 /* =========================
    DÉCODAGE DES ENTITÉS HTML
 ========================= */
-function decodeHTML(str?: string): string {
+function decodeHTML(str?: string | null): string {
   if (!str) return "";
   return str
-    .replace(/&agrave;/g, "à")
-    .replace(/&eacute;/g, "é")
-    .replace(/&egrave;/g, "è")
-    .replace(/&ecirc;/g, "ê")
-    .replace(/&ocirc;/g, "ô")
-    .replace(/&icirc;/g, "î")
+    // Entités numériques (décimales et hexadécimales)
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    // Ponctuation et symboles
     .replace(/&rsquo;/g, "'")
+    .replace(/&lsquo;/g, "'")
     .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
+    .replace(/&ndash;/g, "–")
+    .replace(/&mdash;/g, "—")
+    .replace(/&hellip;/g, "…")
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+    .replace(/&apos;/g, "'")
+    .replace(/&#039;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    // Accents français
+    .replace(/&eacute;/g, "é")
+    .replace(/&Eacute;/g, "É")
+    .replace(/&egrave;/g, "è")
+    .replace(/&Egrave;/g, "È")
+    .replace(/&ecirc;/g, "ê")
+    .replace(/&Ecirc;/g, "Ê")
+    .replace(/&euml;/g, "ë")
+    .replace(/&agrave;/g, "à")
+    .replace(/&Agrave;/g, "À")
+    .replace(/&acirc;/g, "â")
+    .replace(/&Acirc;/g, "Â")
+    .replace(/&icirc;/g, "î")
+    .replace(/&Icirc;/g, "Î")
+    .replace(/&iuml;/g, "ï")
+    .replace(/&Iuml;/g, "Ï")
+    .replace(/&ocirc;/g, "ô")
+    .replace(/&Ocirc;/g, "Ô")
+    .replace(/&ugrave;/g, "ù")
+    .replace(/&Ugrave;/g, "Ù")
+    .replace(/&ucirc;/g, "û")
+    .replace(/&Ucirc;/g, "Û")
+    .replace(/&ccedil;/g, "ç")
+    .replace(/&Ccedil;/g, "Ç");
 }
 
 /* =========================
@@ -45,7 +75,6 @@ interface Favorite {
   descr?: string;
   date?: string;
   categorie?: string;
-  // Champs optionnels au cas où l'API évolue ou si vous les recevez sur d'autres endpoints
   sous_descr?: string;
   metier_titre?: string | null;
   region_titre?: string | null;
@@ -57,6 +86,14 @@ interface Favorite {
 export default function FavoritesScreen() {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>({});
+
+  const toggleExpanded = (id: number) => {
+    setExpandedCards((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   /* =========================
      LOAD FAVORITES FROM API
@@ -104,12 +141,10 @@ export default function FavoritesScreen() {
      RENDER ITEM
   ========================= */
   const renderItem = ({ item }: { item: Favorite }) => {
-    // Récupération de la catégorie (soit categorie, soit metier_titre)
     const categoryName = item.categorie || item.metier_titre;
-
-    // Récupération de la description (soit descr, soit sous_descr)
     const rawDescription = item.descr || item.sous_descr || "";
     const descriptionText = decodeHTML(rawDescription.trim());
+    const isExpanded = !!expandedCards[item.id];
 
     return (
       <View style={styles.card}>
@@ -155,9 +190,28 @@ export default function FavoritesScreen() {
         </Text>
 
         {descriptionText ? (
-          <Text numberOfLines={3} style={styles.desc}>
-            {descriptionText}
-          </Text>
+          <>
+            <Text 
+              numberOfLines={isExpanded ? undefined : 4} 
+              ellipsizeMode="tail"
+              style={styles.desc}
+            >
+              {descriptionText}
+            </Text>
+
+            <TouchableOpacity 
+              style={styles.readMoreBtn}
+              onPress={() => toggleExpanded(item.id)}
+            >
+              <Text style={styles.readMoreText}>
+                {isExpanded ? "Réduire " : "Lire la suite "}
+              </Text>
+              {isExpanded ? 
+                <ChevronUp size={14} color="#ffffff" /> : 
+                <ChevronDown size={14} color="#ffffff" />
+              }
+            </TouchableOpacity>
+          </>
         ) : null}
       </View>
     );
@@ -200,6 +254,11 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 20,
     marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   topRow: {
     flexDirection: "row",
@@ -221,6 +280,7 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 12,
     color: "#b87900",
+    fontWeight: "500",
   },
   headerRow: {
     flexDirection: "row",
@@ -238,17 +298,35 @@ const styles = StyleSheet.create({
     color: "#1b2d5a",
   },
   text: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#1b2d5a",
+    lineHeight: 19,
     marginTop: 2,
   },
   bold: {
-    fontWeight: "bold",
+    fontWeight: "700",
   },
   desc: {
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 10,
-    color: "#4a5568",
+    color: "#5b6a8e",
+    lineHeight: 18,
+  },
+  readMoreBtn: {
+    marginTop: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 15,
+    backgroundColor: "#2b5bbb",
+    borderRadius: 15,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignSelf: "flex-start",
+  },
+  readMoreText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#ffffff",
   },
   empty: {
     alignItems: "center",

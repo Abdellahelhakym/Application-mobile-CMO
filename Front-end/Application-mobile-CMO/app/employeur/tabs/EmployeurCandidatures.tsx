@@ -7,28 +7,28 @@ import { Ionicons } from '@expo/vector-icons';
 import { getCandidat, getCandidatValides, setCandidatValides, setCandidatNonValide } from '@/app/employeur/services/EmployeurCandidatures';
 import url from "@/app/services/url.js"; 
 
-// 🔧 Décodage des entités HTML
+// 🔧 Décodage des entités HTML (Prise en charge Insensible à la casse + Entités Majuscules)
 const decodeHTML = (str: string): string => {
   if (!str) return '';
   return str
-    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
-    .replace(/&eacute;/g, 'é')
-    .replace(/&egrave;/g, 'è')
-    .replace(/&ecirc;/g, 'ê')
-    .replace(/&euml;/g, 'ë')
-    .replace(/&agrave;/g, 'à')
-    .replace(/&acirc;/g, 'â')
-    .replace(/&icirc;/g, 'î')
-    .replace(/&iuml;/g, 'ï')
-    .replace(/&ocirc;/g, 'ô')
-    .replace(/&ugrave;/g, 'ù')
-    .replace(/&ucirc;/g, 'û')
-    .replace(/&ccedil;/g, 'ç')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
+    .replace(/&(eacute|Eacute);/g, 'é')
+    .replace(/&(egrave|Egrave);/g, 'è')
+    .replace(/&(ecirc|Ecirc);/g, 'ê')
+    .replace(/&(euml|Euml);/g, 'ë')
+    .replace(/&(agrave|Agrave);/g, 'à')
+    .replace(/&(acirc|Acirc);/g, 'â')
+    .replace(/&(icirc|Icirc);/g, 'î')
+    .replace(/&(iuml|Iuml);/g, 'ï')
+    .replace(/&(ocirc|Ocirc);/g, 'ô')
+    .replace(/&(ugrave|Ugrave);/g, 'ù')
+    .replace(/&(ucirc|Ucirc);/g, 'û')
+    .replace(/&(ccedil|Ccedil);/g, 'ç')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>');
 };
 
 const { width } = Dimensions.get('window');
@@ -223,9 +223,12 @@ export default function EmployeurCandidatures() {
       return;
     }
 
+    const prenomDecoded = decodeHTML(candidate.prenom);
+    const nomDecoded = decodeHTML(candidate.nom);
+
     Alert.alert(
       'Confirmation',
-      `Êtes-vous sûr de vouloir refuser la candidature de ${candidate.prenom} ${candidate.nom} ?`,
+      `Êtes-vous sûr de vouloir refuser la candidature de ${prenomDecoded} ${nomDecoded} ?`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -316,6 +319,10 @@ export default function EmployeurCandidatures() {
                 ? `${url()}documents/photos_candidats/${candidate.photo}?t=${Date.now()}`
                 : null;
 
+              const cleanPrenom = decodeHTML(candidate.prenom || '');
+              const cleanNom = decodeHTML(candidate.nom || '');
+              const formattedName = `${cleanPrenom.charAt(0).toUpperCase() + cleanPrenom.slice(1).toLowerCase()} ${cleanNom.toUpperCase()}`;
+
               return (
                 <View key={candidate.id.toString()} style={styles.card}>
 
@@ -333,7 +340,7 @@ export default function EmployeurCandidatures() {
                     </View>
                     <View style={styles.headerText}>
                       <Text style={styles.name}>
-                        {`${candidate.prenom.charAt(0).toUpperCase() + candidate.prenom.slice(1)} ${candidate.nom.toUpperCase()}`}
+                        {formattedName}
                       </Text>
                       <Text style={styles.headerId}>
                         {candidate.id_fiche_poste || `000-Cmd-${candidate.id}`}
@@ -448,7 +455,7 @@ export default function EmployeurCandidatures() {
                   </View>
                   <Text style={styles.cvName}>
                     {selectedCandidate.prenom
-                      ? selectedCandidate.prenom.charAt(0).toUpperCase() + selectedCandidate.prenom.slice(1)
+                      ? decodeHTML(selectedCandidate.prenom).charAt(0).toUpperCase() + decodeHTML(selectedCandidate.prenom).slice(1).toLowerCase()
                       : 'Candidat'}
                   </Text>
                 </View>
@@ -502,34 +509,8 @@ export default function EmployeurCandidatures() {
                         {parcours.description ? <Text style={styles.educationDescription}>{decodeHTML(parcours.description)}</Text> : null}
                       </View>
                     ))}
-                    <View style={styles.divider} />
                   </>
                 ) : null}
-
-                <Text style={styles.sectionTitle}>Attestations</Text>
-                <View style={styles.attestationList}>
-                  {selectedCandidate.documents_manquants && selectedCandidate.documents_manquants.length > 0 ? (
-                    selectedCandidate.documents_manquants.map((doc, index) => {
-                      const formattedDoc = doc.replace(/_/g, ' ');
-                      const cleanDoc = formattedDoc.charAt(0).toUpperCase() + formattedDoc.slice(1);
-
-                      return (
-                        <View key={index} style={styles.documentMissingRow}>
-                          <Text style={[styles.sectionItem, {fontWeight: '600' }]}>
-                            {decodeHTML(cleanDoc)} manquant
-                          </Text>
-                        </View>
-                      );
-                    })
-                  ) : (
-                    <View style={styles.documentMissingRow}>
-                      <Ionicons name="checkmark-circle-outline" size={14} color="#2e7d32" style={{ marginRight: 6 }} />
-                      <Text style={[styles.sectionItem, { marginTop: 0, color: '#2e7d32', fontWeight: '600' }]}>
-                        Aucun document manquant
-                      </Text>
-                    </View>
-                  )}
-                </View>
 
               </ScrollView>
             )}

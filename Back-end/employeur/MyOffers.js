@@ -117,6 +117,22 @@ myOffers.post('/devis', auth, (req, res) => {
     );
 });
 
+myOffers.get('/getStatutFiche', (req, res) => {
+    db.query(
+        'SELECT * FROM statut_fiche_poste WHERE deleted = 0',
+        (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Internal server error' });
+            }
+
+            return res.json(results);
+        });
+
+
+
+});
+
 
 myOffers.post('/AccepterRefuserDevis', auth, (req, res) => {
 

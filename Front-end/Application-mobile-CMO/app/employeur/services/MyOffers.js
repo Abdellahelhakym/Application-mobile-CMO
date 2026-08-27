@@ -71,3 +71,16 @@ export async function AccepterRefuserDevis(finaliser, id_fiche_post, id_devis){
         throw error;
     }
 }
+
+
+export async function getStatutFiche(){
+    try {
+        
+        const response = await fetch(url() + "employeur/my-offers/getStatutFiche");
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error fetching candidatures:", error);
+        throw error;
+    }
+}

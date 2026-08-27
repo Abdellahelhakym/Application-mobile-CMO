@@ -39,29 +39,52 @@ interface Mobilite {
 }
 
 // --- UTILITAIRE DE DÉCODAGE HTML ---
+// --- UTILITAIRE DE DÉCODAGE HTML ---
 const decodeHTML = (str: string | undefined | null): string => {
   if (!str) return '';
   return str
+    // Entités numériques (décimales et hexadécimales)
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
-    .replace(/&eacute;/g, 'é')
-    .replace(/&egrave;/g, 'è')
-    .replace(/&ecirc;/g, 'ê')
-    .replace(/&euml;/g, 'ë')
-    .replace(/&agrave;/g, 'à')
-    .replace(/&acirc;/g, 'â')
-    .replace(/&icirc;/g, 'î')
-    .replace(/&Icirc;/g, 'Î')
-    .replace(/&iuml;/g, 'ï')
-    .replace(/&ocirc;/g, 'ô')
-    .replace(/&ugrave;/g, 'ù')
-    .replace(/&ucirc;/g, 'û')
-    .replace(/&ccedil;/g, 'ç')
-    .replace(/&amp;/g, '&')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    // Ponctuation et symboles courants
+    .replace(/&rsquo;/g, "'")
+    .replace(/&lsquo;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&ndash;/g, '–')
+    .replace(/&mdash;/g, '—')
+    .replace(/&hellip;/g, '…')
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
     .replace(/&#039;/g, "'")
+    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+    .replace(/&gt;/g, '>')
+    // Accents français
+    .replace(/&eacute;/g, 'é')
+    .replace(/&Eacute;/g, 'É')
+    .replace(/&egrave;/g, 'è')
+    .replace(/&Egrave;/g, 'È')
+    .replace(/&ecirc;/g, 'ê')
+    .replace(/&Ecirc;/g, 'Ê')
+    .replace(/&euml;/g, 'ë')
+    .replace(/&agrave;/g, 'à')
+    .replace(/&Agrave;/g, 'À')
+    .replace(/&acirc;/g, 'â')
+    .replace(/&Acirc;/g, 'Â')
+    .replace(/&icirc;/g, 'î')
+    .replace(/&Icirc;/g, 'Î')
+    .replace(/&iuml;/g, 'ï')
+    .replace(/&Iuml;/g, 'Ï')
+    .replace(/&ôcirc;/g, 'ô')
+    .replace(/&ocirc;/g, 'ô')
+    .replace(/&Ocirc;/g, 'Ô')
+    .replace(/&ugrave;/g, 'ù')
+    .replace(/&Ugrave;/g, 'Ù')
+    .replace(/&ucirc;/g, 'û')
+    .replace(/&Ucirc;/g, 'Û')
+    .replace(/&ccedil;/g, 'ç')
+    .replace(/&Ccedil;/g, 'Ç');
 };
 
 // --- COMPOSANT PRINCIPAL ---

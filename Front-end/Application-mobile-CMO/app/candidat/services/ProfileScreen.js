@@ -21,3 +21,16 @@ export async function getProfile() {
     }
 }
 
+export async function getPaysAutoriser() {
+    try {
+       
+        const response = await fetch(url() + "candidat/profile/pays_autoriser");
+        const data = await response.json();
+        return data;
+
+    } catch (error) {
+        console.error("Error fetching profile:", error);
+        throw error;
+    }
+}
+

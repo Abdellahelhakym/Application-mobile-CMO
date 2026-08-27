@@ -70,6 +70,7 @@ export default function LoginScreen() {
         if (raison_social) {
           await setRaison(raison_social);
         }
+        console.log("token id :", response.token_id);
        
         router.replace("/employeur/tabs/EmployerDashboard");
       } else {

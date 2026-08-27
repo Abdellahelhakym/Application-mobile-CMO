@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const db = require('./db');
 const router = express.Router();
 const auth = require('./middleware/auth');
+const { decodeObject } = require('./middleware/encoding');
 
 router.get('/candidat', auth, (req, res) => {
   res.send('Login route');
@@ -23,14 +24,15 @@ router.post('/candidat', (req, res) => {
         }
 
         db.query(
-                        `SELECT *
-                FROM users
-                WHERE username = ?
-                AND roles = '10_C'
-                AND deleted = 0`,
+            `SELECT *
+             FROM users
+             WHERE username = ?
+               AND roles = '10_C'
+               AND deleted = 0`,
             [email],
             async (err, results) => {
                 if (err) {
+                    console.error('Erreur SELECT user candidat:', err);
                     return res.status(500).json({
                         success: false,
                         message: 'Erreur serveur'
@@ -45,7 +47,8 @@ router.post('/candidat', (req, res) => {
                 }
 
                 try {
-                    const user = results[0];
+                    // Application du décodage pour nettoyer les données utilisateur (dont user.pseudo)
+                    const user = decodeObject(results[0]);
 
                     // Remplacement du préfixe PHP $2y$ par $2b$ pour la compatibilité Node.js
                     const compatibleHash = user.password.replace('$2y$', '$2b$');
@@ -53,15 +56,16 @@ router.post('/candidat', (req, res) => {
                     const isMatch = await bcrypt.compare(password, compatibleHash);
 
                     if (isMatch && user.roles == '10_C' && user.deleted == 0) {
-                        console.log('User authenticated successfully:' );
+                        console.log('User authenticated successfully:', user.pseudo);
                         return res.status(200).json({
                             success: true,
                             message: 'Connexion réussie',
                             token_id: user.token_id,
+                            pseudo: user.pseudo
                         });
                     }
 
-                    console.log('Authentication failed for user:');
+                    console.log('Authentication failed for user:', user.pseudo);
                     return res.status(401).json({
                         success: false,
                         message: 'Identifiant ou mot de passe incorrect.'
@@ -108,6 +112,7 @@ router.post('/employeur', (req, res) => {
             async (err, results) => {
 
                 if (err) {
+                    console.error('Erreur SELECT user employeur:', err);
                     return res.status(500).json({
                         success: false,
                         message: 'Erreur serveur'
@@ -122,7 +127,8 @@ router.post('/employeur', (req, res) => {
                 }
 
                 try {
-                    const user = results[0];
+                    // Decodage de l'objet utilisateur
+                    const user = decodeObject(results[0]);
 
                     // Remplacement du préfixe PHP $2y$ par $2b$ pour la compatibilité Node.js
                     const compatibleHash = user.password.replace('$2y$', '$2b$');
@@ -142,16 +148,18 @@ router.post('/employeur', (req, res) => {
                         (err, entrepriseResults) => {
 
                             if (err) {
+                                console.error('Erreur SELECT entreprise:', err);
                                 return res.status(500).json({
                                     success: false,
                                     message: 'Erreur serveur'
                                 });
                             }
 
-                            const raison_social =
-                                entrepriseResults.length > 0
-                                    ? entrepriseResults[0].raison_social
-                                    : null;
+                            let raison_social = null;
+                            if (entrepriseResults.length > 0) {
+                                const fixedEntreprise = decodeObject(entrepriseResults[0]);
+                                raison_social = fixedEntreprise.raison_social;
+                            }
 
                             console.log('User authenticated successfully:', user.pseudo);
 
@@ -166,7 +174,7 @@ router.post('/employeur', (req, res) => {
                     );
 
                 } catch (error) {
-                    console.error(error);
+                    console.error('Error during employer authentication:', error);
 
                     return res.status(500).json({
                         success: false,
@@ -177,7 +185,7 @@ router.post('/employeur', (req, res) => {
         );
 
     } catch (error) {
-        console.error(error);
+        console.error('Employer route error:', error);
 
         return res.status(500).json({
             success: false,

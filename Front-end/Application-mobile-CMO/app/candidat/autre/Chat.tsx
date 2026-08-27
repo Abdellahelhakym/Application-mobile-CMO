@@ -111,53 +111,54 @@ export default function ChatScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
 
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        setLoading(true);
-        if (typeof getPsaudo === 'function') {
-          const pseudo = await getPsaudo();
-          if (pseudo) setUserPseudo(pseudo);
-        }
-        
-        const messages = await fetchMainMessages();
-
-        if (id_msg) {
-          const targetId = parseInt(id_msg as string, 10);
-          const foundMessage = messages.find(m => m.id === targetId);
-          
-          if (foundMessage) {
-            setSelectedRootMessage(foundMessage);
-            setSujet(foundMessage.sujet);
-            setCurrentView('chat');
-            await fetchReplies(targetId);
-          } else {
-            const mockRootMessage: MessageItem = {
-              id: targetId,
-              id_user: "",
-              type_message: "",
-              sujet: "Discussion", 
-              description: "",
-              date_sujet: "",
-              heure_sujet: "",
-              statut: 1,
-              id_retour: null,
-              deleted: 0
-            };
-            setSelectedRootMessage(mockRootMessage);
-            setCurrentView('chat');
-            await fetchReplies(targetId);
-          }
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement initial:', error);
-      } finally {
-        setLoading(false);
+ useEffect(() => {
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      if (typeof getPsaudo === 'function') {
+        const pseudo = await getPsaudo();
+        // Nettoyage des entités HTML sur le pseudo
+        if (pseudo) setUserPseudo(cleanHtml(pseudo));
       }
-    };
+      
+      const messages = await fetchMainMessages();
 
-    loadInitialData();
-  }, [id_msg]);
+      if (id_msg) {
+        const targetId = parseInt(id_msg as string, 10);
+        const foundMessage = messages.find(m => m.id === targetId);
+        
+        if (foundMessage) {
+          setSelectedRootMessage(foundMessage);
+          setSujet(foundMessage.sujet);
+          setCurrentView('chat');
+          await fetchReplies(targetId);
+        } else {
+          const mockRootMessage: MessageItem = {
+            id: targetId,
+            id_user: "",
+            type_message: "",
+            sujet: "Discussion", 
+            description: "",
+            date_sujet: "",
+            heure_sujet: "",
+            statut: 1,
+            id_retour: null,
+            deleted: 0
+          };
+          setSelectedRootMessage(mockRootMessage);
+          setCurrentView('chat');
+          await fetchReplies(targetId);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement initial:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadInitialData();
+}, [id_msg]);
 
   const fetchMainMessages = async (): Promise<MessageItem[]> => {
     try {

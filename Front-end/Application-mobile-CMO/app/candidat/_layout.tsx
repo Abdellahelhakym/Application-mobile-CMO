@@ -56,6 +56,10 @@ export default function CandidatLayout() {
         name="autre/Notification"
         options={{ title: "Notifications", headerShown: true }}
       />
+      <Stack.Screen
+        name="autre/AssistanceCMO"
+        options={{ title: "Assistance CMO", headerShown: true }}
+      />
     </Stack>
   );
 }
