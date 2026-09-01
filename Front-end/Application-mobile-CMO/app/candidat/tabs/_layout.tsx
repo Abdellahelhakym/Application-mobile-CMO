@@ -19,17 +19,14 @@ const TITLES: Record<string, string> = {
   DashboardScreen: "Accueil",
   JobsScreen: "Offres",
   CandidateLandingScreen: "Candidatures",
-  "Cv/index": "Informations",
+  Cv: "Informations",
   ProfileScreen: "Profil",
 };
 
 export default function Layout() {
   const [userName, setUserName] = useState("Utilisateur");
   const insets = useSafeAreaInsets();
-
-  // Détection du mode Android avec navigation 3 boutons
-  const isAndroid3Button =
-    Platform.OS === "android" && insets.bottom >= 24;
+  const bottomInset = Platform.OS === "android" ? insets.bottom : 0;
 
   useEffect(() => {
     let isMounted = true;
@@ -146,16 +143,12 @@ export default function Layout() {
           height:
             Platform.OS === "ios"
               ? 70
-              : isAndroid3Button
-              ? 65 + insets.bottom
-              : 70,
+              : 70 + bottomInset,
 
           paddingBottom:
             Platform.OS === "ios"
               ? 12
-              : isAndroid3Button
-              ? insets.bottom - 4
-              : 10,
+              : 10 + bottomInset,
 
           borderTopWidth: 1,
           borderTopColor: "#e7edf7",
@@ -237,8 +230,8 @@ export default function Layout() {
       {/* =========================
           CV / INFORMATIONS
           ========================= */}
-      <Tabs.Screen
-        name="Cv/index"
+        <Tabs.Screen
+          name="Cv"
         options={{
           title: "Informations",
           tabBarLabel: "Informations",
@@ -269,24 +262,6 @@ export default function Layout() {
               color={color}
             />
           ),
-        }}
-      />
-
-      {/* =========================
-          CACHER Cv/cv
-          =========================
-
-          Cette route existe probablement :
-          Cv/cv.tsx
-
-          On la garde accessible dans
-          l'application mais elle ne sera
-          PAS affichée dans la barre du bas.
-      */}
-      <Tabs.Screen
-        name="Cv/cv"
-        options={{
-          href: null,
         }}
       />
 

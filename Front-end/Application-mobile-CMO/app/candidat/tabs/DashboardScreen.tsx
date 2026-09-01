@@ -1,28 +1,28 @@
 import { Feather } from "@expo/vector-icons";
-import { router, useFocusEffect } from "expo-router"; 
-import React, { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useState } from "react";
 import {
     ActivityIndicator,
     Image,
+    Linking,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
-    Linking,
     TouchableOpacity,
     View,
-    RefreshControl,
 } from "react-native";
 
-import Svg, { Path, Text as SvgText } from "react-native-svg";
-import { Bell, MessageSquare, Phone} from "lucide-react-native";
-import { fixUtf8Encoding } from "@/app/candidat/services/decode"; 
-import {
-    getDashboardData,
-    getSecteursActivite,
-    categorieMetier
-} from "@/app/candidat/services/DashboardScreen";
-import { getNotification } from '../../candidat/services/messagerie'; 
 import { getListFils } from "@/app/candidat/services/AttestationsScreen";
+import {
+    categorieMetier,
+    getDashboardData,
+    getSecteursActivite
+} from "@/app/candidat/services/DashboardScreen";
+import { fixUtf8Encoding } from "@/app/candidat/services/decode";
+import { Bell, MessageSquare, Phone } from "lucide-react-native";
+import Svg, { Path, Text as SvgText } from "react-native-svg";
+import { getNotification } from '../../candidat/services/messagerie';
 
 // 🔧 Décodage des entités HTML & nettoyage des préfixes (ex: "BTP - ") et retours à la ligne
 const decodeHTML = (str: string): string => {
@@ -392,7 +392,7 @@ export default function DashboardScreen() {
                         </View>
                     </View>
                     <View style={styles.actions}>
-                        <TouchableOpacity style={styles.btnOutline} onPress={() => Linking.openURL("tel:+33788361923")}>
+                        <TouchableOpacity disabled={true} style={styles.btnOutline} onPress={() => Linking.openURL("tel:+33788361923")}>
                             <Phone size={16} color="#2b5bbb" />
                             <Text style={styles.btnText}>Conseiller</Text>
                         </TouchableOpacity>

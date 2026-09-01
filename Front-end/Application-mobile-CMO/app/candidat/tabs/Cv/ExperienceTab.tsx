@@ -1,6 +1,6 @@
 import { Briefcase, Plus, Save } from 'lucide-react-native';
 import React, { useEffect } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { addExperience, deleteExperiences, getExperiences, updateExperiences } from "@/app/candidat/services/CVScreen";
 import { C } from './colors';
@@ -16,7 +16,6 @@ export const ExperienceTab = ({
   experiences,
   setExperiences,
 }: ExperienceTabProps) => {
-  // 📱 Charger les expériences au montage
   useEffect(() => {
     loadExperiences();
   }, []);
@@ -112,20 +111,24 @@ export const ExperienceTab = ({
   };
 
   return (
-    <View style={{ gap: 16 }}>
-      <View style={styles.rowBetween}>
-        <View style={styles.sectionTitleRow}>
-          <Briefcase size={18} color={C.blue} style={{ marginRight: 8 }} />
-          <Text style={styles.sectionTitlePlain}>{'Expériences professionnelles'}</Text>
-        </View>
-        <TouchableOpacity style={styles.addBtn} onPress={add}>
-          <Plus size={14} color={C.blueDark} />
-          <Text style={styles.addBtnText}>{'Ajouter'}</Text>
-        </TouchableOpacity>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
+      {/* En-tête de section */}
+      <View style={styles.sectionTitleRow}>
+        <Briefcase size={20} color={C.blue} style={{ marginRight: 8 }} />
+        <Text style={styles.sectionTitlePlain}>Expériences professionnelles</Text>
       </View>
 
-      {experiences.map((exp) => (
+      {/* BOUTON D'AJOUT PRINCIPAL (TRÈS VISIBLE) */}
+      <TouchableOpacity style={styles.mainAddBtn} onPress={add} activeOpacity={0.7}>
+        <Plus size={20} color={C.blue} />
+        <Text style={styles.mainAddBtnText}>Ajouter une expérience</Text>
+      </TouchableOpacity>
+
+      {/* Liste des expériences */}
+      {experiences.map((exp, index) => (
         <Card key={exp.id}>
+          <Text style={styles.cardHeader}>Expérience {experiences.length - index}</Text>
+
           <Label>{'Poste'}</Label>
           <InputField value={exp.position} onChangeText={(v) => update(exp.id, 'position', v)} placeholder="Ex: Mécanicien automobile" />
 
@@ -152,7 +155,7 @@ export const ExperienceTab = ({
           <Label>{'Description'}</Label>
           <InputField value={exp.description} onChangeText={(v) => update(exp.id, 'description', v)} placeholder="Décrivez vos missions..." multiline numberOfLines={3} />
 
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
             <TouchableOpacity style={styles.btnUpdate} onPress={() => handleUpdateExperience(exp)}>
               <Save size={16} color={C.white} />
               <Text style={styles.btnUpdateText}>{'Mettre à jour'}</Text>
@@ -168,17 +171,38 @@ export const ExperienceTab = ({
         label={'Sauvegarder les expériences'}
         onPress={handleSaveExperiences}
       />
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollContainer: { flex: 1 },
+  contentContainer: { gap: 16, paddingBottom: 40 },
   row: { flexDirection: 'row', gap: 12 },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center' },
-  sectionTitlePlain: { fontSize: 15, fontWeight: '600', color: C.blueDark, flex: 1 },
-  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.blueBg, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  addBtnText: { fontSize: 13, color: C.blueDark, fontWeight: '500' },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  sectionTitlePlain: { fontSize: 16, fontWeight: '600', color: C.blueDark },
+  cardHeader: { fontSize: 14, fontWeight: '600', color: C.blueDark, marginBottom: 8 },
+
+  // Bouton Ajouter principal (grand et visible)
+  mainAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: C.blueBg,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: C.blue,
+    borderStyle: 'dashed',
+  },
+  mainAddBtnText: {
+    fontSize: 15,
+    color: C.blue,
+    fontWeight: '600',
+  },
+
   btnUpdate: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 50, backgroundColor: C.blue },
   btnUpdateText: { color: C.white, fontSize: 13, fontWeight: '500' },
   btnDelete: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 50, backgroundColor: C.accentDelete },

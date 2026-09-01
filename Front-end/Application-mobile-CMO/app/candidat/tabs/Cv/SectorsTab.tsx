@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  FlatList,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { decode } from 'html-entities';
-import { Briefcase } from 'lucide-react-native';
+import { Briefcase, ChevronDown, X } from 'lucide-react-native';
 
 import { getSecteur, getSecteurUser, updateSecteur } from "@/app/candidat/services/CVScreen";
 import { C } from './colors';
@@ -25,8 +28,8 @@ interface SectorsTabProps {
   setSectors: React.Dispatch<React.SetStateAction<Sector[]>>;
 }
 
-// --- COMPOSANT PICKER NATIF ---
-const NativeSelectPicker = ({
+// --- EXACTEMENT LE MÊME COMPOSANT SELECTPICKER ROBUSTE ---
+const UniversalSelectPicker = ({
   label,
   value,
   options,
@@ -37,23 +40,64 @@ const NativeSelectPicker = ({
   options: string[];
   onChange: (value: string) => void;
 }) => {
+  const [modalVisible, setModalVisible] = useState(false);
+
   return (
     <View style={styles.pickerWrapper}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={value}
-          onValueChange={(itemValue) => onChange(itemValue)}
-          style={styles.nativePicker}
-        >
-          <Picker.Item label="Sélectionner..." value="" color="#94A3B8" />
-          {options
-            .filter((opt) => opt !== '')
-            .map((option, index) => (
-              <Picker.Item key={index} label={option} value={option} color="#1E293B" />
-            ))}
-        </Picker>
-      </View>
+      {label && <Text style={styles.label}>{label}</Text>}
+      <TouchableOpacity
+        style={styles.pickerButton}
+        onPress={() => setModalVisible(true)}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.pickerText, !value && styles.placeholderText]}>
+          {value || 'Sélectionner...'}
+        </Text>
+        <ChevronDown size={18} color={C.gray700} />
+      </TouchableOpacity>
+
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          {/* Ferme le menu en cliquant à l'extérieur sans interférer avec le scroll */}
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setModalVisible(false)}
+          />
+
+          {/* Modal Content avec hauteur fixe pour garantir le scroll */}
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{label || 'Sélectionner'}</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <X size={20} color={C.gray700} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Zone de FlatList isolée */}
+            <View style={styles.listWrapper}>
+              <FlatList
+                data={options}
+                keyExtractor={(_, index) => index.toString()}
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={true}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[styles.optionItem, item === value && styles.selectedOption]}
+                    onPress={() => {
+                      onChange(item);
+                      setModalVisible(false);
+                    }}
+                  >
+                    <Text style={[styles.optionText, item === value && styles.selectedOptionText]}>
+                      {item === '' ? 'Aucun(e)' : item}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -208,7 +252,7 @@ export const SectorsTab = ({ sectors, setSectors }: SectorsTabProps) => {
 
             <View style={styles.sectorColumn}>
               {/* Catégorie */}
-              <NativeSelectPicker
+              <UniversalSelectPicker
                 label="Catégorie"
                 value={sector.category}
                 options={['', ...sectorData.categories.map((c) => c.titre)]}
@@ -217,7 +261,7 @@ export const SectorsTab = ({ sectors, setSectors }: SectorsTabProps) => {
 
               {/* Sous-catégorie */}
               {sector.category !== '' && (
-                <NativeSelectPicker
+                <UniversalSelectPicker
                   label="Sous-catégorie"
                   value={sector.subCategory}
                   options={['', ...subCategories]}
@@ -227,7 +271,7 @@ export const SectorsTab = ({ sectors, setSectors }: SectorsTabProps) => {
 
               {/* Métier */}
               {sector.category !== '' && sector.subCategory !== '' && (
-                <NativeSelectPicker
+                <UniversalSelectPicker
                   label="Métier"
                   value={sector.job}
                   options={['', ...jobs]}
@@ -244,7 +288,7 @@ export const SectorsTab = ({ sectors, setSectors }: SectorsTabProps) => {
   );
 };
 
-// --- STYLES ---
+// --- STYLES (Identiques à MobilityTab) ---
 const styles = StyleSheet.create({
   scrollContainer: { flex: 1 },
   contentContainer: { gap: 16, paddingBottom: 24 },
@@ -253,19 +297,59 @@ const styles = StyleSheet.create({
   cardHeader: { fontSize: 14, fontWeight: '600', color: C.blueDark, marginBottom: 12 },
   sectorColumn: { gap: 12 },
 
-  // Picker Natif Styles
+  // SelectPicker Styles
   pickerWrapper: { marginBottom: 4 },
   label: { fontSize: 13, color: C.gray700, marginBottom: 4 },
-  pickerContainer: {
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
+  },
+  pickerText: { fontSize: 14, color: '#1E293B' },
+  placeholderText: { color: '#94A3B8' },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
+    padding: 20,
   },
-  nativePicker: {
-    width: '100%',
-    height: 50,
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    height: 350,
+    padding: 16,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    marginBottom: 8,
+  },
+  modalTitle: { fontSize: 16, fontWeight: '600', color: C.blueDark },
+  listWrapper: { flex: 1 },
+  optionItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+  },
+  selectedOption: { backgroundColor: '#F1F5F9', borderRadius: 6 },
+  optionText: { fontSize: 14, color: '#334155' },
+  selectedOptionText: { fontWeight: '600', color: C.blue },
 });

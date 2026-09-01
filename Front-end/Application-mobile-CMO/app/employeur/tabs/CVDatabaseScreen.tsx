@@ -1,45 +1,101 @@
+import { getSecteur } from '@/app/candidat/services/CVScreen';
+import { getCandidats } from '@/app/employeur/services/CVDatabaseScreen';
+import url from "@/app/services/url.js";
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
   ActivityIndicator,
   Alert,
-  Modal,
   Dimensions,
   Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { getCandidats } from '@/app/employeur/services/CVDatabaseScreen';
-import { getSecteur } from '@/app/candidat/services/CVScreen';
-import url from "@/app/services/url.js";
 
 const { width, height } = Dimensions.get('window');
 
-// 🔧 Décodage des entités HTML
+// 🔧 Décodage des entités HTML - Version ULTRA améliorée
 const decodeHTML = (str: string): string => {
   if (!str) return '';
-  return str
-    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
-    .replace(/&eacute;/g, 'é')
-    .replace(/&egrave;/g, 'è')
-    .replace(/&ecirc;/g, 'ê')
-    .replace(/&euml;/g, 'ë')
-    .replace(/&agrave;/g, 'à')
-    .replace(/&acirc;/g, 'â')
-    .replace(/&icirc;/g, 'î')
-    .replace(/&iuml;/g, 'ï')
-    .replace(/&ocirc;/g, 'ô')
-    .replace(/&ugrave;/g, 'ù')
-    .replace(/&ucirc;/g, 'û')
-    .replace(/&ccedil;/g, 'ç')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+  
+  let decoded = String(str);
+  
+  // 1️⃣ Réparer TOUS les caractères UTF-8 mal encodés (priorité)
+const utf8Fixes: { [key: string]: string } = {
+  // Fixes pour les tirets et symboles spécifiques
+  'â€“': '-',  // <--- C'est cette ligne exacte qui corrige votre problème !
+  'â€”': '-',  // Tiret cadratin mal encodé
+  'â€"': '-',
+  'â€"/': '–',
+  
+  // Guilmets & symboles
+  'Â©': '©', 'Â¢': '¢', 'â„¢': '™',
+  'â€œ': '"', 'â€\u009d': '"', 'â€\u009c': '"',
+  'â€˜': "'", 'â€™': "'", 'â€\u0098': "'",
+  'â€•': '—', 'â€¢': '•', 'â€¦': '…', 'â€‹': '', 'â€›': '›',
+  'â€\u0082': '‚', 'â€ƒ': 'ƒ', 'â€„': '„',
+  'â€…': '…', 'â€†': '†', 'â€‡': '‡',
+  
+  // Caractères accentués mal encodés (minuscules)
+  'Ã©': 'é', 'Ã¡': 'á', 'Ã ': 'à', 'Ã¤': 'ä', 'Ã¥': 'å',
+  'Ã¨': 'è', 'Ã¢': 'â', 'Ã¾': 'þ',
+  'Ã¬': 'ì', 'Ã®': 'î', 'Ã¯': 'ï', 'Ã­': 'í',
+  'Ã²': 'ò', 'Ã´': 'ô', 'Ã¶': 'ö', 'Ã³': 'ó', 'Ãµ': 'õ',
+  'Ã¹': 'ù', 'Ã»': 'û', 'Ã¼': 'ü', 'Ãº': 'ú',
+  'Ã§': 'ç', 'Ã±': 'ñ',
+  'Ã¿': 'ÿ', 'Ã˜': 'Ø', 'Ã†': 'Æ',
+  
+  
+  // Majuscules
+  'Ã‰': 'É', 'Ã€': 'À', 'ÃŠ': 'Ê', 'Ã‹': 'Ë',
+  'ÃŒ': 'Ì', 'ÃŽ': 'Î',
+  'Ã"': 'Ó', 'Ã•': 'Õ', 'Ã–': 'Ö',
+  'Ã™': 'Ù', 'Ãš': 'Ú', 'Ã›': 'Û', 'Ãœ': 'Ü',
+  'Ã‡': 'Ç', 'Ãˆ': 'È',
+  
+
+
+  // Suppressions de résidus
+  'Â': '',
+  'Ã': ''
+};
+  
+  // Appliquer toutes les fixes
+  Object.keys(utf8Fixes).forEach(key => {
+    const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    decoded = decoded.replace(regex, utf8Fixes[key]);
+  });
+  
+  // 2️⃣ Décoder les entités numériques
+  decoded = decoded.replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+  
+  // 3️⃣ Décoder les entités HTML nommées (complètes)
+  const htmlEntities: { [key: string]: string } = {
+    '&eacute;': 'é', '&egrave;': 'è', '&ecirc;': 'ê', '&euml;': 'ë',
+    '&agrave;': 'à', '&acirc;': 'â', '&aring;': 'å',
+    '&icirc;': 'î', '&iuml;': 'ï',
+    '&ocirc;': 'ô', '&ouml;': 'ö',
+    '&ugrave;': 'ù', '&ucirc;': 'û', '&uuml;': 'ü',
+    '&ccedil;': 'ç',
+    '&Eacute;': 'É', '&Egrave;': 'È', '&Ecirc;': 'Ê', '&Euml;': 'Ë',
+    '&Agrave;': 'À', '&Acirc;': 'Â', '&Aring;': 'Å',
+    '&Icirc;': 'Î', '&Iuml;': 'Ï',
+    '&Ocirc;': 'Ô', '&Ouml;': 'Ö',
+    '&Ugrave;': 'Ù', '&Ucirc;': 'Û', '&Uuml;': 'Ü',
+    '&Ccedil;': 'Ç', '&Ntilde;': 'Ñ',
+    '&amp;': '&', '&quot;': '"', '&apos;': "'", '&lt;': '<', '&gt;': '>',
+    '&nbsp;': ' ',
+  };
+  
+  Object.keys(htmlEntities).forEach(entity => {
+    decoded = decoded.replace(new RegExp(entity, 'g'), htmlEntities[entity]);
+  });
+  
+  return decoded;
 };
 
 const CONTRATS = ['CDI', 'CDD', 'Saisonnier', 'Alternance', 'Stage', 'Mi-temps', 'Interim', 'Liberal'];
