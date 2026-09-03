@@ -4,7 +4,7 @@ import { Alert, StyleSheet, View } from 'react-native';
 
 import { getLangues, updateLangues } from "@/app/candidat/services/CVScreen";
 import { C } from './colors';
-import { Card, CheckItem, SectionSaveButton, SectionTitle } from './utils';
+import { Card, CheckItem, SectionSaveButton, SectionTitle, SectionWarning } from './utils';
 
 const LANGUAGES = ['Allemand', 'Anglais', 'Arabe', 'Chinois', 'Danois', 'Espagnol', 'Finnois', 'Français', 'Italien', 'Néerlandais', 'Norvégien', 'Polonais', 'Portugais', 'Russe'];
 const LANGUAGE_KEYS: Record<string, string> = {
@@ -93,6 +93,7 @@ export const LanguagesTab = ({ langues, setLangues }: LanguagesTabProps) => {
         </View>
       </Card>
 
+      <SectionWarning />
       <SectionSaveButton
         label={'Sauvegarder les langues'}
         onPress={handleSaveLangues}

@@ -2,30 +2,31 @@ import * as ImagePicker from 'expo-image-picker';
 import { Camera, Trash2, Upload } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 import {
-    getInformations,
-    updateInformations,
+  getInformations,
+  updateInformations,
 } from "@/app/candidat/services/CVScreen";
 import url from "@/app/services/url.js";
 import { DeleteImage, getImage, updateImage } from "../../services/document";
 import { C } from './colors';
 import {
-    Card,
-    InputField,
-    Label,
-    SectionSaveButton,
-    SectionTitle,
-    decodeHTML,
-    encodeForSave,
+  Card,
+  InputField,
+  Label,
+  SectionSaveButton,
+  SectionTitle,
+  SectionWarning,
+  decodeHTML,
+  encodeForSave,
 } from './utils';
 
 interface IdentityTabProps {
@@ -46,6 +47,21 @@ export const IdentityTab = ({
 
   const set = (key: string) => (v: string) =>
     setFormData((p: any) => ({ ...p, [key]: v }));
+
+  // Helper : Conversion Code API ("M"/"Mme") -> Libellé IHM ("Monsieur"/"Madame")
+  const formatCivilityFromApi = (civ: string | undefined): string => {
+    if (!civ) return 'Monsieur';
+    const cleanCiv = decodeHTML(civ).trim();
+    if (cleanCiv === 'Mme' || cleanCiv === 'Madame') return 'Madame';
+    if (cleanCiv === 'M' || cleanCiv === 'Mr' || cleanCiv === 'Monsieur') return 'Monsieur';
+    return cleanCiv;
+  };
+
+  // Helper : Conversion Libellé IHM ("Monsieur"/"Madame") -> Code API ("M"/"Mme")
+  const formatCivilityForApi = (civ: string): string => {
+    if (civ === 'Madame' || civ === 'Mme') return 'Mme';
+    return 'M';
+  };
 
   // 📱 Charger l'image de profil au montage
   useEffect(() => {
@@ -78,7 +94,7 @@ export const IdentityTab = ({
 
       setFormData((prev: any) => ({
         ...prev,
-        civility: decodeHTML(info.civilite ?? prev.civility),
+        civility: formatCivilityFromApi(info.civilite ?? prev.civility),
         firstName: decodeHTML(info.prenom ?? prev.firstName),
         lastName: decodeHTML(info.nom ?? prev.lastName),
         email: decodeHTML(info.email ?? prev.email),
@@ -128,9 +144,10 @@ export const IdentityTab = ({
   const handleSaveInformations = async () => {
     try {
       const codePostalValue = formData.postalCode ? Number(formData.postalCode) : 0;
+      const formattedCivility = formatCivilityForApi(formData.civility);
 
       await updateInformations(
-        encodeForSave(formData.civility),
+        encodeForSave(formattedCivility),
         encodeForSave(formData.firstName),
         encodeForSave(formData.lastName),
         encodeForSave(formData.email),
@@ -214,26 +231,23 @@ export const IdentityTab = ({
         <SectionTitle>{'Informations'}</SectionTitle>
 
         <Label>{'Civilité'}</Label>
-        <View style={{ gap: 8, marginBottom: 4 }}>
-          {['Monsieur', 'Madame'].map((opt) => (
-            <TouchableOpacity
-              key={opt}
-              style={[
-                styles.civilityBtn,
-                formData.civility === opt ? styles.civilityBtnActive : undefined,
-              ]}
-              onPress={() => setFormData((p: any) => ({ ...p, civility: opt }))}
-            >
-              <Text
-                style={[
-                  styles.civilityText,
-                  formData.civility === opt ? styles.civilityTextActive : undefined,
-                ]}
+        <View style={styles.radioRow}>
+          {['Monsieur', 'Madame'].map((opt) => {
+            const isSelected = formData.civility === opt;
+            return (
+              <TouchableOpacity
+                key={opt}
+                style={styles.radioOption}
+                activeOpacity={0.7}
+                onPress={() => setFormData((p: any) => ({ ...p, civility: opt }))}
               >
-                {opt}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <View style={[styles.radioOuterCircle, isSelected && styles.radioOuterCircleSelected]}>
+                  {isSelected && <View style={styles.radioInnerCircle} />}
+                </View>
+                <Text style={styles.radioText}>{opt}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <View style={styles.row}>
@@ -277,6 +291,7 @@ export const IdentityTab = ({
         <InputField value={formData.socialSecurity} onChangeText={set('socialSecurity')} />
       </Card>
 
+      <SectionWarning />
       <SectionSaveButton
         label={'Sauvegarder les informations'}
         onPress={handleSaveInformations}
@@ -336,15 +351,42 @@ const styles = StyleSheet.create({
     backgroundColor: C.accentDelete,
   },
   btnDeleteText: { color: C.deleteText, fontSize: 13, fontWeight: '500' },
-  civilityBtn: {
-    borderWidth: 1,
-    borderColor: C.borderLight,
-    backgroundColor: '#fff8f0',
-    borderRadius: 50,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+
+  // --- NOUVEAUX STYLES DES BOUTONS RADIO ---
+  radioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 24,
+    marginBottom: 12,
+    marginTop: 4,
   },
-  civilityBtnActive: { borderColor: C.blue, backgroundColor: C.accent },
-  civilityText: { fontSize: 14, color: C.textMuted },
-  civilityTextActive: { color: C.navy, fontWeight: '500' },
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  radioOuterCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: C.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.white,
+  },
+  radioOuterCircleSelected: {
+    borderColor: C.blue,
+  },
+  radioInnerCircle: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: C.blue,
+  },
+  radioText: {
+    fontSize: 14,
+    color: C.navy ?? '#1E293B',
+    fontWeight: '400',
+  },
 });

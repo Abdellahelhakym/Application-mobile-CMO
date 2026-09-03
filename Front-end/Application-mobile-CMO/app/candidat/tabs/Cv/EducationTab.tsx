@@ -1,3 +1,4 @@
+import { ChevronDown, GraduationCap, Plus, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -10,7 +11,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { ChevronDown, GraduationCap, Plus, Save, X } from 'lucide-react-native';
 
 import {
   addFormation,
@@ -25,6 +25,7 @@ import {
   InputField,
   Label,
   SectionSaveButton,
+  SectionWarning,
   decodeHTML,
   toYearNumber,
 } from './utils';
@@ -133,7 +134,14 @@ export const EducationTab = ({
         isNew: false,
       } as Education));
 
-      setEducation(mapped);
+      // Si aucune formation, afficher une boîte vide par défaut
+      if (mapped.length === 0) {
+        setEducation([
+          { id: Date.now(), school: '', degree: '', startMonth: '', startYear: '', endMonth: '', endYear: '', description: '', isNew: true },
+        ]);
+      } else {
+        setEducation(mapped);
+      }
     } catch (error) {
       console.log('Erreur chargement formations:', error);
     }
@@ -158,11 +166,29 @@ export const EducationTab = ({
     return true;
   };
 
-  const add = () =>
+  const add = () => {
+    // Vérifier que le dernier élément (le premier de la liste) a au moins les 2 premiers champs remplis
+    if (education.length > 0) {
+      const lastEdu = education[0];
+      const hasFirst2Fields = Boolean(
+        lastEdu.school?.trim() && 
+        lastEdu.degree?.trim()
+      );
+      
+      if (!hasFirst2Fields) {
+        Alert.alert(
+          'Complétez d\'abord',
+          'Veuillez remplir au minimum les 2 premiers champs (Établissement, Diplôme) de la dernière formation avant d\'en ajouter une nouvelle.'
+        );
+        return;
+      }
+    }
+
     setEducation((p) => [
       { id: Date.now(), school: '', degree: '', startMonth: '', startYear: '', endMonth: '', endYear: '', description: '', isNew: true },
       ...p,
     ]);
+  };
 
   const update = (id: number, key: keyof Education, value: string) =>
     setEducation((p) => p.map((e) => (e.id === id ? { ...e, [key]: value } : e)));
@@ -175,7 +201,19 @@ export const EducationTab = ({
         );
         if (!hasAnyField) continue;
 
-        if (!validateEducation(edu)) return;
+        // Vérifier que les 2 premiers champs sont remplis
+        const hasFirst2Fields = Boolean(
+          edu.school?.trim() && 
+          edu.degree?.trim()
+        );
+
+        if (!hasFirst2Fields) {
+          Alert.alert(
+            'Champs obligatoires',
+            'Veuillez remplir les 2 champs obligatoires (Établissement, Diplôme) pour chaque formation avant de sauvegarder.'
+          );
+          return;
+        }
 
         const anneeDebut = toYearNumber(edu.startYear);
         const anneeObtention = toYearNumber(edu.endYear);
@@ -223,6 +261,16 @@ export const EducationTab = ({
     }
   };
 
+  // Vérifier si le premier élément a les 2 premiers champs remplis
+  const isFirstEducationValid = () => {
+    if (education.length === 0) return true;
+    const firstEdu = education[0];
+    return Boolean(
+      firstEdu.school?.trim() && 
+      firstEdu.degree?.trim()
+    );
+  };
+
   return (
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
       {/* En-tête de section */}
@@ -236,6 +284,15 @@ export const EducationTab = ({
         <Plus size={20} color={C.blue} />
         <Text style={styles.mainAddBtnText}>Ajouter une formation</Text>
       </TouchableOpacity>
+
+      {/* Message d'avertissement si le dernier élément n'est pas valide */}
+      {education.length > 0 && !isFirstEducationValid() && (
+        <View style={styles.warningContainer}>
+          <Text style={styles.warningText}>
+           Veuillez remplir au minimum 2 champs (Établissement, Diplôme) de la dernière formation avant d'en ajouter une nouvelle.
+          </Text>
+        </View>
+      )}
 
       {/* Liste des formations */}
       {education.map((edu, index) => (
@@ -278,10 +335,6 @@ export const EducationTab = ({
           <InputField value={edu.description} onChangeText={(v) => update(edu.id, 'description', v)} placeholder="Détails supplémentaires..." multiline numberOfLines={2} />
 
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
-            <TouchableOpacity style={styles.btnUpdate} onPress={() => handleUpdateFormation(edu)}>
-              <Save size={16} color={C.white} />
-              <Text style={styles.btnUpdateText}>{'Mettre à jour'}</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.btnDelete} onPress={() => handleDeleteFormation(edu)}>
               <Text style={styles.btnDeleteText}>{'Supprimer'}</Text>
             </TouchableOpacity>
@@ -289,6 +342,7 @@ export const EducationTab = ({
         </Card>
       ))}
 
+      <SectionWarning />
       <SectionSaveButton
         label={'Sauvegarder la formation'}
         onPress={handleSaveFormations}
@@ -324,7 +378,20 @@ const styles = StyleSheet.create({
     color: C.blue,
     fontWeight: '600',
   },
-
+  warningContainer: {
+    backgroundColor: '#fef3c7',
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  warningText: {
+    fontSize: 13,
+    color: '#92400e',
+    fontWeight: '500',
+    lineHeight: 18,
+  },
   btnUpdate: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 50, backgroundColor: C.blue },
   btnUpdateText: { color: C.white, fontSize: 13, fontWeight: '500' },
   btnDelete: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 50, backgroundColor: C.accentDelete },

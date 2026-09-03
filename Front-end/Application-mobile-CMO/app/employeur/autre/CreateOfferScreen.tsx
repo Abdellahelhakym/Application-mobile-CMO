@@ -9,39 +9,70 @@ import {
   Alert,
   Platform,
   Modal,
-  Pressable
+  Pressable,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { getSecteur, getToutMobilite } from "@/app/candidat/services/CVScreen";
 import { createCommande } from '@/app/employeur/services/CreatOffesScreen';
 
-// 🔧 Décodage des entités HTML
+
 const decodeHTML = (str: string): string => {
   if (!str) return '';
-  return str
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
-    .replace(/&eacute;/g, 'é')
-    .replace(/&egrave;/g, 'è')
-    .replace(/&ecirc;/g, 'ê')
-    .replace(/&euml;/g, 'ë')
-    .replace(/&agrave;/g, 'à')
-    .replace(/&acirc;/g, 'â')
-    .replace(/&icirc;/g, 'î')
-    .replace(/&iuml;/g, 'ï')
-    .replace(/&ocirc;/g, 'ô')
-    .replace(/&ugrave;/g, 'ù')
-    .replace(/&ucirc;/g, 'û')
-    .replace(/&ccedil;/g, 'ç')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
-};
 
-// 📅 Formate un objet Date en chaîne "MM/DD/YYYY"
+  const entities: Record<string, string> = {
+    // Ponctuation et symboles
+    'ndash': '–',
+    'mdash': '—',
+    'rsquo': "'",
+    'lsquo': "'",
+    'nbsp': ' ',
+    'amp': '&',
+    'quot': '"',
+    'apos': "'",
+    'lt': '<',
+    'gt': '>',
+
+    // Accents minuscules
+    'agrave': 'à',
+    'aacute': 'á',
+    'acirc': 'â',
+    'auml': 'ä',
+    'egrave': 'è',
+    'eacute': 'é',
+    'ecirc': 'ê',
+    'euml': 'ë',
+    'icirc': 'î',
+    'iuml': 'ï',
+    'ocirc': 'ô',
+    'ugrave': 'ù',
+    'ucirc': 'û',
+    'ccedil': 'ç',
+
+    // Accents majuscules
+    'Agrave': 'À',
+    'Aacute': 'Á',
+    'Acirc': 'Â',
+    'Egrave': 'È',
+    'Eacute': 'É',
+    'Ecirc': 'Ê',
+    'Euml': 'Ë',
+    'Icirc': 'Î',
+    'Iuml': 'Ï',
+    'Ocirc': 'Ô',
+    'Ugrave': 'Ù',
+    'Ucirc': 'Û',
+    'Ccedil': 'Ç',
+  };
+
+  return str
+    // Entités numériques
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    // Entités nommées (recherche dynamique)
+    .replace(/&([a-zA-Z]+);/g, (match, entity) => entities[entity] || match);
+};
 const formatDate = (date: Date): string => {
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
@@ -49,7 +80,6 @@ const formatDate = (date: Date): string => {
   return `${mm}/${dd}/${yyyy}`;
 };
 
-// 📅 Parse une chaîne "MM/DD/YYYY" en objet Date
 const parseDate = (str: string): Date => {
   if (!str) return new Date();
   const [mm, dd, yyyy] = str.split('/').map(Number);
@@ -57,118 +87,94 @@ const parseDate = (str: string): Date => {
   return new Date(yyyy, mm - 1, dd);
 };
 
-const SelectPicker = ({
+const UniversalSelectPicker = ({
+  label,
   value,
   options,
   onChange,
-  placeholder = 'Sélectionner',
   error,
+  isMulti = false,
 }: {
+  label: string;
   value: string;
-  options: Array<{ label: string; value: string }>;
-  onChange: (v: string) => void;
-  placeholder?: string;
+  options: string[];
+  onChange: (value: string) => void;
   error?: string;
+  isMulti?: boolean;
 }) => {
-  const [open, setOpen] = useState(false);
-  const selectedOption = options.find(opt => opt.value === value);
-  const displayLabel = selectedOption ? decodeHTML(selectedOption.label) : placeholder;
-  
+  const [modalVisible, setModalVisible] = useState(false);
+
   return (
-    <View style={[styles.selectContainer, open && styles.selectContainerOpen]}>
-      <TouchableOpacity style={styles.selectBox} onPress={() => setOpen(!open)}>
-        <Text style={value ? styles.selectText : styles.selectPlaceholder} numberOfLines={1}>
-          {displayLabel}
+    <View style={styles.pickerWrapper}>
+      {label && <Text style={styles.label}>{label}</Text>}
+      <TouchableOpacity
+        style={styles.pickerButton}
+        onPress={() => setModalVisible(true)}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.pickerText, !value && styles.placeholderText]}>
+          {value || 'Sélectionner...'}
         </Text>
-        <Ionicons name={open ? "chevron-up" : "chevron-down"} size={16} color="#6b7280" />
+        <Ionicons name="chevron-down" size={18} color="#6b7280" />
       </TouchableOpacity>
-      {open ? (
-        <View style={styles.dropdownList}>
-          <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
-            {options.map((opt) => (
-              <TouchableOpacity
-                key={opt.value || '__empty__'}
-                style={[
-                  styles.dropdownItem,
-                  opt.value === value ? styles.dropdownItemActiveBg : undefined,
-                ]}
-                onPress={() => { onChange(opt.value); setOpen(false); }}
-              >
-                <Text style={[styles.dropdownItemText, opt.value === value ? styles.dropdownItemActive : undefined]}>
-                  {decodeHTML(opt.label)}
-                </Text>
+
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setModalVisible(false)}
+          />
+
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{label || 'Sélectionner'}</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={20} color="#6b7280" />
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+            </View>
+
+            <View style={styles.listWrapper}>
+              <FlatList
+                data={options}
+                keyExtractor={(_, index) => index.toString()}
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={true}
+                renderItem={({ item }) => {
+                  const isSelected = isMulti 
+                    ? value.split(',').includes(item) 
+                    : item === value;
+                  return (
+                    <TouchableOpacity
+                      style={[styles.optionItem, isSelected && styles.selectedOption]}
+                      onPress={() => {
+                        if (isMulti) {
+                          const vals = value ? value.split(',') : [];
+                          if (vals.includes(item)) {
+                            onChange(vals.filter(v => v !== item).join(','));
+                          } else {
+                            onChange([...vals, item].join(','));
+                          }
+                        } else {
+                          onChange(item);
+                          setModalVisible(false);
+                        }
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={[styles.optionText, isSelected && styles.selectedOptionText]}>
+                          {item === '' ? 'Aucun(e)' : item}
+                        </Text>
+                        {isSelected && <Ionicons name="checkmark" size={18} color="#2b5bbb" />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </View>
+          </View>
         </View>
-      ) : null}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </View>
-  );
-};
+      </Modal>
 
-const MultiSelectPicker = ({
-  value,
-  options,
-  onChange,
-  placeholder = 'Sélectionner',
-  error,
-}: {
-  value: string;
-  options: Array<{ label: string; value: string }>;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  error?: string;
-}) => {
-  const [open, setOpen] = useState(false);
-  const selectedValues = value ? value.split(',') : [];
-
-  const handleSelect = (itemValue: string) => {
-    let nextValues: string[];
-    if (selectedValues.includes(itemValue)) {
-      nextValues = selectedValues.filter(v => v !== itemValue);
-    } else {
-      nextValues = [...selectedValues, itemValue];
-    }
-    onChange(nextValues.join(','));
-  };
-
-  return (
-    <View style={[styles.selectContainer, open && styles.selectContainerOpen]}>
-      <TouchableOpacity style={styles.selectBox} onPress={() => setOpen(!open)}>
-        <Text style={value ? styles.selectText : styles.selectPlaceholder} numberOfLines={1}>
-          {value ? `Permis : ${value}` : placeholder}
-        </Text>
-        <Ionicons name={open ? "chevron-up" : "chevron-down"} size={16} color="#6b7280" />
-      </TouchableOpacity>
-      
-      {open ? (
-        <View style={styles.dropdownList}>
-          <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
-            {options.map((opt) => {
-              const isSelected = selectedValues.includes(opt.value);
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.dropdownItem,
-                    isSelected ? styles.dropdownItemActiveBg : undefined,
-                    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }
-                  ]}
-                  onPress={() => handleSelect(opt.value)}
-                >
-                  <Text style={[styles.dropdownItemText, isSelected ? styles.dropdownItemActive : undefined]}>
-                    {decodeHTML(opt.label)}
-                  </Text>
-                  {isSelected && (
-                    <Ionicons name="checkmark" size={18} color="#2b5bbb" />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      ) : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
@@ -196,49 +202,41 @@ export default function CreateOfferScreen() {
   };
 
   const [formData, setFormData] = useState(initialFormData);
-  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [sectorData, setSectorData] = useState<{ categories: any[]; subCategories: any[]; jobs: any[] }>({ categories: [], subCategories: [], jobs: [] });
   const [mobilites, setMobilites] = useState<any[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
-  const drivingLicenseOptions = [
-    { label: 'AM', value: 'AM' }, { label: 'A1', value: 'A1' }, { label: 'A2', value: 'A2' },
-    { label: 'A', value: 'A' }, { label: 'B1', value: 'B1' }, { label: 'B', value: 'B' },
-    { label: 'C1', value: 'C1' }, { label: 'C', value: 'C' }, { label: 'D1', value: 'D1' },
-    { label: 'BE', value: 'BE' }, { label: 'C1E', value: 'C1E' }, { label: 'CE', value: 'CE' },
-    { label: 'D1E', value: 'D1E' }, { label: 'DE', value: 'DE' },
-  ];
+  const drivingLicenseOptions = ['AM', 'A1', 'A2', 'A', 'B1', 'B', 'C1', 'C', 'D1', 'BE', 'C1E', 'CE', 'D1E', 'DE'];
 
   const handleChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCategorySelect = (categoryId: string) => {
-    const category = sectorData.categories.find(c => String(c.id_categorie ?? c.id) === String(categoryId));
+  const handleCategorySelect = (category: string) => {
+    const cat = sectorData.categories.find(c => c.titre === category);
     setFormData(prev => ({
       ...prev,
-      categoryId: categoryId,
-      category: category?.titre ?? '',
+      categoryId: String(cat?.id_categorie ?? cat?.id ?? ''),
+      category: category,
       subcategoryId: '', subcategory: '', jobId: '', jobTitle: ''
     }));
   };
 
-  const handleSubcategorySelect = (subcategoryId: string) => {
-    const subcategory = sectorData.subCategories.find(sc => String(sc.id_sous ?? sc.id) === String(subcategoryId));
+  const handleSubcategorySelect = (subcategory: string) => {
+    const sub = sectorData.subCategories.find(sc => sc.titre === subcategory);
     setFormData(prev => ({
       ...prev,
-      subcategoryId: subcategoryId,
-      subcategory: subcategory?.titre ?? '',
+      subcategoryId: String(sub?.id_sous ?? sub?.id ?? ''),
+      subcategory: subcategory,
       jobId: '', jobTitle: ''
     }));
   };
 
-  const handleJobSelect = (jobId: string) => {
-    const job = sectorData.jobs.find(j => String(j.id_metier ?? j.id) === String(jobId));
-    setFormData(prev => ({ ...prev, jobId: jobId, jobTitle: job?.titre ?? '' }));
+  const handleJobSelect = (job: string) => {
+    const j = sectorData.jobs.find(jb => jb.titre === job);
+    setFormData(prev => ({ ...prev, jobId: String(j?.id_metier ?? j?.id ?? ''), jobTitle: job }));
   };
 
   const handleSubmit = async () => {
@@ -308,9 +306,18 @@ export default function CreateOfferScreen() {
         const data = await getSecteur();
         if (!mounted) return;
         setSectorData({
-          categories: data?.secteurs ?? [],
-          subCategories: data?.sousCategories ?? [],
-          jobs: data?.metiers ?? [],
+          categories: (data?.secteurs ?? []).map((cat: any) => ({
+            ...cat,
+            titre: decodeHTML(cat.titre ?? ''),
+          })),
+          subCategories: (data?.sousCategories ?? []).map((sub: any) => ({
+            ...sub,
+            titre: decodeHTML(sub.titre ?? ''),
+          })),
+          jobs: (data?.metiers ?? []).map((job: any) => ({
+            ...job,
+            titre: decodeHTML(job.titre ?? ''),
+          })),
         });
       } catch (error) {
         console.error('loadSecteurs error', error);
@@ -327,7 +334,10 @@ export default function CreateOfferScreen() {
       try {
         const data = await getToutMobilite();
         if (!mounted) return;
-        setMobilites(Array.isArray(data) ? data : []);
+        const decoded = Array.isArray(data) 
+          ? data.map((m: any) => ({ ...m, titre: decodeHTML(m.titre ?? '') })) 
+          : [];
+        setMobilites(decoded);
       } catch (error) {
         console.error('loadMobilites error', error);
         if (mounted) setMobilites([]);
@@ -342,71 +352,35 @@ export default function CreateOfferScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.card}>
-        {Platform.OS === 'ios' ? (
-          <View>
-            <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowCategoryPicker(true)}>
-              <Text style={[styles.pickerTriggerText, !formData.category && styles.pickerPlaceholder]}>
-                {formData.category ? decodeHTML(formData.category) : 'Catégorie'}
-              </Text>
-              <Ionicons name="chevron-down" size={18} color="#7a8ab8" />
-            </TouchableOpacity>
+        <UniversalSelectPicker
+          label="Catégorie"
+          value={formData.category}
+          options={['', ...sectorData.categories.map(c => c.titre)]}
+          onChange={handleCategorySelect}
+          error={errors.categoryId}
+        />
 
-            <Modal visible={showCategoryPicker} transparent animationType="slide" onRequestClose={() => setShowCategoryPicker(false)}>
-              <Pressable style={styles.modalOverlay} onPress={() => setShowCategoryPicker(false)} />
-              <View style={styles.modalSheet}>
-                <View style={styles.modalHeader}>
-                  <TouchableOpacity onPress={() => setShowCategoryPicker(false)}>
-                    <Text style={styles.modalDone}>Terminer</Text>
-                  </TouchableOpacity>
-                </View>
-                <Picker selectedValue={formData.categoryId} onValueChange={(value) => handleCategorySelect(String(value))} style={styles.picker} itemStyle={styles.pickerItem}>
-                  <Picker.Item label="Catégorie" value="" />
-                  {sectorData.categories.map((c) => (
-                    <Picker.Item key={c.id_categorie ?? c.id} label={decodeHTML(c.titre)} value={String(c.id_categorie ?? c.id)} />
-                  ))}
-                </Picker>
-              </View>
-            </Modal>
-            {errors.categoryId ? <Text style={styles.errorText}>{errors.categoryId}</Text> : null}
-          </View>
-        ) : (
-          <View style={styles.pickerWrapper}>
-            <Picker selectedValue={formData.categoryId} onValueChange={(value) => handleCategorySelect(String(value))} style={styles.picker} mode="dropdown" itemStyle={styles.pickerItem}>
-              <Picker.Item label="Catégorie" value="" />
-              {sectorData.categories.map((c) => (
-                <Picker.Item key={c.id_categorie ?? c.id} label={decodeHTML(c.titre)} value={String(c.id_categorie ?? c.id)} />
-              ))}
-            </Picker>
-            {errors.categoryId ? <Text style={styles.errorText}>{errors.categoryId}</Text> : null}
-          </View>
-        )}
-
-        <SelectPicker
-          value={formData.subcategoryId}
-          options={[{ label: 'Sous-catégorie', value: '' }, ...filteredSubCategories.map(sc => ({ label: decodeHTML(sc.titre), value: String(sc.id_sous ?? sc.id) }))]}
-          onChange={(v) => handleSubcategorySelect(v)}
-          placeholder="Sous-catégorie"
+        <UniversalSelectPicker
+          label="Sous-catégorie"
+          value={formData.subcategory}
+          options={['', ...filteredSubCategories.map(sc => sc.titre)]}
+          onChange={handleSubcategorySelect}
           error={errors.subcategoryId}
         />
 
-        <SelectPicker
-          value={formData.jobId}
-          options={[{ label: 'Métier / Intitulé du poste', value: '' }, ...filteredJobs.map(j => ({ label: decodeHTML(j.titre), value: String(j.id_metier ?? j.id) }))]}
-          onChange={(v) => handleJobSelect(v)}
-          placeholder="Métier / Intitulé du poste"
+        <UniversalSelectPicker
+          label="Métier / Intitulé du poste"
+          value={formData.jobTitle}
+          options={['', ...filteredJobs.map(j => j.titre)]}
+          onChange={handleJobSelect}
           error={errors.jobId}
         />
 
-        <SelectPicker
+        <UniversalSelectPicker
+          label="Type de contrat"
           value={formData.jobType}
-          options={[
-            { label: 'Type de contrat', value: '' },
-            { label: 'CDI', value: 'CDI' },
-            { label: 'CDD', value: 'CDD' },
-            { label: 'Intérim', value: 'Interim' },
-          ]}
+          options={['', 'CDI', 'CDD', 'Interim']}
           onChange={(v) => handleChange('jobType', v)}
-          placeholder="Type de contrat"
           error={errors.jobType}
         />
 
@@ -457,61 +431,68 @@ export default function CreateOfferScreen() {
           </Modal>
         )}
 
-        <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowEndPicker(true)}>
-          <Text style={[styles.pickerTriggerText, !formData.endDate && styles.pickerPlaceholder]}>
-            {formData.endDate || 'Date fin (MM/DD/YYYY)'}
-          </Text>
-          <Ionicons name="calendar-outline" size={18} color="#7a8ab8" />
-        </TouchableOpacity>
-        {errors.endDate ? <Text style={styles.errorText}>{errors.endDate}</Text> : null}
+        {formData.jobType !== 'CDI' && (
+          <>
+            <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowEndPicker(true)}>
+              <Text style={[styles.pickerTriggerText, !formData.endDate && styles.pickerPlaceholder]}>
+                {formData.endDate || 'Date fin (MM/DD/YYYY)'}
+              </Text>
+              <Ionicons name="calendar-outline" size={18} color="#7a8ab8" />
+            </TouchableOpacity>
+            {errors.endDate ? <Text style={styles.errorText}>{errors.endDate}</Text> : null}
 
-        {showEndPicker && Platform.OS === 'android' && (
-          <DateTimePicker
-            value={parseDate(formData.endDate)}
-            mode="date"
-            display="default"
-            textColor="#1b2d5a"
-            accentColor="#2b5bbb"
-            onChange={(event, selectedDate) => {
-              setShowEndPicker(false);
-              if (event.type === 'dismissed') return;
-              if (selectedDate) handleChange('endDate', formatDate(selectedDate));
-            }}
-          />
-        )}
-
-        {Platform.OS === 'ios' && (
-          <Modal visible={showEndPicker} transparent animationType="slide" onRequestClose={() => setShowEndPicker(false)}>
-            <Pressable style={styles.modalOverlay} onPress={() => setShowEndPicker(false)} />
-            <View style={styles.modalSheet}>
-              <View style={styles.modalHeader}>
-                <TouchableOpacity onPress={() => setShowEndPicker(false)}>
-                  <Text style={styles.modalDone}>Terminer</Text>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker 
-                value={parseDate(formData.endDate)} 
-                mode="date" 
-                display="inline" 
-                themeVariant="light"
+            {showEndPicker && Platform.OS === 'android' && (
+              <DateTimePicker
+                value={parseDate(formData.endDate)}
+                mode="date"
+                display="default"
                 textColor="#1b2d5a"
                 accentColor="#2b5bbb"
                 onChange={(event, selectedDate) => {
+                  setShowEndPicker(false);
+                  if (event.type === 'dismissed') return;
                   if (selectedDate) handleChange('endDate', formatDate(selectedDate));
-                }} 
+                }}
               />
-            </View>
-          </Modal>
+            )}
+
+            {Platform.OS === 'ios' && (
+              <Modal visible={showEndPicker} transparent animationType="slide" onRequestClose={() => setShowEndPicker(false)}>
+                <Pressable style={styles.modalOverlay} onPress={() => setShowEndPicker(false)} />
+                <View style={styles.modalSheet}>
+                  <View style={styles.modalHeader}>
+                    <TouchableOpacity onPress={() => setShowEndPicker(false)}>
+                      <Text style={styles.modalDone}>Terminer</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker 
+                    value={parseDate(formData.endDate)} 
+                    mode="date" 
+                    display="inline" 
+                    themeVariant="light"
+                    textColor="#1b2d5a"
+                    accentColor="#2b5bbb"
+                    onChange={(event, selectedDate) => {
+                      if (selectedDate) handleChange('endDate', formatDate(selectedDate));
+                    }} 
+                  />
+                </View>
+              </Modal>
+            )}
+          </>
         )}
 
         <TextInput style={styles.input} placeholder="Adresse" placeholderTextColor="#7a8ab8" value={formData.address} onChangeText={(v) => handleChange('address', v)} />
         {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
 
-        <SelectPicker
-          value={formData.mobility}
-          options={[{ label: 'Mobilité', value: '' }, ...mobilites.map((item) => ({ label: decodeHTML(item.titre), value: String(item.id) }))]}
-          onChange={(v) => handleChange('mobility', v)}
-          placeholder="Mobilité"
+        <UniversalSelectPicker
+          label="Mobilité"
+          value={selectedMobilityText}
+          options={['', ...mobilites.map(m => m.titre)]}
+          onChange={(v) => {
+            const mob = mobilites.find(m => m.titre === v);
+            handleChange('mobility', String(mob?.id ?? ''));
+          }}
           error={errors.mobility}
         />
 
@@ -521,15 +502,22 @@ export default function CreateOfferScreen() {
         <TextInput style={styles.input} placeholder="Salaire" placeholderTextColor="#7a8ab8" value={formData.salary} onChangeText={(v) => handleChange('salary', v)} keyboardType="numeric" />
         {errors.salary ? <Text style={styles.errorText}>{errors.salary}</Text> : null}
 
-        <SelectPicker
+        <UniversalSelectPicker
+          label="Logement"
           value={formData.housing}
-          options={[{ label: 'Logement', value: '' }, { label: 'Oui', value: 'oui' }, { label: 'Non', value: 'non' }]}
+          options={['', 'Oui', 'Non']}
           onChange={(v) => handleChange('housing', v)}
-          placeholder="Logement"
           error={errors.housing}
         />
 
-        <MultiSelectPicker value={formData.drivingLicense} options={drivingLicenseOptions} onChange={(v) => handleChange('drivingLicense', v)} placeholder="Permis" error={errors.drivingLicense} />
+        <UniversalSelectPicker
+          label="Permis"
+          value={formData.drivingLicense}
+          options={['', ...drivingLicenseOptions]}
+          onChange={(v) => handleChange('drivingLicense', v)}
+          isMulti={true}
+          error={errors.drivingLicense}
+        />
 
         <TextInput style={styles.textarea} placeholder="Description" placeholderTextColor="#7a8ab8" multiline value={formData.description} onChangeText={(v) => handleChange('description', v)} />
         {errors.description ? <Text style={styles.errorText}>{errors.description}</Text> : null}
@@ -543,20 +531,188 @@ export default function CreateOfferScreen() {
 
       <View style={styles.card}>
         <Text style={styles.subtitle}>Récapitulatif</Text>
-        <Text>Catégorie : {decodeHTML(formData.category)}</Text>
-        <Text>Sous-catégorie : {decodeHTML(formData.subcategory)}</Text>
-        <Text>Métier : {decodeHTML(formData.jobTitle)}</Text>
-        <Text>Contrat : {formData.jobType}</Text>
-        <Text>Date début : {formData.startDate}</Text>
-        <Text>Date fin : {formData.endDate}</Text>
-        <Text>Adresse : {formData.address}</Text>
-        <Text>Mobilité : {decodeHTML(selectedMobilityText)}</Text>
-        <Text>Postes : {formData.positions}</Text>
-        <Text>Salaire : {formData.salary}</Text>
-        <Text>Logement : {formData.housing}</Text>
-        <Text>Permis : {formData.drivingLicense}</Text>
-        <Text>Description : {formData.description}</Text>
-        <Text>Commentaires : {formData.comments}</Text>
+        
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Catégorie :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{decodeHTML(formData.category) || '-'}</Text>
+            {formData.category && (
+              <TouchableOpacity onPress={() => handleCategorySelect('')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Sous-catégorie :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{decodeHTML(formData.subcategory) || '-'}</Text>
+            {formData.subcategory && (
+              <TouchableOpacity onPress={() => handleSubcategorySelect('')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Métier :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{decodeHTML(formData.jobTitle) || '-'}</Text>
+            {formData.jobTitle && (
+              <TouchableOpacity onPress={() => handleJobSelect('')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Contrat :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{decodeHTML(formData.jobType) || '-'}</Text>
+            {formData.jobType && (
+              <TouchableOpacity onPress={() => handleChange('jobType', '')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Date début :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{formData.startDate || '-'}</Text>
+            {formData.startDate && (
+              <TouchableOpacity onPress={() => handleChange('startDate', '')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Date fin :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{formData.endDate || '-'}</Text>
+            {formData.endDate && (
+              <TouchableOpacity onPress={() => handleChange('endDate', '')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Adresse :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{decodeHTML(formData.address) || '-'}</Text>
+            {formData.address && (
+              <TouchableOpacity onPress={() => handleChange('address', '')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Mobilité :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{decodeHTML(selectedMobilityText) || '-'}</Text>
+            {selectedMobilityText && (
+              <TouchableOpacity onPress={() => handleChange('mobility', '')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Postes :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{decodeHTML(formData.positions) || '-'}</Text>
+            {formData.positions && (
+              <TouchableOpacity onPress={() => handleChange('positions', '')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Salaire :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{decodeHTML(formData.salary) || '-'}</Text>
+            {formData.salary && (
+              <TouchableOpacity onPress={() => handleChange('salary', '')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Logement :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{decodeHTML(formData.housing) || '-'}</Text>
+            {formData.housing && (
+              <TouchableOpacity onPress={() => handleChange('housing', '')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Permis :</Text>
+          <View style={styles.recapValueContainer}>
+            {formData.drivingLicense ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', flex: 1 }}>
+                {formData.drivingLicense.split(',').map((license, idx) => (
+                  <View key={idx} style={styles.permisTag}>
+                    <Text style={styles.permisTagText}>{decodeHTML(license)}</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const vals = formData.drivingLicense.split(',').filter(v => v !== license);
+                        handleChange('drivingLicense', vals.join(','));
+                      }}
+                      style={styles.permisTagClose}
+                    >
+                      <Ionicons name="close-circle" size={14} color="#dc2626" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.recapValue}>-</Text>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Description :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{decodeHTML(formData.description) || '-'}</Text>
+            {formData.description && (
+              <TouchableOpacity onPress={() => handleChange('description', '')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.recapRow}>
+          <Text style={styles.recapLabel}>Commentaires :</Text>
+          <View style={styles.recapValueContainer}>
+            <Text style={styles.recapValue}>{decodeHTML(formData.comments) || '-'}</Text>
+            {formData.comments && (
+              <TouchableOpacity onPress={() => handleChange('comments', '')} style={styles.recapDeleteBtn}>
+                <Ionicons name="close-circle" size={18} color="#dc2626" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
       </View>
     </ScrollView>
   );
@@ -566,30 +722,43 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#eef3ff' },
   content: { paddingBottom: 120 },
   card: { backgroundColor: '#fff', margin: 10, padding: 15, borderRadius: 20 },
-  subtitle: { fontSize: 16, fontWeight: 'bold', color: '#1b2d5a' },
+  subtitle: { fontSize: 16, fontWeight: 'bold', color: '#1b2d5a', marginBottom: 16 },
+  
   pickerTrigger: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 16, marginTop: 10, backgroundColor: '#f6f8ff', minHeight: 56, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pickerTriggerText: { color: '#1b2d5a' },
   pickerPlaceholder: { color: '#9ca3af' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', padding: 20 },
   modalSheet: { backgroundColor: '#ffffff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 30, paddingHorizontal: 10 },
-  modalHeader: { paddingHorizontal: 16, paddingVertical: 14, alignItems: 'flex-end', borderBottomWidth: 1, borderBottomColor: '#e7edf7' },
+  modalHeader: { paddingHorizontal: 16, paddingVertical: 14, alignItems: 'flex-end', borderBottomWidth: 1, borderBottomColor: '#e7edf7', flexDirection: 'row', justifyContent: 'space-between' },
   modalDone: { color: '#2b5bbb', fontWeight: '600', fontSize: 16 },
-  pickerWrapper: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 16, marginTop: 10, overflow: 'hidden', backgroundColor: '#f6f8ff', height: Platform.OS === 'android' ? 56 : 48, justifyContent: 'center' },
-  selectContainer: { position: 'relative', zIndex: 1 },
-  selectContainerOpen: { zIndex: 10 },
-  selectBox: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 16, marginTop: 10, paddingHorizontal: 16, height: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f6f8ff' },
-  selectText: { fontSize: 14, color: '#1b2d5a', flex: 1 },
-  selectPlaceholder: { fontSize: 14, color: '#9ca3af', flex: 1 },
-  dropdownList: { position: 'absolute', top: 56, left: 0, right: 0, zIndex: 20, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 12, backgroundColor: '#fff', maxHeight: 200, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-  dropdownItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  dropdownItemText: { fontSize: 14, color: '#374151' },
-  dropdownItemActiveBg: { backgroundColor: '#eef3ff' },
-  dropdownItemActive: { color: '#2b5bbb', fontWeight: '600' },
-  picker: { height: Platform.OS === 'ios' ? 216 : 56, width: '100%', paddingHorizontal: 16, color: '#1b2d5a' },
-  pickerItem: { color: '#1b2d5a', fontSize: 16 },
+  
+  pickerWrapper: { marginBottom: 4, marginTop: 10 },
+  label: { fontSize: 13, color: '#6b7280', marginBottom: 4 },
+  pickerButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#FFFFFF' },
+  pickerText: { fontSize: 14, color: '#1E293B' },
+  placeholderText: { color: '#94A3B8' },
+  
+  modalContent: { backgroundColor: '#FFFFFF', borderRadius: 12, height: 350, padding: 16, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
+  modalTitle: { fontSize: 16, fontWeight: '600', color: '#1b2d5a' },
+  listWrapper: { flex: 1 },
+  optionItem: { paddingVertical: 12, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+  selectedOption: { backgroundColor: '#F1F5F9', borderRadius: 6 },
+  optionText: { fontSize: 14, color: '#334155' },
+  selectedOptionText: { fontWeight: '600', color: '#2b5bbb' },
+  
   input: { borderWidth: 1, borderColor: '#cfd9ee', padding: 12, borderRadius: 20, marginTop: 10, color: '#1b2d5a' },
   textarea: { borderWidth: 1, borderColor: '#cfd9ee', padding: 12, borderRadius: 20, marginTop: 10, height: 100, textAlignVertical: 'top', color: '#1b2d5a' },
   submitBtn: { backgroundColor: '#3a4f8f', padding: 12, borderRadius: 20, alignItems: 'center', marginTop: 15 },
   submitText: { color: '#fff' },
   errorText: { marginTop: 6, marginLeft: 6, fontSize: 12, color: '#dc2626' },
+  
+  recapRow: { marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 8 },
+  recapLabel: { fontSize: 13, fontWeight: '600', color: '#1b2d5a', marginBottom: 4 },
+  recapValueContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  recapValue: { fontSize: 13, color: '#475569', flex: 1 },
+  recapDeleteBtn: { marginLeft: 8, padding: 4 },
+  permisTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, marginRight: 6, marginBottom: 6 },
+  permisTagText: { fontSize: 12, color: '#2b5bbb', fontWeight: '600', marginRight: 4 },
+  permisTagClose: { padding: 2 },
 });

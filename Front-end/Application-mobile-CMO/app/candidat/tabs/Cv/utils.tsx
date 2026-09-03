@@ -1,12 +1,12 @@
 import { Check, Save } from 'lucide-react-native';
 import React from 'react';
 import {
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { C } from './colors';
 
@@ -28,16 +28,34 @@ export const decodeHTML = (value: unknown): string => {
     console.log('Erreur décodage UTF-8:', error);
   }
 
+  // Décoder les entités numériques (décimales et hexadécimales)
   str = str.replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)));
   str = str.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
 
+  // Dictionnaire des entités HTML (Minuscules & Majuscules)
   const htmlEntities: Record<string, string> = {
-    '&eacute;': 'é', '&egrave;': 'è', '&ecirc;': 'ê', '&agrave;': 'à', '&acirc;': 'â',
-    '&ocirc;': 'ô', '&ù': 'ù', '&ucirc;': 'û', '&ccedil;': 'ç', '&amp;': '&',
-    '&quot;': '"', '&apos;': "'", '&#039;': "'", '&lt;': '<', '&gt;': '>',
-    '&nbsp;': ' ', '&ensp;': ' ', '&emsp;': ' ',
+    // Minuscules
+    '&eacute;': 'é', '&egrave;': 'è', '&ecirc;': 'ê', '&euml;': 'ë',
+    '&agrave;': 'à', '&acirc;': 'â', '&auml;': 'ä',
+    '&icirc;': 'î', '&iuml;': 'ï',
+    '&ocirc;': 'ô', '&ouml;': 'ö',
+    '&ù': 'ù', '&ucirc;': 'û', '&uuml;': 'ü',
+    '&ccedil;': 'ç',
+
+    // Majuscules (ex: Île-de-France)
+    '&Eacute;': 'É', '&Egrave;': 'È', '&Ecirc;': 'Ê', '&Euml;': 'Ë',
+    '&Agrave;': 'À', '&Acirc;': 'Â', '&Auml;': 'Ä',
+    '&Icirc;': 'Î', '&Iuml;': 'Ï',
+    '&Ocirc;': 'Ô', '&Ouml;': 'Ö',
+    '&Ucirc;': 'Û', '&Uuml;': 'Ü',
+    '&Ccedil;': 'Ç',
+
+    // Symboles & espaces
+    '&amp;': '&', '&quot;': '"', '&apos;': "'", '&#039;': "'",
+    '&lt;': '<', '&gt;': '>', '&nbsp;': ' ', '&ensp;': ' ', '&emsp;': ' ',
   };
-  
+
+  // Remplacement global de toutes les entités
   Object.entries(htmlEntities).forEach(([entity, char]) => {
     str = str.split(entity).join(char);
   });
@@ -92,6 +110,14 @@ export const InputField = ({
 
 export const Card = ({ children, style }: { children: React.ReactNode; style?: object }) => (
   <View style={[styles.card, style]}>{children}</View>
+);
+
+export const SectionWarning = () => (
+  <View style={styles.warningContainer}>
+    <Text style={styles.warningText}>
+      Attention, vos modifications ne sont pas enregistrées si vous ne cliquez pas sur le bouton [ sauvegarder ]
+    </Text>
+  </View>
 );
 
 export const SectionSaveButton = ({ label, onPress }: { label: string; onPress: () => void }) => (
@@ -304,6 +330,21 @@ const styles = StyleSheet.create({
   checkboxChecked: { backgroundColor: C.blueDark, borderColor: C.blueDark },
   checkLabel: { fontSize: 13, color: C.gray700, flex: 1 },
   checkLabelActive: { color: C.navy, fontWeight: '500' },
+  warningContainer: {
+    backgroundColor: '#fee2e2',
+    borderLeftWidth: 4,
+    borderLeftColor: C.red,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  warningText: {
+    fontSize: 13,
+    color: C.red,
+    fontWeight: '500',
+    lineHeight: 18,
+  },
   saveContainer: { marginTop: 8, paddingBottom: 8 },
   saveBtn: {
     backgroundColor: C.blueDark,

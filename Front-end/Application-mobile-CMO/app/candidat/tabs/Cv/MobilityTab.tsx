@@ -1,3 +1,4 @@
+import { ChevronDown, MapPin, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { MapPin, ChevronDown, X } from 'lucide-react-native';
 
 import {
   getMobiliteUser,
@@ -24,6 +24,7 @@ import {
   InputField,
   SectionSaveButton,
   SectionTitle,
+  SectionWarning,
   decodeHTML,
   encodeForSave,
 } from './utils';
@@ -32,6 +33,9 @@ import {
 const EDUCATION_LEVELS = ['', 'Niveau Bac', 'Bac', 'Bac +2', 'Bac +3', 'Bac +5', 'Bac+7'];
 const EXPERIENCE_LEVELS = ['', "Moins d'1 an", 'Entre 1 et 2 ans', 'Entre 3 et 5 ans', 'Entre 5 et 10 ans', 'plus de 10 ans'];
 const CONTRACT_OPTIONS = ['', 'CDD', 'CDI', 'SAISONIER', 'ALTERNANCE', 'STAGE', 'MI-TEMPS', 'INTERIM', 'LIBERAL'];
+
+// Valeur par défaut pour la mobilité
+const DEFAULT_MOBILITY_ZONE = 'Toute la France';
 
 interface MobiliteOption {
   id: number;
@@ -74,7 +78,7 @@ const UniversalSelectPicker = ({
 
       <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          {/* Ferme le menu en cliquant à l'extérieur sans interférer avec le scroll */}
+          {/* Ferme le menu en cliquant à l'extérieur */}
           <Pressable
             style={StyleSheet.absoluteFill}
             onPress={() => setModalVisible(false)}
@@ -141,7 +145,7 @@ export const MobilityTab = ({
     loadMobilityData();
   }, []);
 
-  const loadMobilityData = async () => {
+ const loadMobilityData = async () => {
     try {
       setLoading(true);
       const [tout, user] = await Promise.all([
@@ -157,22 +161,37 @@ export const MobilityTab = ({
           titre: decodeHTML(item?.titre ?? ''),
         }));
 
+      // --- TRI : Placer "Toute la france" / "Toute la France" tout en haut ---
+      decodedOptions.sort((a, b) => {
+        const titleA = a.titre.trim().toLowerCase();
+        const titleB = b.titre.trim().toLowerCase();
+        
+        if (titleA.includes('toute la france')) return -1;
+        if (titleB.includes('toute la france')) return 1;
+        return titleA.localeCompare(titleB); // Tri alphabétique pour le reste des régions
+      });
+
       setMobilityOptions(decodedOptions);
 
       const userMobilite = user?.mobilite?.[0];
       const disponibiliteValue = user?.disponibilite;
       const disponibiliteChoice = disponibiliteValue === 1 || disponibiliteValue === '1' ? 'Oui' : 'Non';
 
-      setFormData((prev: any) => ({
-        ...prev,
-        mobilityZone: decodeHTML(userMobilite?.region ?? '') || prev.mobilityZone,
-        educationLevel: decodeHTML(user?.niveau_etude ?? '') || prev.educationLevel,
-        experienceLevel: decodeHTML(user?.experience ?? '') || prev.experienceLevel,
-        contract1: decodeHTML(user?.contrat_prefere1 ?? '') || prev.contract1,
-        contract2: decodeHTML(user?.contrat_prefere2 ?? '') || prev.contract2,
-        availabilityChoice: disponibiliteChoice,
-        availabilityDate: user?.date_disponibilite ?? prev.availabilityDate,
-      }));
+      setFormData((prev: any) => {
+        const userRegion = decodeHTML(userMobilite?.region ?? '');
+        const defaultZone = userRegion || prev.mobilityZone || DEFAULT_MOBILITY_ZONE;
+
+        return {
+          ...prev,
+          mobilityZone: defaultZone,
+          educationLevel: decodeHTML(user?.niveau_etude ?? '') || prev.educationLevel,
+          experienceLevel: decodeHTML(user?.experience ?? '') || prev.experienceLevel,
+          contract1: decodeHTML(user?.contrat_prefere1 ?? '') || prev.contract1,
+          contract2: decodeHTML(user?.contrat_prefere2 ?? '') || prev.contract2,
+          availabilityChoice: disponibiliteChoice,
+          availabilityDate: user?.date_disponibilite ?? prev.availabilityDate,
+        };
+      });
     } catch (error) {
       console.log('Erreur chargement mobilité:', error);
       Alert.alert('Erreur', 'Impossible de charger les données de mobilité.');
@@ -180,13 +199,15 @@ export const MobilityTab = ({
       setLoading(false);
     }
   };
-
   const handleSaveMobilite = async () => {
     try {
       const disponibiliteValue = formData.availabilityChoice === 'Oui' ? 1 : 0;
+      
+      // Recherche de l'option sélectionnée dans la liste (comparaison insensible à la casse)
       const selectedMobilite = mobilityOptions.find(
-        (item) => decodeHTML(item.titre) === formData.mobilityZone
+        (item) => item.titre.trim().toLowerCase() === (formData.mobilityZone ?? '').trim().toLowerCase()
       );
+      
       const mobiliteId = selectedMobilite?.id ?? null;
 
       await updateMobilite(
@@ -282,6 +303,7 @@ export const MobilityTab = ({
         )}
       </Card>
 
+      <SectionWarning />
       <SectionSaveButton
         label={'Sauvegarder la mobilité'}
         onPress={handleSaveMobilite}
@@ -324,7 +346,7 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    height: 350, // Hauteur fixe stricte pour forcer le scroll interne de la FlatList
+    height: 350,
     padding: 16,
     elevation: 5,
     shadowColor: '#000',

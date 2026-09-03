@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   RefreshControl,
 } from 'react-native';
 
-import { Phone, MessageSquare, ChevronDown, Eye, Download } from 'lucide-react-native';
+import { ChevronDown, Eye, Download } from 'lucide-react-native';
 import { Feather } from '@expo/vector-icons'; 
 import { useRouter } from 'expo-router'; 
 import * as WebBrowser from 'expo-web-browser';
@@ -335,238 +335,246 @@ export default function MyOffersScreen() {
           />
         }
       >
-        {/* ➕ BOUTON CRÉER UNE COMMANDE */}
-        <TouchableOpacity 
-          style={styles.createButton} 
-          onPress={() => router.push("/employeur/autre/CreateOfferScreen")}
-        >
-          <Feather name="plus" size={20} color="#fff" />
-          <Text style={styles.createButtonText}>Créer une commande</Text>
-        </TouchableOpacity>
-
-        {/* TABS */}
-        <View style={styles.tabs}>
-          {['commands', 'quotes'].map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tab as any)}
-              style={[
-                styles.tab,
-                activeTab === tab && styles.tabActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === tab && styles.tabTextActive,
-                ]}
-              >
-                {tab === 'commands' ? 'COMMANDES' : 'DEVIS'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        {/* 📦 SECTION 1 : CRÉATION DE COMMANDE */}
+        <View style={styles.createSectionCard}>
+          <Text style={styles.sectionTitle}>Nouvelle commande</Text>
+          <TouchableOpacity 
+            style={styles.createButton} 
+            onPress={() => router.push("/employeur/autre/CreateOfferScreen")}
+          >
+            <Feather name="plus" size={20} color="#fff" />
+            <Text style={styles.createButtonText}>Créer une commande</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* TABLE */}
-        <View style={styles.tableCard}>
-          <View style={styles.tableControls}>
-            <Text style={styles.smallText}>Afficher</Text>
-            <View>
+        {/* 📦 SECTION 2 : AFFICHAGE & LISTING (COMMANDES / DEVIS) */}
+        <View style={styles.displaySectionCard}>
+          <Text style={styles.sectionTitle}>Mes Offres & Devis</Text>
+          
+          {/* TABS */}
+          <View style={styles.tabs}>
+            {['commands', 'quotes'].map((tab) => (
               <TouchableOpacity
-                style={styles.select}
-                onPress={() => setEntriesOpen((prev) => !prev)}
+                key={tab}
+                onPress={() => setActiveTab(tab as any)}
+                style={[
+                  styles.tab,
+                  activeTab === tab && styles.tabActive,
+                ]}
               >
-                <Text style={styles.smallText}>
-                  {entriesOptions.find((opt) => opt.value === entriesValue)?.label}
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === tab && styles.tabTextActive,
+                  ]}
+                >
+                  {tab === 'commands' ? 'COMMANDES' : 'DEVIS'}
                 </Text>
-                <ChevronDown size={16} />
               </TouchableOpacity>
-              {entriesOpen ? (
-                <View style={styles.selectMenu}>
-                  {entriesOptions.map((opt) => (
-                    <TouchableOpacity
-                      key={opt.value}
-                      style={styles.selectItem}
-                      onPress={() => {
-                        setEntriesValue(opt.value);
-                        setEntriesOpen(false);
-                      }}
-                    >
-                      <Text style={styles.selectItemText}>{opt.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ) : null}
+            ))}
+          </View>
+
+          {/* TABLE */}
+          <View style={styles.tableCard}>
+            <View style={styles.tableControls}>
+              <Text style={styles.smallText}>Afficher</Text>
+              <View>
+                <TouchableOpacity
+                  style={styles.select}
+                  onPress={() => setEntriesOpen((prev) => !prev)}
+                >
+                  <Text style={styles.smallText}>
+                    {entriesOptions.find((opt) => opt.value === entriesValue)?.label}
+                  </Text>
+                  <ChevronDown size={16} />
+                </TouchableOpacity>
+                {entriesOpen ? (
+                  <View style={styles.selectMenu}>
+                    {entriesOptions.map((opt) => (
+                      <TouchableOpacity
+                        key={opt.value}
+                        style={styles.selectItem}
+                        onPress={() => {
+                          setEntriesValue(opt.value);
+                          setEntriesOpen(false);
+                        }}
+                      >
+                        <Text style={styles.selectItemText}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+              <Text style={styles.smallText}>entrées</Text>
             </View>
-            <Text style={styles.smallText}>entrées</Text>
-          </View>
 
-          <View style={styles.searchRow}>
-            <Text style={styles.smallText}>Rechercher :</Text>
-            <TextInput style={styles.input} />
-          </View>
+            <View style={styles.searchRow}>
+              <Text style={styles.smallText}>Rechercher :</Text>
+              <TextInput style={styles.input} />
+            </View>
 
-          {loading ? (
-            <ActivityIndicator size="small" color="#2b5bbb" />
-          ) : data.length === 0 ? (
-            <Text style={styles.empty}>
-              Affichage de 0 à 0 sur 0 entrées
-            </Text>
-          ) : (
-            <View>
-              <View style={styles.verticalTableContainer}>
-                {displayedData.map((row, rowIndex) => {
-                  const rowUniqueKey = activeTab === 'quotes' 
-                    ? `quote-${row?.id_devis || row?.id || rowIndex}`
-                    : `command-${row?.id_fiche_poste || rowIndex}`;
+            {loading ? (
+              <ActivityIndicator size="small" color="#2b5bbb" />
+            ) : data.length === 0 ? (
+              <Text style={styles.empty}>
+                Affichage de 0 à 0 sur 0 entrées
+              </Text>
+            ) : (
+              <View>
+                <View style={styles.verticalTableContainer}>
+                  {displayedData.map((row, rowIndex) => {
+                    const rowUniqueKey = activeTab === 'quotes' 
+                      ? `quote-${row?.id_devis || row?.id || rowIndex}`
+                      : `command-${row?.id_fiche_poste || rowIndex}`;
 
-                  return (
-                    <View key={rowUniqueKey} style={styles.verticalCard}>
-                      {columns.map((col, colIndex) => {
-                        let value = row?.[col.key];
-                        if (col.key === 'id' && activeTab === 'quotes') {
-                          value = row?.id_fiche_poste;
-                        }
+                    return (
+                      <View key={rowUniqueKey} style={styles.verticalCard}>
+                        {columns.map((col, colIndex) => {
+                          let value = row?.[col.key];
+                          if (col.key === 'id' && activeTab === 'quotes') {
+                            value = row?.id_fiche_poste;
+                          }
 
-                        const cellKey = `${rowUniqueKey}-col-${col.key || colIndex}`;
+                          const cellKey = `${rowUniqueKey}-col-${col.key || colIndex}`;
 
-                        // 🏷️ Rendu personnalisé du statut avec la couleur dynamique
-                        if (col.key === 'statut_fiche' || (col.key === 'statut' && activeTab === 'quotes')) {
-                          const statusId = row?.statut ?? row?.statut_fiche ?? value;
-                          const statusInfo = getStatusInfo(statusId);
-                          const badgeTheme = getBadgeStyles(statusInfo.couleur);
+                          // 🏷️ Rendu personnalisé du statut avec la couleur dynamique
+                          if (col.key === 'statut_fiche' || (col.key === 'statut' && activeTab === 'quotes')) {
+                            const statusId = row?.statut ?? row?.statut_fiche ?? value;
+                            const statusInfo = getStatusInfo(statusId);
+                            const badgeTheme = getBadgeStyles(statusInfo.couleur);
 
-                          return (
-                            <View key={cellKey} style={styles.verticalRow}>
-                              <Text style={styles.verticalLabel}>{col.label}</Text>
-                              <View
-                                style={[
-                                  styles.statusBadge,
-                                  { backgroundColor: badgeTheme.bg, borderColor: badgeTheme.border },
-                                ]}
-                              >
-                                <Text style={[styles.statusBadgeText, { color: badgeTheme.text }]}>
-                                  {statusInfo.titre}
-                                </Text>
-                              </View>
-                            </View>
-                          );
-                        }
-
-                        let displayValue = '-';
-                        if (col.key === 'nbr_poste') {
-                          displayValue = row?.nbr_poste ?? row?.nombre_poste ?? row?.nbr_postes ?? '-';
-                        } else if (col.key === 'contrat_duree') {
-                          const contratStr = row?.contrat || '';
-                          const dureeStr = row?.duree || '';
-                          displayValue = [contratStr, dureeStr].filter(Boolean).join(' / ') || '-';
-                        } else if (col.key === 'details') {
-                          displayValue = 'Voir';
-                        } else if (col.key === 'download') {
-                          displayValue = 'Télécharger';
-                        } else if (col.key === 'action') {
-                          displayValue = 'Accepter / Refuser';
-                        } else {
-                          displayValue = value ?? '-';
-                        }
-
-                        const cleanedText = typeof displayValue === 'string' ? decodeHTML(displayValue) : displayValue;
-
-                        if (col.key === 'download' && activeTab === 'quotes') {
-                          const idDevis = row?.id_devis || row?.id;
-                          const fileName = row?.devis;
-
-                          return (
-                            <View key={cellKey} style={styles.verticalRow}>
-                              <Text style={styles.verticalLabel}>{col.label}</Text>
-                              {downloadLoadingId === idDevis ? (
-                                <ActivityIndicator size="small" color="#2b5bbb" />
-                              ) : (
-                                <TouchableOpacity
-                                  onPress={() => openDevisFile(fileName, idDevis)}
-                                  style={styles.detailsBadge}
+                            return (
+                              <View key={cellKey} style={styles.verticalRow}>
+                                <Text style={styles.verticalLabel}>{col.label}</Text>
+                                <View
+                                  style={[
+                                    styles.statusBadge,
+                                    { backgroundColor: badgeTheme.bg, borderColor: badgeTheme.border },
+                                  ]}
                                 >
-                                  <Download size={14} color="#2b5bbb" style={{ marginRight: 4 }} />
-                                  <Text style={styles.detailsBadgeText}>Télécharger</Text>
-                                </TouchableOpacity>
-                              )}
-                            </View>
-                          );
-                        }
-
-                        if (col.key === 'action' && activeTab === 'quotes') {
-                          const idDevis = row?.id_devis || row?.id; 
-                          const idFichePoste = row?.id_fiche_poste;
-                          const currentStatut = Number(row?.statut);
-
-                          if (currentStatut === 2) {
-                            return (
-                              <View key={cellKey} style={styles.verticalRow}>
-                                <Text style={styles.verticalLabel}>{col.label}</Text>
-                                {actionLoadingId === idDevis ? (
-                                  <ActivityIndicator size="small" color="#2b5bbb" />
-                                ) : (
-                                  <View style={styles.radioGroup}>
-                                    <TouchableOpacity 
-                                      style={styles.radioButtonContainer}
-                                      onPress={() => triggerActionConfirmation(3, idFichePoste, idDevis, row?.numero_devis)}
-                                    >
-                                      <View style={styles.radioCircle}></View>
-                                      <Text style={styles.radioLabel}>Accepter</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity 
-                                      style={styles.radioButtonContainer}
-                                      onPress={() => triggerActionConfirmation(4, idFichePoste, idDevis)}
-                                    >
-                                      <View style={styles.radioCircle}></View>
-                                      <Text style={styles.radioLabel}>Refuser</Text>
-                                    </TouchableOpacity>
-                                  </View>
-                                )}
-                              </View>
-                            );
-                          } else {
-                            return (
-                              <View key={cellKey} style={styles.verticalRow}>
-                                <Text style={styles.verticalLabel}>{col.label}</Text>
-                                <Text style={styles.verticalValue}> </Text>
+                                  <Text style={[styles.statusBadgeText, { color: badgeTheme.text }]}>
+                                    {statusInfo.titre}
+                                  </Text>
+                                </View>
                               </View>
                             );
                           }
-                        }
 
-                        if (col.key === 'details' && activeTab === 'commands') {
+                          let displayValue = '-';
+                          if (col.key === 'nbr_poste') {
+                            displayValue = row?.nbr_poste ?? row?.nombre_poste ?? row?.nbr_postes ?? '-';
+                          } else if (col.key === 'contrat_duree') {
+                            const contratStr = row?.contrat || '';
+                            const dureeStr = row?.duree || '';
+                            displayValue = [contratStr, dureeStr].filter(Boolean).join(' / ') || '-';
+                          } else if (col.key === 'details') {
+                            displayValue = 'Voir';
+                          } else if (col.key === 'download') {
+                            displayValue = 'Télécharger';
+                          } else if (col.key === 'action') {
+                            displayValue = 'Accepter / Refuser';
+                          } else {
+                            displayValue = value ?? '-';
+                          }
+
+                          const cleanedText = typeof displayValue === 'string' ? decodeHTML(displayValue) : displayValue;
+
+                          if (col.key === 'download' && activeTab === 'quotes') {
+                            const idDevis = row?.id_devis || row?.id;
+                            const fileName = row?.devis;
+
+                            return (
+                              <View key={cellKey} style={styles.verticalRow}>
+                                <Text style={styles.verticalLabel}>{col.label}</Text>
+                                {downloadLoadingId === idDevis ? (
+                                  <ActivityIndicator size="small" color="#2b5bbb" />
+                                ) : (
+                                  <TouchableOpacity
+                                    onPress={() => openDevisFile(fileName, idDevis)}
+                                    style={styles.detailsBadge}
+                                  >
+                                    <Download size={14} color="#2b5bbb" style={{ marginRight: 4 }} />
+                                    <Text style={styles.detailsBadgeText}>Télécharger</Text>
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            );
+                          }
+
+                          if (col.key === 'action' && activeTab === 'quotes') {
+                            const idDevis = row?.id_devis || row?.id; 
+                            const idFichePoste = row?.id_fiche_poste;
+                            const currentStatut = Number(row?.statut);
+
+                            if (currentStatut === 2) {
+                              return (
+                                <View key={cellKey} style={styles.verticalRow}>
+                                  <Text style={styles.verticalLabel}>{col.label}</Text>
+                                  {actionLoadingId === idDevis ? (
+                                    <ActivityIndicator size="small" color="#2b5bbb" />
+                                  ) : (
+                                    <View style={styles.radioGroup}>
+                                      <TouchableOpacity 
+                                        style={styles.radioButtonContainer}
+                                        onPress={() => triggerActionConfirmation(3, idFichePoste, idDevis, row?.numero_devis)}
+                                      >
+                                        <View style={styles.radioCircle}></View>
+                                        <Text style={styles.radioLabel}>Accepter</Text>
+                                      </TouchableOpacity>
+
+                                      <TouchableOpacity 
+                                        style={styles.radioButtonContainer}
+                                        onPress={() => triggerActionConfirmation(4, idFichePoste, idDevis)}
+                                      >
+                                        <View style={styles.radioCircle}></View>
+                                        <Text style={styles.radioLabel}>Refuser</Text>
+                                      </TouchableOpacity>
+                                    </View>
+                                  )}
+                                </View>
+                              );
+                            } else {
+                              return (
+                                <View key={cellKey} style={styles.verticalRow}>
+                                  <Text style={styles.verticalLabel}>{col.label}</Text>
+                                  <Text style={styles.verticalValue}> </Text>
+                                </View>
+                              );
+                            }
+                          }
+
+                          if (col.key === 'details' && activeTab === 'commands') {
+                            return (
+                              <View key={cellKey} style={styles.verticalRow}>
+                                <Text style={styles.verticalLabel}>{col.label}</Text>
+                                <TouchableOpacity 
+                                  onPress={() => openDetails(row)}
+                                  style={styles.detailsBadge}
+                                >
+                                  <Eye size={14} color="#2b5bbb" style={{ marginRight: 4 }} />
+                                  <Text style={styles.detailsBadgeText}>Détails</Text>
+                                </TouchableOpacity>
+                              </View>
+                            );
+                          }
+
                           return (
                             <View key={cellKey} style={styles.verticalRow}>
                               <Text style={styles.verticalLabel}>{col.label}</Text>
-                              <TouchableOpacity 
-                                onPress={() => openDetails(row)}
-                                style={styles.detailsBadge}
-                              >
-                                <Eye size={14} color="#2b5bbb" style={{ marginRight: 4 }} />
-                                <Text style={styles.detailsBadgeText}>Détails</Text>
-                              </TouchableOpacity>
+                              <Text style={styles.verticalValue}>{cleanedText}</Text>
                             </View>
                           );
-                        }
-
-                        return (
-                          <View key={cellKey} style={styles.verticalRow}>
-                            <Text style={styles.verticalLabel}>{col.label}</Text>
-                            <Text style={styles.verticalValue}>{cleanedText}</Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  );
-                })}
+                        })}
+                      </View>
+                    );
+                  })}
+                </View>
+                <Text style={styles.empty}>
+                  Affichage de 1 à {displayedData.length} sur {data.length} entrées
+                </Text>
               </View>
-              <Text style={styles.empty}>
-                Affichage de 1 à {displayedData.length} sur {data.length} entrées
-              </Text>
-            </View>
-          )}
+            )}
+          </View>
         </View>
       </ScrollView>
 
@@ -635,15 +643,49 @@ export default function MyOffersScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#eef3ff' },
-  content: { padding: 15, paddingBottom: 120, gap: 15 },
-  createButton: { flexDirection: 'row', backgroundColor: '#2b5bbb', paddingVertical: 14, paddingHorizontal: 20, borderRadius: 20, alignItems: 'center', justifyContent: 'center', gap: 8, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+  content: { padding: 15, paddingBottom: 120, gap: 18 },
+
+  /* 📦 Styles des deux blocs principaux */
+  createSectionCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#dce6fa',
+    shadowColor: '#2b5bbb',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  displaySectionCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#dce6fa',
+    gap: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1b2d5a',
+    marginBottom: 10,
+  },
+
+  createButton: { flexDirection: 'row', backgroundColor: '#2b5bbb', paddingVertical: 14, paddingHorizontal: 20, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 8, elevation: 1 },
   createButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   tabs: { flexDirection: 'row', gap: 10 },
-  tab: { flex: 1, padding: 12, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#e1e9fb', alignItems: 'center' },
+  tab: { flex: 1, padding: 12, backgroundColor: '#f4f7fe', borderRadius: 16, borderWidth: 1, borderColor: '#e1e9fb', alignItems: 'center' },
   tabActive: { backgroundColor: '#ffe9cf', borderColor: '#f2d9bf' },
   tabText: { fontSize: 12, color: '#1b2d5a' },
-  tabTextActive: { fontWeight: '600' },
-  tableCard: { backgroundColor: '#fff', borderRadius: 20, padding: 15 },
+  tabTextActive: { fontWeight: '700' },
+  tableCard: { backgroundColor: '#fff', borderRadius: 16 },
   tableControls: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center' },
   smallText: { fontSize: 12, color: '#1b2d5a' },
   select: { flexDirection: 'row', gap: 5, borderWidth: 1, borderColor: '#cfd9ee', padding: 5, borderRadius: 10 },
@@ -651,7 +693,7 @@ const styles = StyleSheet.create({
   selectItem: { paddingVertical: 6, paddingHorizontal: 8 },
   selectItemText: { fontSize: 12, color: '#1b2d5a' },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 10 },
-  input: { flex: 1, borderWidth: 1, borderColor: '#cfd9ee', borderRadius: 20, padding: 8, backgroundColor: '#fff' },
+  input: { flex: 1, borderWidth: 1, borderColor: '#cfd9ee', borderRadius: 16, padding: 8, backgroundColor: '#fff' },
   empty: { textAlign: 'center', marginTop: 20, color: '#7a8ab8' },
   detailsBadge: {
     flexDirection: 'row',

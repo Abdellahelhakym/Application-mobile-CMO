@@ -8,7 +8,9 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  RefreshControl, // 👈 Ajout de l'import RefreshControl
+  RefreshControl,
+  Modal,
+  Dimensions,
 } from "react-native";
 
 import {
@@ -21,15 +23,21 @@ import {
   Settings,
   Lock,
   LogOut,
+  Menu,
   Trash2,
+  X,
 } from "lucide-react-native";
 import { getEmployerInfo } from "@/app/employeur/services/EmployerInfoScreen";
 import { getImage } from '@/app/employeur/services/documents';
 import url from "@/app/services/url.js";
 import { deleteAccount } from "@/app/employeur/services/deleteAccount";
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
 export default function EmployerProfileScreen() {
-  const [refreshing, setRefreshing] = useState(false); // 👈 État pour l'animation de rafraîchissement
+  const [refreshing, setRefreshing] = useState(false);
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const [employerInfo, setEmployerInfo] = useState({
     companyName: "",
@@ -43,6 +51,7 @@ export default function EmployerProfileScreen() {
   const [photoUrl, setPhotoUrl] = useState("");
 
   function handleLogout() {
+    setShowMenu(false);
     Alert.alert(
       'Déconnexion',
       'Voulez-vous vraiment vous déconnecter ?',
@@ -53,10 +62,27 @@ export default function EmployerProfileScreen() {
     );
   }
 
-  // 1. Isoler la logique de récupération des données
+  const handleDeleteAccount = () => {
+    setShowMenu(false);
+    Alert.alert(
+      'Suppression compte',
+      'Cette action est irréversible. Voulez-vous continuer ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteAccount();
+            router.replace('/loginEmp');
+          },
+        },
+      ]
+    );
+  };
+
   const fetchEmployerData = async (isMounted = true) => {
     try {
-      // Récupération des infos textuelles
       const response = await getEmployerInfo();
       if (!isMounted) return;
 
@@ -69,7 +95,6 @@ export default function EmployerProfileScreen() {
         lastName: response.responsable || "",
       });
 
-      // Récupération de l'image
       try {
         const imageData = await getImage();
         if (!isMounted) return;
@@ -86,14 +111,12 @@ export default function EmployerProfileScreen() {
     }
   };
 
-  // 2. Gestionnaire du Pull-to-Refresh
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchEmployerData(true);
     setRefreshing(false);
   };
 
-  // 3. Exécution automatique à l'affichage de l'écran
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
@@ -105,34 +128,17 @@ export default function EmployerProfileScreen() {
     }, [])
   );
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      ' Suppression compte',
-      'Cette action est irréversible. Voulez-vous continuer ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteAccount();
-            router.replace('/loginEmp');
-          },
-        },
-      ]
-    );
-  };
-
   return (
     <View style={styles.container}>
       <ScrollView 
         contentContainerStyle={styles.content}
+        scrollEnabled={!showMenu}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh} 
-            colors={["#2b5bbb"]} // Android spinner color
-            tintColor="#2b5bbb"  // iOS spinner color
+            colors={["#2b5bbb"]} 
+            tintColor="#2b5bbb" 
           />
         }
       >
@@ -140,17 +146,59 @@ export default function EmployerProfileScreen() {
         {/* 🏢 ENTREPRISE */}
         <View style={styles.card}>
           <View style={styles.row}>
-            <View style={styles.logo}>
+            <TouchableOpacity 
+              style={styles.logo}
+              activeOpacity={0.8}
+              onPress={() => photoUrl && setIsImageZoomed(true)}
+              disabled={!photoUrl}
+            >
               {photoUrl ? (
                 <Image source={{ uri: photoUrl }} style={styles.avatar} />
               ) : (
                 <Building2 size={40} color="#2b5bbb" />
               )}
+            </TouchableOpacity>
+
+            <View style={{ flex: 1 }}>
+              <Text style={styles.company}>
+                {employerInfo.companyName}
+              </Text>
             </View>
 
-            <Text style={styles.company}>
-              {employerInfo.companyName}
-            </Text>
+            {/* Menu Button */}
+            <View style={styles.menuContainer}>
+              <TouchableOpacity
+                style={styles.menuButton}
+                onPress={() => setShowMenu(!showMenu)}
+              >
+                <Menu size={24} color="#2b5bbb" />
+              </TouchableOpacity>
+
+              {/* Menu Déroulant */}
+              {showMenu && (
+                <View style={styles.dropdown}>
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={handleLogout}
+                  >
+                    <LogOut size={18} color="#1b2d5a" />
+                    <Text style={styles.dropdownText}>Se déconnecter</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.dropdownDivider} />
+
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, { borderBottomWidth: 0 }]}
+                    onPress={handleDeleteAccount}
+                  >
+                    <Trash2 size={18} color="#d32f2f" />
+                    <Text style={[styles.dropdownText, { color: '#d32f2f' }]}>
+                      Supprimer le compte
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -166,7 +214,7 @@ export default function EmployerProfileScreen() {
             <Text style={styles.value}>{employerInfo.phone}</Text>
           </View>
 
-          <View style={styles.infoRow}>
+          <View style={[styles.infoRow, { marginBottom: 0 }]}>
             <MapPin size={20} color="#2b5bbb" />
             <Text style={styles.value}>{employerInfo.city}</Text>
           </View>
@@ -189,7 +237,7 @@ export default function EmployerProfileScreen() {
             <Text style={styles.menuText}>Information de l'Entreprise</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/employeur/autre/PasswordChange")}>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={() => router.push("/employeur/autre/PasswordChange")}>
             <Lock size={20} color="#2b5bbb" />
             <Text style={styles.menuText}>Mot de passe</Text>
           </TouchableOpacity>
@@ -197,17 +245,40 @@ export default function EmployerProfileScreen() {
 
         {/* 🚪 LOGOUT */}
         <TouchableOpacity style={styles.logout} onPress={handleLogout}>
-          <LogOut size={20} color="#1b2d5a" />
+          <LogOut size={20} color="red" />
           <Text style={styles.logoutText}>Se déconnecter</Text>
         </TouchableOpacity>
 
-        {/* ❌ DELETE */}
-        <TouchableOpacity style={styles.delete} onPress={handleDeleteAccount}>
-          <Trash2 size={20} color="red" />
-          <Text style={styles.deleteText}>Supprimer le compte</Text>
-        </TouchableOpacity>
-
       </ScrollView>
+
+      {/* Modal pour le Zoom de l'Image */}
+      <Modal
+        visible={isImageZoomed}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsImageZoomed(false)}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity 
+            style={styles.modalBackground} 
+            activeOpacity={1} 
+            onPress={() => setIsImageZoomed(false)}
+          />
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={() => setIsImageZoomed(false)}
+          >
+            <X size={28} color="#fff" />
+          </TouchableOpacity>
+          {photoUrl ? (
+            <Image 
+              source={{ uri: photoUrl }} 
+              style={styles.zoomedImage} 
+              resizeMode="contain" 
+            />
+          ) : null}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -249,7 +320,52 @@ const styles = StyleSheet.create({
   company: {
     fontSize: 16,
     color: "#1b2d5a",
+    fontWeight: "600",
   },
+
+  menuContainer: {
+    position: 'relative',
+  },
+  menuButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#f0f4ff',
+  },
+  dropdown: {
+    position: 'absolute',
+    top: 45,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e8eef8',
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    minWidth: 180,
+    zIndex: 100,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f4ff',
+  },
+  dropdownText: {
+    fontSize: 14,
+    color: '#1b2d5a',
+    fontWeight: '500',
+  },
+  dropdownDivider: {
+    height: 0,
+  },
+
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -271,25 +387,34 @@ const styles = StyleSheet.create({
     color: "#1b2d5a",
   },
   logout: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-    padding: 14,
-    backgroundColor: "#fff",
-    borderRadius: 12,
+        flexDirection: 'row',    gap: 8,    justifyContent: 'center',    padding: 14,    borderRadius: 16,    borderColor: '#f3d0cb',    backgroundColor: '#ffffff',
+
   },
+
   logoutText: {
-    color: "#1b2d5a",
+    color: 'red',
+    fontWeight: '500',
   },
-  delete: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-    padding: 14,
-    backgroundColor: "#fff",
-    borderRadius: 12,
+
+  // Styles pour le Modal de Zoom
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  deleteText: {
-    color: "red",
+  modalBackground: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  zoomedImage: {
+    width: SCREEN_WIDTH * 0.9,
+    height: SCREEN_HEIGHT * 0.6,
   },
 });

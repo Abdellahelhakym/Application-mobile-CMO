@@ -8,11 +8,13 @@ import {
   Text,
   TouchableOpacity,
   View,
-  RefreshControl
+  RefreshControl,
+  Modal, 
+  Dimensions, 
 } from 'react-native';
 
 import { router, useFocusEffect } from 'expo-router';
-import { decode } from 'html-entities'; // 👈 Importation du décodeur HTML
+import { decode } from 'html-entities';
 import { fixUtf8Encoding } from "@/app/candidat/services/decode"; 
 
 import {
@@ -22,11 +24,13 @@ import {
   Lock,
   LogOut,
   MapPin,
+  Menu,
   Phone,
   Settings,
   Trash2,
   User,
-  UserRoundCheck
+  UserRoundCheck,
+  X // 👈 AJOUT pour l'icône de fermeture
 } from 'lucide-react-native';
 
 import { getInformations } from "@/app/candidat/services/CVScreen";
@@ -36,6 +40,9 @@ import { getProfile, getPaysAutoriser } from "@/app/candidat/services/ProfileScr
 import { deleteAccount } from "@/app/candidat/services/deleteAccount";
 
 import url from "@/app/services/url";
+
+// 👈 AJOUT : Récupération des dimensions de l'écran pour l'image zoomée
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const [profileData, setProfileData] = useState({
@@ -51,6 +58,12 @@ export default function ProfileScreen() {
   // État pour gérer la visibilité du bouton Assistance
   const [isAssistanceAllowed, setIsAssistanceAllowed] = useState(false);
 
+  // 👈 AJOUT : État pour gérer la visibilité du zoom de l'image
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
+
+  // 👈 AJOUT : État pour gérer l'affichage du menu déroulant
+  const [showMenu, setShowMenu] = useState(false);
+
   const getData = useCallback(async () => {
     try {
       // 1. Appels API en parallèle
@@ -64,7 +77,6 @@ export default function ProfileScreen() {
       // Récupération du pays du candidat depuis getInformations
       const rawUserPays = infoData && infoData.length > 0 ? infoData[0].pays : profile?.pays || '';
       
-      // 👈 Décodage HTML puis correction de l'encodage UTF-8 (mojibake)
       const cleanPays = fixUtf8Encoding(decode(rawUserPays));
       const cleanPseudo = fixUtf8Encoding(decode(profile?.pseudo || ''));
 
@@ -108,6 +120,7 @@ export default function ProfileScreen() {
   );
 
   function handleLogout() {
+    setShowMenu(false); // Fermer le menu
     Alert.alert(
       'Déconnexion',
       'Voulez-vous vraiment vous déconnecter ?',
@@ -125,6 +138,7 @@ export default function ProfileScreen() {
   }
 
   const handleDeleteAccount = () => {
+    setShowMenu(false); // Fermer le menu
     Alert.alert(
       'Suppression compte',
       'Cette action est irréversible. Voulez-vous continuer ?',
@@ -143,9 +157,11 @@ export default function ProfileScreen() {
   };
 
   return (
+    <>
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
+      scrollEnabled={!showMenu} // 👈 Désactiver le scroll si le menu est ouvert
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -159,7 +175,13 @@ export default function ProfileScreen() {
       {/* PROFILE CARD */}
       <View style={styles.card}>
         <View style={styles.row}>
-          <View style={styles.avatarBig}>
+          {/* 👈 AJOUT : Rendre l'avatar cliquable */}
+          <TouchableOpacity 
+            style={styles.avatarBig} 
+            onPress={() => photo && setIsImageZoomed(true)} // N'ouvre que si une photo existe
+            activeOpacity={0.8}
+            disabled={!photo} // Désactivé si pas de photo
+          >
             {photo ? (
               <>
                 <Image
@@ -179,11 +201,46 @@ export default function ProfileScreen() {
             ) : (
               <User size={40} color="#2b5bbb" />
             )}
-          </View>
+          </TouchableOpacity>
 
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.name}>{profileData.pseudo}</Text>
             <Text style={styles.email}>{profileData.email}</Text>
+          </View>
+
+          {/* 👈 AJOUT : Bouton menu en haut à droite */}
+          <View style={styles.menuContainer}>
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => setShowMenu(!showMenu)}
+            >
+              <Menu size={24} color="#2b5bbb" />
+            </TouchableOpacity>
+
+            {/* 👈 AJOUT : Menu déroulant */}
+            {showMenu && (
+              <View style={styles.dropdown}>
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={handleLogout}
+                >
+                  <LogOut size={18} color="#1b2d5a" />
+                  <Text style={styles.dropdownText}>Se déconnecter</Text>
+                </TouchableOpacity>
+
+                <View style={styles.dropdownDivider} />
+
+                <TouchableOpacity
+                  style={[styles.dropdownItem, { borderBottomWidth: 0 }]}
+                  onPress={handleDeleteAccount}
+                >
+                  <Trash2 size={18} color="#d32f2f" />
+                  <Text style={[styles.dropdownText, { color: '#d32f2f' }]}>
+                    Supprimer le compte
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -217,7 +274,6 @@ export default function ProfileScreen() {
           <Text style={styles.btnText}>CV</Text>
         </TouchableOpacity>
 
-        {/* Condition basée sur le résultat du contrôle API */}
         {isAssistanceAllowed && (
           <TouchableOpacity
             style={styles.btn}
@@ -259,29 +315,54 @@ export default function ProfileScreen() {
           }
         >
           <Feather name="briefcase" size={20} color="#2b5bbb" />
-          <Text style={styles.btnText}> Offres d’emploi</Text>
+          <Text style={styles.btnText}> Offres d'emploi</Text>
         </TouchableOpacity>
       </View>
-
-      {/* LOGOUT */}
+{/* LOGOUT */}
       <TouchableOpacity
         style={styles.logoutBtn}
         onPress={handleLogout}
       >
-        <LogOut size={20} color="#1b2d5a" />
+        <LogOut size={20} color="red" />
         <Text style={styles.logoutText}>Se déconnecter</Text>
       </TouchableOpacity>
 
-      {/* DELETE */}
-      <TouchableOpacity
-        style={styles.deleteBtn}
-        onPress={handleDeleteAccount}
-      >
-        <Trash2 size={20} color="red" />
-        <Text style={styles.deleteText}>Supprimer mon compte</Text>
-      </TouchableOpacity>
+    
 
     </ScrollView>
+
+    {/* 👈 AJOUT : Modal de zoom de l'image (Lightbox) */}
+    {photo && (
+        <Modal
+            visible={isImageZoomed}
+            transparent={true} // Pour voir l'arrière-plan sombre
+            animationType="fade" // Animation douce
+            onRequestClose={() => setIsImageZoomed(false)} // Gère le bouton retour Android
+        >
+            {/* Arrière-plan sombre cliquable pour fermer */}
+            <TouchableOpacity 
+                style={styles.modalOverlay} 
+                activeOpacity={1} 
+                onPress={() => setIsImageZoomed(false)}
+            >
+                {/* Bouton de fermeture en haut à droite */}
+                <TouchableOpacity 
+                    style={styles.closeButton} 
+                    onPress={() => setIsImageZoomed(false)}
+                >
+                    <X size={28} color="white" />
+                </TouchableOpacity>
+
+                {/* L'image zoomée */}
+                <Image
+                    source={{ uri: photo }}
+                    style={styles.zoomedImage}
+                    resizeMode="contain" // Adapte l'image sans la couper
+                />
+            </TouchableOpacity>
+        </Modal>
+    )}
+    </>
   );
 }
 
@@ -293,7 +374,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 15,
-    paddingBottom: 110,
+    paddingBottom: 30, // 👈 MODIFIÉ : Réduit puisque plus de boutons en bas
     gap: 15,
   },
   card: {
@@ -315,6 +396,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     position: 'relative',
+    // 👈 AJOUT : Un léger feedback visuel au clic
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
   avatarImage: {
     width: '100%',
@@ -334,6 +421,49 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 12,
     color: '#5b6a8e',
+  },
+
+  menuContainer: {
+    position: 'relative',
+  },
+  menuButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#f0f4ff',
+  },
+  dropdown: {
+    position: 'absolute',
+    top: 45,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e8eef8',
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    minWidth: 180,
+    zIndex: 100,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f4ff',
+  },
+  dropdownText: {
+    fontSize: 14,
+    color: '#1b2d5a',
+    fontWeight: '500',
+  },
+  dropdownDivider: {
+    height: 0,
   },
   item: {
     flexDirection: 'row',
@@ -359,30 +489,31 @@ const styles = StyleSheet.create({
   btnText: {
     color: '#1b2d5a',
   },
-  deleteBtn: {
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#f3d0cb',
-    backgroundColor: '#fff',
+ 
+
+ logoutBtn: {
+    flexDirection: 'row',    gap: 8,    justifyContent: 'center',    padding: 14,    borderRadius: 16,    borderColor: '#f3d0cb',    backgroundColor: '#ffffff',
   },
-  deleteText: {
+  logoutText: {
     color: 'red',
     fontWeight: '500',
   },
-  logoutBtn: {
-    flexDirection: 'row',
-    gap: 8,
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)', // Fond noir très opaque
     justifyContent: 'center',
-    padding: 14,
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    alignItems: 'center',
   },
-  logoutText: {
-    color: '#1b2d5a',
-    fontWeight: '500',
+  zoomedImage: {
+    width: SCREEN_WIDTH * 0.9, // 90% de la largeur de l'écran
+    height: SCREEN_HEIGHT * 0.7, // 70% de la hauteur de l'écran
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50, // Ajuster selon la zone de notification (SafeArea)
+    right: 20,
+    zIndex: 10,
+    padding: 10,
   },
 });

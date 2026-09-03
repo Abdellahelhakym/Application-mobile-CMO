@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { changePassword } from "../services/PasswordChange";
+
 type ValidationRule = {
   label: string;
   test: (value: string) => boolean;
@@ -34,14 +35,11 @@ const ChangePasswordScreen: React.FC = () => {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const [newPasswordTouched, setNewPasswordTouched] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const allRulesPassed = validationRules.every((r) => r.test(newPassword));
   const passwordsMatch =
     newPassword === confirmPassword && confirmPassword.length > 0;
-
-  const showValidation = newPasswordTouched && !allRulesPassed;
 
   const handleSubmit = async () => {
     setSubmitted(true);
@@ -88,7 +86,6 @@ const ChangePasswordScreen: React.FC = () => {
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setNewPasswordTouched(false);
       setSubmitted(false);
     } catch (error: any) {
       alert(error?.message || "Échec du changement de mot de passe.");
@@ -96,7 +93,6 @@ const ChangePasswordScreen: React.FC = () => {
     }
   };
 
-  // 🌐 Ouvre la page "mot de passe oublié" dans une WebView in-app
   const handleForgotPassword = async () => {
     try {
       await WebBrowser.openBrowserAsync(
@@ -154,10 +150,7 @@ const ChangePasswordScreen: React.FC = () => {
                 placeholder=""
                 secureTextEntry={!showNew}
                 value={newPassword}
-                onChangeText={(v) => {
-                  setNewPassword(v);
-                  setNewPasswordTouched(true);
-                }}
+                onChangeText={setNewPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -174,31 +167,29 @@ const ChangePasswordScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Validation rules */}
-            {showValidation && (
-              <View style={styles.validationContainer}>
-                <Text style={styles.validationTitle}>
-                  Veuillez ajouter tous les caractères nécessaires :
-                </Text>
-                {validationRules.map((rule) => {
-                  const passed = rule.test(newPassword);
-                  return (
-                    <Text
-                      key={rule.label}
-                      style={[
-                        styles.validationRule,
-                        passed
-                          ? styles.validationPassed
-                          : styles.validationFailed,
-                      ]}
-                    >
-                      {passed ? "✓ " : "• "}
-                      {rule.label}
-                    </Text>
-                  );
-                })}
-              </View>
-            )}
+            {/* Validation rules - toujours affichées */}
+            <View style={styles.validationContainer}>
+              <Text style={styles.validationTitle}>
+                Veuillez ajouter tous les caractères nécessaires :
+              </Text>
+              {validationRules.map((rule) => {
+                const passed = rule.test(newPassword);
+                return (
+                  <Text
+                    key={rule.label}
+                    style={[
+                      styles.validationRule,
+                      passed
+                        ? styles.validationPassed
+                        : styles.validationFailed,
+                    ]}
+                  >
+                    {passed ? "✓ " : "• "}
+                    {rule.label}
+                  </Text>
+                );
+              })}
+            </View>
           </View>
 
           {/* Confirm Password */}

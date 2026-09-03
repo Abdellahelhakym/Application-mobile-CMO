@@ -1,13 +1,15 @@
 import React, { useState, useCallback } from "react"; 
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image, RefreshControl } from "react-native"; 
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image, RefreshControl, Modal, Dimensions } from "react-native"; 
 import { useFocusEffect, router } from "expo-router"; 
-import { Award, Bell, Briefcase, CalendarCheck, CheckCircle, Clock, FileText, Flag, Heart, Link, MessageSquare, Phone, Plus, Search, UserCheck, UserPlus, Users, XCircle } from "lucide-react-native";
+import { Award, Bell, Briefcase, CalendarCheck, CheckCircle, Clock, FileText, Flag, Heart, Link, MessageSquare, Phone, Plus, Search, UserCheck, UserPlus, Users, XCircle, X } from "lucide-react-native";
 
 import { getPhase1, getPhase2, getPhase3, getPhase4, getPhase5, getPack } from "@/app/employeur/services/EmployerDashboard";
 import { getRaison } from "@/app/employeur/services/token_id";
 import { getImage } from '@/app/employeur/services/documents';
 import { getNotification } from '../../employeur/services/messagerie'; 
 import url from "@/app/services/url.js";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const PACK_NAMES: { [key: number]: string } = {
   1: "START RECRUT",
@@ -21,6 +23,7 @@ export default function EmployerDashboard() {
   const [photoUrl, setPhotoUrl] = useState<string>(""); 
   const [notifCount, setNotifCount] = useState<number>(0);
   const [refreshing, setRefreshing] = useState<boolean>(false); 
+  const [isImageZoomed, setIsImageZoomed] = useState<boolean>(false);
   
   const [phase1Stats, setPhase1Stats] = useState({ nouvelleCommande: 0, nombrePoste: 0, enCours: 0, commandeValidee: 0, commandesRefusees: 0, commandesAnnulees: 0 });
   const [phase2Stats, setPhase2Stats] = useState({ candidatsProposes: 0, candidatsContactes: 0, candidatsInteresses: 0, candidatsAcceptes: 0, preselectionValidee: 0, preselectionNonValidee: 0 });
@@ -143,7 +146,14 @@ export default function EmployerDashboard() {
       >
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
-            <View style={styles.logoBox}>{photoUrl ? <Image source={{ uri: photoUrl }} style={styles.avatarImage} /> : <Text style={styles.logoText}>Logo</Text>}</View>
+            <TouchableOpacity 
+              style={styles.logoBox} 
+              activeOpacity={0.8}
+              onPress={() => photoUrl && setIsImageZoomed(true)}
+              disabled={!photoUrl}
+            >
+              {photoUrl ? <Image source={{ uri: photoUrl }} style={styles.avatarImage} /> : <Text style={styles.logoText}>Logo</Text>}
+            </TouchableOpacity>
             <View style={styles.infoContent}>
               <Text style={styles.company}>{getRaison()}</Text>
               <Text style={styles.sub}>Pack {packName}</Text>
@@ -192,7 +202,6 @@ export default function EmployerDashboard() {
                             <StatIcon size={14} color={stat.text} />
                           </View>
                         ) : null}
-                        {/* 🎯 flex: 1 ajouté ici pour forcer le retour à la ligne propre */}
                         <Text style={[styles.statLabel, { color: stat.text }]} numberOfLines={2}>
                           {stat.label}
                         </Text>
@@ -206,6 +215,35 @@ export default function EmployerDashboard() {
           );
         })}
       </ScrollView>
+
+      {/* Modal pour le Zoom sur le Logo/Avatar */}
+      <Modal
+        visible={isImageZoomed}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsImageZoomed(false)}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity 
+            style={styles.modalBackground} 
+            activeOpacity={1} 
+            onPress={() => setIsImageZoomed(false)}
+          />
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={() => setIsImageZoomed(false)}
+          >
+            <X size={28} color="#fff" />
+          </TouchableOpacity>
+          {photoUrl ? (
+            <Image 
+              source={{ uri: photoUrl }} 
+              style={styles.zoomedImage} 
+              resizeMode="contain" 
+            />
+          ) : null}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -229,13 +267,11 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 18, padding: 15 },
   phaseHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15, backgroundColor: '#eef3ff', padding: 12, borderRadius: 16 },
   iconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 5, elevation: 2 },
-  phaseTitle: { fontSize: 15,   fontWeight: '600', color: '#1b2d5a', flex: 1, flexWrap: 'wrap', lineHeight: 20 },
+  phaseTitle: { fontSize: 15, fontWeight: '600', color: '#1b2d5a', flex: 1, flexWrap: 'wrap', lineHeight: 20 },
   phaseLabel: { fontWeight: '700', fontSize: 16 },
   phaseDesc: { fontWeight: '400', fontSize: 14 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
-  // 🎯 Modification ici : calc ou simple pourcentage pour s'adapter à la grille
   statBox: { width: '48%', borderRadius: 14, padding: 12, minHeight: 100, justifyContent: 'space-between' },
-  // 🎯 Aligner au début (top) plutôt qu'au centre au cas où le texte prend 2 lignes
   statHeader: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -251,7 +287,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     backgroundColor: '#ffffffcc' 
   },
-  // 🎯 On ajoute un lineHeight proche de la taille de l'icône pour équilibrer le texte s'il passe sur 2 lignes
   statLabel: { 
     fontSize: 12, 
     fontWeight: '600', 
@@ -260,4 +295,26 @@ const styles = StyleSheet.create({
     lineHeight: 14, 
   },
   statValue: { fontSize: 22, fontWeight: '700', marginTop: 4 },
+
+  // Styles pour le Modal de Zoom
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBackground: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  zoomedImage: {
+    width: SCREEN_WIDTH * 0.9,
+    height: SCREEN_HEIGHT * 0.6,
+  },
 });

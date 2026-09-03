@@ -47,14 +47,63 @@ export default function Index() {
         {/* Hero */}
         <View style={styles.hero}>
           <Text style={styles.title}>
-            La stabilité de votre{'\n'}
-            main d'œuvre{'\n'}
-            commence ici !
+            CMO est votre meilleur {'\n'}
+             garant entre employeur et candidat
+            
           </Text>
 
-          <Text style={styles.desc}>
-            Connectez-vous et accédez à votre espace personnalisé.
+          
+        </View>
+
+         {/* STATS */}
+        <View style={styles.stats}>
+          {[
+            { value: '+15', label: "Ans d'expérience" },
+            { value: '+30k', label: 'Employeurs ' },
+            { value: '+986', label: 'Placements/an' },
+            { value: '+116k', label: 'Candidats' },
+          ].map((s) => (
+            <View key={s.label} style={styles.statBox}>
+              <Text style={styles.statValue}>{s.value}</Text>
+              <Text style={styles.statLabel}>{s.label}</Text>
+            </View>
+          ))}
+        </View>
+        <Text style={styles.desc}>
+            connectez vous et accédez à votre espace CMO.
           </Text>
+
+
+  {/* CARD CANDIDAT */}
+        <View style={styles.card}>
+          <View style={styles.iconCircle}>
+            <Feather name="user" size={26} color="#2b5bbb" />
+          </View>
+
+          <Text style={styles.cardTitle}>Je suis Candidat</Text>
+          <Text style={styles.cardSubtitle}>
+            Trouvez votre prochain emploi et soyez accompagné à chaque étape
+          </Text>
+
+          {candidatItems.map((item) => (
+            <View key={item} style={styles.row}>
+              <CheckIcon />
+              <Text style={styles.itemText}>{item}</Text>
+            </View>
+          ))}
+
+          <View style={styles.cta}>
+           <TouchableOpacity
+           
+            onPress={() => {
+              router.push('/loginCan');
+            }}
+          >
+            <Text style={styles.ctaText}>
+              Continuer en tant que Candidat
+            </Text>
+          </TouchableOpacity>
+          </View>
         </View>
 
 
@@ -92,53 +141,9 @@ export default function Index() {
         </View>
 
         
-        {/* CARD CANDIDAT */}
-        <View style={styles.card}>
-          <View style={styles.iconCircle}>
-            <Feather name="user" size={26} color="#2b5bbb" />
-          </View>
+      
 
-          <Text style={styles.cardTitle}>Je suis Candidat</Text>
-          <Text style={styles.cardSubtitle}>
-            Trouvez votre prochain emploi et soyez accompagné à chaque étape
-          </Text>
-
-          {candidatItems.map((item) => (
-            <View key={item} style={styles.row}>
-              <CheckIcon />
-              <Text style={styles.itemText}>{item}</Text>
-            </View>
-          ))}
-
-          <View style={styles.cta}>
-           <TouchableOpacity
-           
-            onPress={() => {
-              router.push('/loginCan');
-            }}
-          >
-            <Text style={styles.ctaText}>
-              Continuer en tant que Candidat
-            </Text>
-          </TouchableOpacity>
-          </View>
-        </View>
-
-
-        {/* STATS */}
-        <View style={styles.stats}>
-          {[
-            { value: '+15', label: "Ans d'expérience" },
-            { value: '+116', label: 'Partenaires' },
-            { value: '+986', label: 'Placements/an' },
-            { value: '+116k', label: 'Candidats' },
-          ].map((s) => (
-            <View key={s.label} style={styles.statBox}>
-              <Text style={styles.statValue}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
+       
 
         {/* FOOTER */}
         <Text style={styles.footer}>
@@ -166,8 +171,8 @@ const styles = StyleSheet.create({
   },
 
   logo: {
-    width: 120,
-    height: 40,
+    width: 130,
+    height: 50,
     resizeMode: 'contain',
   },
 
@@ -185,7 +190,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 26,
+    fontSize: 24,
     color: '#f6eadf',
     textAlign: 'center',
     fontWeight: '600',

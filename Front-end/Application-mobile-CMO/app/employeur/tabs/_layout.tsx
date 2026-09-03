@@ -2,10 +2,13 @@ import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { Tabs } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getRaison } from "@/app/employeur/services/token_id";
+import { getImage } from "@/app/employeur/services/documents";
+
+import url from "@/app/services/url.js";
 
 export default function Layout() {
   const insets = useSafeAreaInsets();
@@ -14,16 +17,30 @@ export default function Layout() {
   const isAndroid3Button = Platform.OS === "android" && insets.bottom >= 24;
 
   const [userName, setUserName] = useState("Utilisateur");
+  const [profileImage, setProfileImage] = useState("");
 
-  const refreshPseudo = useCallback(() => {
+  const refreshUserData = useCallback(async () => {
+    // Récupération de la raison / pseudo
     const raison = getRaison();
     setUserName(raison || "Utilisateur");
+
+    // Récupération de l'image de profil
+    try {
+      const imgRes = await getImage();
+      if (imgRes?.image) {
+        setProfileImage(
+          `${url()}documents/photos_employeur/${imgRes.image}?t=${Date.now()}`
+        );
+      }
+    } catch (imageError) {
+      console.error("Erreur loadImage:", imageError);
+    }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      refreshPseudo();
-    }, [refreshPseudo])
+      refreshUserData();
+    }, [refreshUserData])
   );
 
   return (
@@ -63,25 +80,20 @@ export default function Layout() {
           },
         }),
 
-        // ⚪ Nom utilisateur en BLANC
+        // ⚪ Image + Nom utilisateur
         headerRight: () => (
-          <View
-            style={{
-              marginRight: 15,
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                color: "#ffffff",
-                marginRight: 10,
-                fontWeight: "500",
-              }}
-            >
-              {userName}
-            </Text>
+          <View style={styles.headerRight}>
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <View style={styles.profileImagePlaceholder}>
+                <Feather name="user" size={16} color="#ffffff" />
+              </View>
+            )}
+            <Text style={styles.userName}>{userName}</Text>
           </View>
         ),
 
@@ -186,6 +198,35 @@ function getTitle(name: string) {
 }
 
 const styles = StyleSheet.create({
+  headerRight: {
+    marginRight: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  profileImage: {
+    width: 35,
+    height: 35,
+    marginBottom: 5,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#ffffff",
+  },
+  profileImagePlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#ffffff",
+  },
+  userName: {
+    fontSize: 13,
+    color: "#ffffff",
+    fontWeight: "500",
+  },
   tabLabel: {
     fontSize: 10,
     textAlign: "center",

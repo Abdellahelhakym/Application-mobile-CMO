@@ -4,7 +4,7 @@ import { Alert, StyleSheet, View } from 'react-native';
 
 import { getPermis, updatePermis } from "@/app/candidat/services/CVScreen";
 import { C } from './colors';
-import { Card, CheckItem, SectionSaveButton, SectionTitle } from './utils';
+import { Card, CheckItem, SectionSaveButton, SectionTitle, SectionWarning } from './utils';
 
 const PERMITS = ['AM', 'A1', 'A2', 'A', 'B1', 'B', 'C1', 'C', 'D1', 'D', 'BE', 'C1E', 'CE', 'D1E', 'DE'];
 const NAUTIC_PERMITS = ['Permis côtier', 'Permis fluvial', 'Permis eaux intérieures', 'Permis hauturier'];
@@ -122,6 +122,7 @@ export const PermitsTab = ({ formData, setFormData }: PermitsTabProps) => {
         </View>
       </Card>
 
+      <SectionWarning />
       <SectionSaveButton
         label={'Sauvegarder les permis'}
         onPress={handleSavePermits}

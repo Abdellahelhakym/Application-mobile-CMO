@@ -1,17 +1,17 @@
 import { ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import { EducationTab } from './EducationTab';
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: C.blueDark,
+    backgroundColor: '#212f55',
     borderRadius: 14,
     paddingHorizontal: 18,
     paddingVertical: 14,
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  tabSelectorBtnText: { color: C.white, fontSize: 15, fontWeight: '600' },
+  tabSelectorBtnText: { color:C.white, fontSize: 15, fontWeight: '600' },
   tabSelectorOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.18)' },
   tabSelectorDropdown: {
     backgroundColor: C.white,

@@ -1,3 +1,5 @@
+import { decode } from 'html-entities';
+import { Briefcase, ChevronDown, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -10,13 +12,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { decode } from 'html-entities';
-import { Briefcase, ChevronDown, X } from 'lucide-react-native';
 
 import { getSecteur, getSecteurUser, updateSecteur } from "@/app/candidat/services/CVScreen";
 import { C } from './colors';
 import { Sector } from './index';
-import { Card, SectionSaveButton } from './utils';
+import { Card, SectionSaveButton, SectionWarning } from './utils';
 
 // --- TYPES ---
 interface SectorCategory { id_categorie: number; titre: string; }
@@ -239,8 +239,9 @@ export const SectorsTab = ({ sectors, setSectors }: SectorsTabProps) => {
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
       <View style={styles.sectionTitleRow}>
         <Briefcase size={18} color={C.blue} style={{ marginRight: 8 }} />
-        <Text style={styles.sectionTitlePlain}>Secteurs d'activité</Text>
+        <Text style={styles.sectionTitlePlain}>Vos Secteurs d'Activité </Text>
       </View>
+      <Text style={styles.sectionDescription}>Choisissez les secteurs d'activités que vous ciblez</Text>
 
       {sectors.map((sector, index) => {
         const subCategories = getSubCategoriesForCategory(sector.category);
@@ -283,6 +284,7 @@ export const SectorsTab = ({ sectors, setSectors }: SectorsTabProps) => {
         );
       })}
 
+      <SectionWarning />
       <SectionSaveButton label="Sauvegarder les secteurs" onPress={handleSaveSectors} />
     </ScrollView>
   );
@@ -294,6 +296,7 @@ const styles = StyleSheet.create({
   contentContainer: { gap: 16, paddingBottom: 24 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   sectionTitlePlain: { fontSize: 16, fontWeight: '600', color: C.blueDark, flex: 1 },
+  sectionDescription: { fontSize: 14, color: C.textMuted, marginBottom: 12 },
   cardHeader: { fontSize: 14, fontWeight: '600', color: C.blueDark, marginBottom: 12 },
   sectorColumn: { gap: 12 },
 

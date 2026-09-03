@@ -2,6 +2,8 @@ import {
   getDashboardData,
   getPsaudo,
 } from "@/app/candidat/services/DashboardScreen";
+import { getImage } from "../services/document";
+import url from "@/app/services/url";
 
 import { fixUtf8Encoding } from "@/app/candidat/services/decode";
 import { Feather } from "@expo/vector-icons";
@@ -12,6 +14,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -25,6 +28,7 @@ const TITLES: Record<string, string> = {
 
 export default function Layout() {
   const [userName, setUserName] = useState("Utilisateur");
+  const [profileImage, setProfileImage] = useState("");
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "android" ? insets.bottom : 0;
 
@@ -68,6 +72,22 @@ export default function Layout() {
             fixUtf8Encoding(fetched)
           );
         }
+
+        // =========================
+        // Récupération de l'image de profil
+        // =========================
+        try {
+          const imageData = await getImage();
+          const imageUrl = imageData?.image
+            ? url() + "documents/photos_candidats/" + imageData.image
+            : '';
+          
+          if (isMounted && imageUrl) {
+            setProfileImage(imageUrl);
+          }
+        } catch (imageError) {
+          console.error("Erreur loadImage:", imageError);
+        }
       } catch (error) {
         console.error(
           "Erreur loadUserName:",
@@ -93,6 +113,7 @@ export default function Layout() {
 
         headerStyle: {
           backgroundColor: "#122F78",
+        
         },
 
         // =========================
@@ -122,10 +143,24 @@ export default function Layout() {
         }),
 
         // =========================
-        // NOM UTILISATEUR
+        // NOM UTILISATEUR + IMAGE
         // =========================
         headerRight: () => (
           <View style={styles.headerRight}>
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <View style={styles.profileImagePlaceholder}>
+                <Feather
+                  name="user"
+                  size={16}
+                  color="#ffffff"
+                />
+              </View>
+            )}
             <Text style={styles.userName}>
               {userName}
             </Text>
@@ -291,12 +326,32 @@ const styles = StyleSheet.create({
     marginRight: 15,
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
+  },
+
+  profileImage: {
+    width: 35,
+    height: 35,
+    marginBottom: 5,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#ffffff",
+  },
+
+  profileImagePlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#ffffff",
   },
 
   userName: {
     fontSize: 13,
     color: "#ffffff",
-    marginRight: 10,
     fontWeight: "500",
   },
 
