@@ -17,6 +17,7 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router'; 
 import * as WebBrowser from 'expo-web-browser';
 import { getCommandes, getDevis, AccepterRefuserDevis, getStatutFiche } from '@/app/employeur/services/MyOffers';
+import { getSecteur } from '@/app/candidat/services/CVScreen';
 
 import url from "@/app/services/url.js";
 

@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
 
 
 const CheckIcon = () => (
@@ -107,38 +109,42 @@ export default function Index() {
         </View>
 
 
-        {/* CARD EMPLOYEUR */}
-        <View style={styles.card}>
-          <View style={styles.iconCircle}>
-            <Feather name="user-plus" size={26} color="#2b5bbb" />
+     {/* CARD EMPLOYEUR */}
+      <View style={styles.card}>
+        <View style={styles.iconCircle}>
+          <MaterialCommunityIcons
+            name="account-tie"
+            size={30}
+            color="#2b5bbb"
+          />
+        </View>
+
+        <Text style={styles.cardTitle}>Je suis Employeur</Text>
+
+        <Text style={styles.cardSubtitle}>
+          Recrutez rapidement des profils qualifiés et fiables
+        </Text>
+
+        {employeurItems.map((item) => (
+          <View key={item} style={styles.row}>
+            <CheckIcon />
+            <Text style={styles.itemText}>{item}</Text>
           </View>
+        ))}
 
-          <Text style={styles.cardTitle}>Je suis Employeur</Text>
-          <Text style={styles.cardSubtitle}>
-            Recrutez rapidement des profils qualifiés et fiables
-          </Text>
-
-          {employeurItems.map((item) => (
-            <View key={item} style={styles.row}>
-              <CheckIcon />
-              <Text style={styles.itemText}>{item}</Text>
-            </View>
-          ))}
-
-         
-           <View style={styles.cta}>
-           <TouchableOpacity
-           
+        <View style={styles.cta}>
+          <TouchableOpacity
             onPress={() => {
               router.push('/loginEmp');
             }}
           >
             <Text style={styles.ctaText}>
-             Continuer en tant qu'Employeur
+              Continuer en tant qu'Employeur
             </Text>
           </TouchableOpacity>
-          </View>
         </View>
+      </View>
+
 
         
       

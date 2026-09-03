@@ -4,7 +4,7 @@ const db = require('../db');
 const CVDatabase = express.Router();
 const auth = require('../middleware/auth');
 CVDatabase.get('/', auth, (req, res) => {
-    res.send('CV Screen route');
+    res.send('CV Screen route V2');
 });
 
 CVDatabase.post('/candidat', (req, res) => {
@@ -23,7 +23,7 @@ CVDatabase.post('/candidat', (req, res) => {
             console.log('Received CV database request');
 
             const candidats = await query(
-                'SELECT id , photo , token_id, prenom, nom, niveau_etude, experience FROM cmo_candidats WHERE deleted = 0'
+                'SELECT id , photo , token_id, prenom, nom , contrat_prefere1 , contrat_prefere2 , pays, niveau_etude, experience FROM cmo_candidats WHERE deleted = 0'
             );
 
             const secteurs = await query(
@@ -105,6 +105,9 @@ CVDatabase.post('/candidat', (req, res) => {
                 photo: candidat.photo || null,
                 prenom: candidat.prenom || null,
                 nom: candidat.nom || null,
+                contrat_prefere1: candidat.contrat_prefere1 || null,
+                contrat_prefere2: candidat.contrat_prefere2 || null,
+                pays: candidat.pays || null,
                 secteur_activite: secteursByToken[candidat.token_id] || [],
                 mobilite: mobilitesByToken[candidat.token_id] || [],
                 niveau_etudes: candidat.niveau_etude || null,

@@ -1,5 +1,7 @@
 import { getSecteur } from '@/app/candidat/services/CVScreen';
 import { getCandidats } from '@/app/employeur/services/CVDatabaseScreen';
+import { getEmployerInfo } from "@/app/employeur/services/EmployerInfoScreen";
+
 import url from "@/app/services/url.js";
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
@@ -7,8 +9,10 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  FlatList,
   Image,
   Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,9 +25,9 @@ const { width, height } = Dimensions.get('window');
 // 🔧 Décodage des entités HTML - Version ULTRA améliorée
 const decodeHTML = (str: string): string => {
   if (!str) return '';
-  
+
   let decoded = String(str);
-  
+
   // 1️⃣ Réparer TOUS les caractères UTF-8 mal encodés (priorité)
 const utf8Fixes: { [key: string]: string } = {
   // Fixes pour les tirets et symboles spécifiques
@@ -31,7 +35,7 @@ const utf8Fixes: { [key: string]: string } = {
   'â€”': '-',  // Tiret cadratin mal encodé
   'â€"': '-',
   'â€"/': '–',
-  
+
   // Guilmets & symboles
   'Â©': '©', 'Â¢': '¢', 'â„¢': '™',
   'â€œ': '"', 'â€\u009d': '"', 'â€\u009c': '"',
@@ -39,7 +43,7 @@ const utf8Fixes: { [key: string]: string } = {
   'â€•': '—', 'â€¢': '•', 'â€¦': '…', 'â€‹': '', 'â€›': '›',
   'â€\u0082': '‚', 'â€ƒ': 'ƒ', 'â€„': '„',
   'â€…': '…', 'â€†': '†', 'â€‡': '‡',
-  
+
   // Caractères accentués mal encodés (minuscules)
   'Ã©': 'é', 'Ã¡': 'á', 'Ã ': 'à', 'Ã¤': 'ä', 'Ã¥': 'å',
   'Ã¨': 'è', 'Ã¢': 'â', 'Ã¾': 'þ',
@@ -48,31 +52,31 @@ const utf8Fixes: { [key: string]: string } = {
   'Ã¹': 'ù', 'Ã»': 'û', 'Ã¼': 'ü', 'Ãº': 'ú',
   'Ã§': 'ç', 'Ã±': 'ñ',
   'Ã¿': 'ÿ', 'Ã˜': 'Ø', 'Ã†': 'Æ',
-  
-  
+
+
   // Majuscules
   'Ã‰': 'É', 'Ã€': 'À', 'ÃŠ': 'Ê', 'Ã‹': 'Ë',
   'ÃŒ': 'Ì', 'ÃŽ': 'Î',
   'Ã"': 'Ó', 'Ã•': 'Õ', 'Ã–': 'Ö',
   'Ã™': 'Ù', 'Ãš': 'Ú', 'Ã›': 'Û', 'Ãœ': 'Ü',
   'Ã‡': 'Ç', 'Ãˆ': 'È',
-  
+
 
 
   // Suppressions de résidus
   'Â': '',
   'Ã': ''
 };
-  
+
   // Appliquer toutes les fixes
   Object.keys(utf8Fixes).forEach(key => {
     const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
     decoded = decoded.replace(regex, utf8Fixes[key]);
   });
-  
+
   // 2️⃣ Décoder les entités numériques
   decoded = decoded.replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
-  
+
   // 3️⃣ Décoder les entités HTML nommées (complètes)
   const htmlEntities: { [key: string]: string } = {
     '&eacute;': 'é', '&egrave;': 'è', '&ecirc;': 'ê', '&euml;': 'ë',
@@ -90,26 +94,60 @@ const utf8Fixes: { [key: string]: string } = {
     '&amp;': '&', '&quot;': '"', '&apos;': "'", '&lt;': '<', '&gt;': '>',
     '&nbsp;': ' ',
   };
-  
+
   Object.keys(htmlEntities).forEach(entity => {
     decoded = decoded.replace(new RegExp(entity, 'g'), htmlEntities[entity]);
   });
-  
+
   return decoded;
+};
+
+// 🔧 Normalise une chaîne pour comparaison : décode HTML, enlève les accents,
+// met en minuscule et retire les espaces superflus.
+const normalizeForCompare = (str: string): string => {
+  if (!str) return '';
+  const decoded = decodeHTML(str);
+  return decoded
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // retire les accents
+    .trim()
+    .toLowerCase();
 };
 
 const CONTRATS = ['CDI', 'CDD', 'Saisonnier', 'Alternance', 'Stage', 'Mi-temps', 'Interim', 'Liberal'];
 
 const PAYS = [
   { label: 'Tout ...', value: '' },
-  { label: 'France', value: 'France' },
-  { label: 'Maroc', value: 'Maroc' },
+  { label: 'Autriche', value: 'Autriche' },
   { label: 'Belgique', value: 'Belgique' },
-  { label: 'Suisse', value: 'Suisse' },
-  { label: 'Canada', value: 'Canada' },
-  { label: 'Espagne', value: 'Espagne' },
-  { label: 'Italie', value: 'Italie' },
+  { label: 'Bulgarie', value: 'Bulgarie' },
+  { label: 'Croatie', value: 'Croatie' },
+  { label: 'Chypre', value: 'Chypre' },
+  { label: 'République tchèque', value: 'République tchèque' },
+  { label: 'Danemark', value: 'Danemark' },
+  { label: 'Estonie', value: 'Estonie' },
+  { label: 'Finlande', value: 'Finlande' },
+  { label: 'France', value: 'France' },
   { label: 'Allemagne', value: 'Allemagne' },
+  { label: 'Grèce', value: 'Grèce' },
+  { label: 'Hongrie', value: 'Hongrie' },
+  { label: 'Irlande', value: 'Irlande' },
+  { label: 'Italie', value: 'Italie' },
+  { label: 'Lettonie', value: 'Lettonie' },
+  { label: 'Lituanie', value: 'Lituanie' },
+  { label: 'Luxembourg', value: 'Luxembourg' },
+  { label: 'Malte', value: 'Malte' },
+  { label: 'Pays-Bas', value: 'Pays-Bas' },
+  { label: 'Pologne', value: 'Pologne' },
+  { label: 'Portugal', value: 'Portugal' },
+  { label: 'Roumanie', value: 'Roumanie' },
+  { label: 'Slovaquie', value: 'Slovaquie' },
+  { label: 'Slovénie', value: 'Slovénie' },
+  { label: 'Espagne', value: 'Espagne' },
+  { label: 'Suède', value: 'Suède' },
+  { label: 'Maroc', value: 'Maroc' },
+  { label: 'Tunisie', value: 'Tunisie' },
+  { label: 'Algérie', value: 'Algérie' },
 ];
 
 // Nombre de candidats affichés par page
@@ -117,12 +155,92 @@ const PAGE_SIZE = 10;
 // Nombre max de boutons de page visibles en même temps
 const MAX_PAGE_BUTTONS = 5;
 
+// ──────────────── PICKER STYLE "SECTEUR" (label/value) ────────────────
+type PickerOption = { label: string; value: string };
+
+const UniversalSelectPicker = ({
+  label,
+  value,
+  options,
+  onChange,
+  placeholder = 'Sélectionner...',
+  disabled = false,
+}: {
+  label: string;
+  value: string;
+  options: PickerOption[];
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const selectedLabel = options.find((o) => o.value === value)?.label;
+
+  return (
+    <View style={styles.pickerWrapper}>
+      {label && <Text style={styles.label}>{label}</Text>}
+      <TouchableOpacity
+        style={[styles.pickerButton, disabled && styles.dropdownDisabled]}
+        onPress={() => !disabled && setModalVisible(true)}
+        activeOpacity={0.7}
+        disabled={disabled}
+      >
+        <Text style={[styles.pickerText, !selectedLabel && styles.placeholderText]}>
+          {selectedLabel || placeholder}
+        </Text>
+        <Ionicons name="chevron-down" size={18} color="#7a8ab8" />
+      </TouchableOpacity>
+
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setModalVisible(false)}
+          />
+
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{label || 'Sélectionner'}</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={20} color="#1b2d5a" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.listWrapper}>
+              <FlatList
+                data={options}
+                keyExtractor={(item, index) => `${item.value}-${index}`}
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={true}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[styles.optionItem, item.value === value && styles.selectedOption]}
+                    onPress={() => {
+                      onChange(item.value);
+                      setModalVisible(false);
+                    }}
+                  >
+                    <Text style={[styles.optionText, item.value === value && styles.selectedOptionText]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
 export default function CVDatabaseScreen() {
   const [candidats, setCandidats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [cvVisible, setCvVisible] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
   const [filterVisible, setFilterVisible] = useState(false);
+  const [employerCountry, setEmployerCountry] = useState('');
 
   const [secteurData, setSecteurData] = useState<{
     categories: any[];
@@ -141,11 +259,6 @@ export default function CVDatabaseScreen() {
   const [tempMetier, setTempMetier] = useState<string>('');
   const [tempContrats, setTempContrats] = useState<string[]>([]);
   const [tempPays, setTempPays] = useState<string>('');
-
-  const [catOpen, setCatOpen] = useState(false);
-  const [subCatOpen, setSubCatOpen] = useState(false);
-  const [metierOpen, setMetierOpen] = useState(false);
-  const [paysOpen, setPaysOpen] = useState(false);
 
   // ──────────────── PAGINATION ────────────────
   const [currentPage, setCurrentPage] = useState(1);
@@ -167,6 +280,20 @@ export default function CVDatabaseScreen() {
       }
     };
     loadCandidats();
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadEmployerInfo = async () => {
+      try {
+        const data = await getEmployerInfo();
+        if (mounted) setEmployerCountry(normalizeForCompare(data?.pays_origine || ''));
+      } catch (error) {
+        console.error('Erreur lors de la récupération des informations employeur :', error);
+      }
+    };
+    loadEmployerInfo();
     return () => { mounted = false; };
   }, []);
 
@@ -206,10 +333,6 @@ export default function CVDatabaseScreen() {
     setTempMetier(selectedMetier);
     setTempPays(selectedPays);
     setTempContrats(selectedContrats);
-    setCatOpen(false);
-    setSubCatOpen(false);
-    setMetierOpen(false);
-    setPaysOpen(false);
     setFilterVisible(true);
   };
 
@@ -243,11 +366,38 @@ export default function CVDatabaseScreen() {
     (item) => String(item.id_sous) === String(tempSubCategory)
   );
 
+  // ──────────────── OPTIONS POUR LES PICKERS (style secteur) ────────────────
+  const categoryOptions: PickerOption[] = [
+    { label: '-- Toutes les catégories --', value: '' },
+    ...secteurData.categories.map((c) => ({
+      label: decodeHTML(c.titre) || 'Catégorie',
+      value: String(c.id_categorie),
+    })),
+  ];
+
+  const subCategoryOptions: PickerOption[] = [
+    { label: '-- Toutes les sous-catégories --', value: '' },
+    ...tempFilteredSubCategories.map((c) => ({
+      label: decodeHTML(c.titre) || 'Sous-catégorie',
+      value: String(c.id_sous),
+    })),
+  ];
+
+  const metierOptions: PickerOption[] = [
+    { label: '-- Tous les métiers --', value: '' },
+    ...tempFilteredMetiers.map((c) => ({
+      label: decodeHTML(c.titre) || 'Métier',
+      value: String(c.id_metier),
+    })),
+  ];
+
+  const paysOptions: PickerOption[] = PAYS;
+
   const filteredCandidats = candidats
     .filter((cand) => {
       const secteurs = Array.isArray(cand?.secteur_activite) ? cand.secteur_activite : [];
 
-      if (selectedCategory || selectedSubCategory || selectedMetier || selectedContrats.length > 0) {
+      if (selectedCategory || selectedSubCategory || selectedMetier) {
         const matchSecteur = secteurs.some((s: any) => {
           const matchCategory = selectedCategory ? String(s.id_categorie) === String(selectedCategory) : true;
           const matchSub = selectedSubCategory ? String(s.id_sous) === String(selectedSubCategory) : true;
@@ -257,15 +407,31 @@ export default function CVDatabaseScreen() {
         if (!matchSecteur) return false;
       }
 
+      // ──────────────── FILTRE PAYS (champ candidat.pays, avec nettoyage encodage) ────────────────
       if (selectedPays) {
-        const regions = cand?.mobilite?.map((m: any) => m.region || '') ?? [];
-        const matchPays = regions.some((r: string) => r.toLowerCase().includes(selectedPays.toLowerCase()));
-        if (!matchPays) return false;
+        const candPays = normalizeForCompare(cand?.pays || '');
+        const filterPays = normalizeForCompare(selectedPays);
+        if (candPays !== filterPays) return false;
+      }
+
+      // ──────────────── FILTRE CONTRAT (contrat_prefere1 OU contrat_prefere2) ────────────────
+      if (selectedContrats.length > 0) {
+        const candContrat1 = normalizeForCompare(cand?.contrat_prefere1 || '');
+        const candContrat2 = normalizeForCompare(cand?.contrat_prefere2 || '');
+        const matchContrat = selectedContrats.some((c) => {
+          const normalizedFilter = normalizeForCompare(c);
+          return candContrat1 === normalizedFilter || candContrat2 === normalizedFilter;
+        });
+        if (!matchContrat) return false;
       }
 
       return true;
     })
     .sort((a, b) => {
+      const sameCountryA = normalizeForCompare(a?.pays || '') === employerCountry ? 1 : 0;
+      const sameCountryB = normalizeForCompare(b?.pays || '') === employerCountry ? 1 : 0;
+      if (sameCountryA !== sameCountryB) return sameCountryB - sameCountryA;
+
       const idA = a.id || a.id_candidat || 0;
       const idB = b.id || b.id_candidat || 0;
       return Number(idB) - Number(idA);
@@ -302,18 +468,6 @@ export default function CVDatabaseScreen() {
     return pages;
   };
 
-  const getCategoryLabel = () =>
-    decodeHTML(secteurData.categories.find((c) => String(c.id_categorie) === selectedCategory)?.titre) || 'Catégorie';
-
-  const getSubCategoryLabel = () =>
-    decodeHTML(filteredSubCategories.find((c) => String(c.id_sous) === selectedSubCategory)?.titre) || 'Sous-catégorie';
-
-  const getMetierLabel = () =>
-    decodeHTML(filteredMetiers.find((c) => String(c.id_metier) === selectedMetier)?.titre) || 'Métier';
-
-  const getPaysLabel = () =>
-    PAYS.find((p) => p.value === selectedPays)?.label || 'Tout ...';
-
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -326,13 +480,6 @@ export default function CVDatabaseScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* COMPTEUR DE RESULTATS */}
-        {!loading && totalItems > 0 && (
-          <Text style={styles.resultCount}>
-            {totalItems} candidat{totalItems > 1 ? 's' : ''} trouvé{totalItems > 1 ? 's' : ''} — page {currentPage}/{totalPages}
-          </Text>
-        )}
-
         {/* LIST */}
         {loading ? (
           <ActivityIndicator size="small" color="#2b5bbb" style={{ marginTop: 40 }} />
@@ -341,19 +488,19 @@ export default function CVDatabaseScreen() {
         ) : (
           paginatedCandidats.map((profile, index) => {
             const hasPhoto = profile.photo && profile.photo.trim() !== '';
-            const photoUrl = hasPhoto 
+            const photoUrl = hasPhoto
               ? `${url()}documents/photos_candidats/${profile.photo}?t=${Date.now()}`
               : null;
 
             return (
               <View key={profile.token_id || profile.id || index} style={styles.card}>
                 <View style={styles.row}>
-                  
+
                   <View style={styles.avatarLarge}>
                     {hasPhoto ? (
-                      <Image 
-                        source={{ uri: photoUrl! }} 
-                        style={styles.avatarImage} 
+                      <Image
+                        source={{ uri: photoUrl! }}
+                        style={styles.avatarImage}
                         resizeMode="cover"
                       />
                     ) : (
@@ -364,7 +511,7 @@ export default function CVDatabaseScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.name}>{decodeHTML(profile.prenom)} </Text>
                     <Text style={styles.status}>{decodeHTML(profile.experience) || 'Vide !'} d'experience</Text>
-                    
+
                     {/* METIERS */}
                     <View style={styles.metiersContainer}>
                       {Array.isArray(profile?.secteur_activite) && profile.secteur_activite.length > 0 ? (
@@ -432,14 +579,7 @@ export default function CVDatabaseScreen() {
             ))}
 
             {getPageNumbers()[getPageNumbers().length - 1] < totalPages && (
-              <>
-                {getPageNumbers()[getPageNumbers().length - 1] < totalPages - 1 && (
-                  <Text style={styles.pageEllipsis}>...</Text>
-                )}
-                <TouchableOpacity style={styles.pageBtn} onPress={() => goToPage(totalPages)}>
-                  <Text style={styles.pageBtnText}>{totalPages}</Text>
-                </TouchableOpacity>
-              </>
+              <Text style={styles.pageEllipsis}>...</Text>
             )}
 
             <TouchableOpacity
@@ -472,14 +612,14 @@ export default function CVDatabaseScreen() {
 
             {selectedCandidate && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                
+
                 {/* HEADER AVEC AVATAR ET NOM */}
                 <View style={styles.cvCenterAvatar}>
                   <View style={styles.cvAvatarLarge}>
                     {selectedCandidate.photo ? (
-                      <Image 
-                        source={{ uri: `${url()}documents/photos_candidats/${selectedCandidate.photo}` }} 
-                        style={styles.avatarImage} 
+                      <Image
+                        source={{ uri: `${url()}documents/photos_candidats/${selectedCandidate.photo}` }}
+                        style={styles.avatarImage}
                         resizeMode="cover"
                       />
                     ) : (
@@ -600,179 +740,41 @@ export default function CVDatabaseScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              {/* CATEGORIE */}
-              <Text style={styles.filterLabel}>Catégorie :</Text>
-              <TouchableOpacity
-                style={styles.dropdownBtn}
-                onPress={() => {
-                  setCatOpen(!catOpen);
-                  setSubCatOpen(false);
-                  setMetierOpen(false);
-                  setPaysOpen(false);
+              {/* CATEGORIE — style secteur */}
+              <UniversalSelectPicker
+                label="Catégorie"
+                value={tempCategory}
+                options={categoryOptions}
+                placeholder="Catégorie"
+                onChange={(v) => {
+                  setTempCategory(v);
+                  setTempSubCategory('');
+                  setTempMetier('');
                 }}
-              >
-                <Text style={[styles.dropdownText, tempCategory ? styles.dropdownTextActive : null]}>
-                  {tempCategory ? (decodeHTML(secteurData.categories.find((c) => String(c.id_categorie) === tempCategory)?.titre) || 'Catégorie') : 'Catégorie'}
-                </Text>
-                <Ionicons name={catOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
-              </TouchableOpacity>
-              {catOpen && (
-                <View style={styles.dropdownList}>
-                  <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
-                    <TouchableOpacity
-                      style={styles.dropdownItem}
-                      onPress={() => {
-                        setTempCategory('');
-                        setTempSubCategory('');
-                        setTempMetier('');
-                        setCatOpen(false);
-                      }}
-                    >
-                      <Text style={styles.dropdownItemText}>-- Toutes les catégories --</Text>
-                    </TouchableOpacity>
-                    {secteurData.categories.map((item) => (
-                      <TouchableOpacity
-                        key={item.id_categorie}
-                        style={[
-                          styles.dropdownItem,
-                          String(item.id_categorie) === tempCategory ? styles.dropdownItemActive : null,
-                        ]}
-                        onPress={() => {
-                          setTempCategory(String(item.id_categorie));
-                          setTempSubCategory('');
-                          setTempMetier('');
-                          setCatOpen(false);
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.dropdownItemText,
-                            String(item.id_categorie) === tempCategory ? styles.dropdownItemTextActive : null,
-                          ]}
-                        >
-                          {decodeHTML(item.titre)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
+              />
 
-              {/* SOUS CATEGORIE */}
-              <Text style={styles.filterLabel}>Sous catégorie :</Text>
-              <TouchableOpacity
-                style={[styles.dropdownBtn, !tempCategory ? styles.dropdownDisabled : null]}
-                onPress={() => {
-                  if (!tempCategory) return;
-                  setSubCatOpen(!subCatOpen);
-                  setCatOpen(false);
-                  setMetierOpen(false);
-                  setPaysOpen(false);
+              {/* SOUS CATEGORIE — style secteur */}
+              <UniversalSelectPicker
+                label="Sous-catégorie"
+                value={tempSubCategory}
+                options={subCategoryOptions}
+                placeholder="Sous-catégorie"
+                disabled={!tempCategory}
+                onChange={(v) => {
+                  setTempSubCategory(v);
+                  setTempMetier('');
                 }}
-              >
-                <Text style={[styles.dropdownText, tempSubCategory ? styles.dropdownTextActive : null]}>
-                  {tempCategory
-                    ? (decodeHTML(tempFilteredSubCategories.find((c) => String(c.id_sous) === tempSubCategory)?.titre) || 'Sous-catégorie')
-                    : 'Sous-catégorie'}
-                </Text>
-                <Ionicons name={subCatOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
-              </TouchableOpacity>
-              {subCatOpen && tempFilteredSubCategories.length > 0 && (
-                <View style={styles.dropdownList}>
-                  <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
-                    <TouchableOpacity
-                      style={styles.dropdownItem}
-                      onPress={() => {
-                        setTempSubCategory('');
-                        setTempMetier('');
-                        setSubCatOpen(false);
-                      }}
-                    >
-                      <Text style={styles.dropdownItemText}>-- Toutes les sous-catégories --</Text>
-                    </TouchableOpacity>
-                    {tempFilteredSubCategories.map((item) => (
-                      <TouchableOpacity
-                        key={item.id_sous}
-                        style={[
-                          styles.dropdownItem,
-                          String(item.id_sous) === tempSubCategory ? styles.dropdownItemActive : null,
-                        ]}
-                        onPress={() => {
-                          setTempSubCategory(String(item.id_sous));
-                          setTempMetier('');
-                          setSubCatOpen(false);
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.dropdownItemText,
-                            String(item.id_sous) === tempSubCategory ? styles.dropdownItemTextActive : null,
-                          ]}
-                        >
-                          {decodeHTML(item.titre)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
+              />
 
-              {/* METIER */}
-              <Text style={styles.filterLabel}>Métier :</Text>
-              <TouchableOpacity
-                style={[styles.dropdownBtn, !tempSubCategory ? styles.dropdownDisabled : null]}
-                onPress={() => {
-                  if (!tempSubCategory) return;
-                  setMetierOpen(!metierOpen);
-                  setCatOpen(false);
-                  setSubCatOpen(false);
-                  setPaysOpen(false);
-                }}
-              >
-                <Text style={[styles.dropdownText, tempMetier ? styles.dropdownTextActive : null]}>
-                  {tempSubCategory
-                    ? (decodeHTML(tempFilteredMetiers.find((c) => String(c.id_metier) === tempMetier)?.titre) || 'Métier')
-                    : 'Métier'}
-                </Text>
-                <Ionicons name={metierOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
-              </TouchableOpacity>
-              {metierOpen && tempFilteredMetiers.length > 0 && (
-                <View style={styles.dropdownList}>
-                  <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
-                    <TouchableOpacity
-                      style={styles.dropdownItem}
-                      onPress={() => {
-                        setTempMetier('');
-                        setMetierOpen(false);
-                      }}
-                    >
-                      <Text style={styles.dropdownItemText}>-- Tous les métiers --</Text>
-                    </TouchableOpacity>
-                    {tempFilteredMetiers.map((item) => (
-                      <TouchableOpacity
-                        key={item.id_metier}
-                        style={[
-                          styles.dropdownItem,
-                          String(item.id_metier) === tempMetier ? styles.dropdownItemActive : null,
-                        ]}
-                        onPress={() => {
-                          setTempMetier(String(item.id_metier));
-                          setMetierOpen(false);
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.dropdownItemText,
-                            String(item.id_metier) === tempMetier ? styles.dropdownItemTextActive : null,
-                          ]}
-                        >
-                          {decodeHTML(item.titre)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
+              {/* METIER — style secteur */}
+              <UniversalSelectPicker
+                label="Métier"
+                value={tempMetier}
+                options={metierOptions}
+                placeholder="Métier"
+                disabled={!tempSubCategory}
+                onChange={(v) => setTempMetier(v)}
+              />
 
               {/* CONTRAT */}
               <Text style={styles.filterLabel}>Contrat :</Text>
@@ -794,50 +796,14 @@ export default function CVDatabaseScreen() {
                 })}
               </View>
 
-              {/* PAYS */}
-              <Text style={styles.filterLabel}>Pays :</Text>
-              <TouchableOpacity
-                style={styles.dropdownBtn}
-                onPress={() => {
-                  setPaysOpen(!paysOpen);
-                  setCatOpen(false);
-                  setSubCatOpen(false);
-                  setMetierOpen(false);
-                }}
-              >
-                <Text style={[styles.dropdownText, tempPays ? styles.dropdownTextActive : null]}>
-                  {PAYS.find((p) => p.value === tempPays)?.label || 'Tout ...'}
-                </Text>
-                <Ionicons name={paysOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#7a8ab8" />
-              </TouchableOpacity>
-              {paysOpen && (
-                <View style={styles.dropdownList}>
-                  <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
-                    {PAYS.map((item) => (
-                      <TouchableOpacity
-                        key={item.value}
-                        style={[
-                          styles.dropdownItem,
-                          item.value === tempPays ? styles.dropdownItemActive : null,
-                        ]}
-                        onPress={() => {
-                          setTempPays(item.value);
-                          setPaysOpen(false);
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.dropdownItemText,
-                            item.value === tempPays ? styles.dropdownItemTextActive : null,
-                          ]}
-                        >
-                          {item.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
+              {/* PAYS — style secteur */}
+              <UniversalSelectPicker
+                label="Pays"
+                value={tempPays}
+                options={paysOptions}
+                placeholder="Tout ..."
+                onChange={(v) => setTempPays(v)}
+              />
 
             </ScrollView>
 
@@ -861,15 +827,15 @@ const styles = StyleSheet.create({
   resultCount: { textAlign: 'center', color: '#7a8ab8', fontSize: 12, marginBottom: 10 },
   card: { backgroundColor: '#fff', borderRadius: 10, padding: 15, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1.41 },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
-  
+
   // Avatar liste
-  avatarLarge: { 
-    width: 60, 
-    height: 60, 
-    borderRadius: 30, 
-    backgroundColor: '#eef2ff', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
+  avatarLarge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#eef2ff',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 15,
     overflow: 'hidden'
   },
@@ -900,11 +866,11 @@ const styles = StyleSheet.create({
   pageBtnText: { color: '#2b5bbb', fontSize: 13, fontWeight: '600' },
   pageBtnTextActive: { color: '#fff' },
   pageEllipsis: { color: '#7a8ab8', marginHorizontal: 4, fontSize: 13 },
-  
+
   // Modals Backdrops
   filterBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  
+
   // Modal CV
   cvCard: { backgroundColor: '#fff', width: width * 0.95, maxHeight: height * 0.9, borderRadius: 15, padding: 20, elevation: 5 },
   cvHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
@@ -913,26 +879,26 @@ const styles = StyleSheet.create({
   cvAvatarLarge: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#eef2ff', justifyContent: 'center', alignItems: 'center', marginBottom: 10, overflow: 'hidden' },
   cvName: { fontSize: 20, fontWeight: 'bold', color: '#1b2d5a' },
   divider: { height: 1, backgroundColor: '#edf2f7', marginVertical: 15 },
-  
+
   // Sections CV
   sectionTitle: { fontSize: 15, fontWeight: 'bold', color: '#2b5bbb', marginBottom: 10, marginTop: 5 },
   contentText: { fontSize: 14, color: '#4a5568', marginBottom: 8 },
-  
+
   // Secteur d'activité
   sectorItem: { marginBottom: 12, paddingLeft: 5 },
   sectorMetier: { fontSize: 14, fontWeight: '600', color: '#1b2d5a', marginBottom: 3 },
   sectorCategory: { fontSize: 12, color: '#7a8ab8', marginLeft: 15 },
-  
+
   // Mobilité
   mobiliteText: { fontSize: 14, color: '#4a5568', marginBottom: 6, paddingLeft: 5 },
-  
+
   // Parcours scolaire
   educationItem: { marginBottom: 15, paddingLeft: 5, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#edf2f7' },
   educationDiplome: { fontSize: 14, fontWeight: 'bold', color: '#2b5bbb', marginBottom: 5 },
   educationSchool: { fontSize: 13, color: '#4a5568', marginBottom: 3 },
   educationDate: { fontSize: 13, color: '#7a8ab8', marginBottom: 5, fontStyle: 'italic' },
   educationDescription: { fontSize: 12, color: '#4a5568', marginTop: 5, lineHeight: 18 },
-  
+
   // Attestations
   attestationItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 10, backgroundColor: '#f8f9fa', borderRadius: 8, marginBottom: 10 },
   attestationStatus: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
@@ -948,15 +914,6 @@ const styles = StyleSheet.create({
   filterHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
   filterTitle: { fontSize: 18, fontWeight: 'bold', color: '#1b2d5a' },
   filterLabel: { fontSize: 14, fontWeight: '600', color: '#4a5568', marginTop: 15, marginBottom: 5 },
-  dropdownBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#cbd5e1', padding: 12, borderRadius: 8, backgroundColor: '#fff' },
-  dropdownDisabled: { backgroundColor: '#f1f5f9', borderColor: '#e2e8f0' },
-  dropdownText: { color: '#94a3b8', fontSize: 14 },
-  dropdownTextActive: { color: '#1b2d5a', fontWeight: '500' },
-  dropdownList: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, marginTop: 4, backgroundColor: '#fff', maxHeight: 150, padding: 4 },
-  dropdownItem: { padding: 12, borderRadius: 6 },
-  dropdownItemActive: { backgroundColor: '#eef2ff' },
-  dropdownItemText: { color: '#4a5568', fontSize: 14 },
-  dropdownItemTextActive: { color: '#2b5bbb', fontWeight: '600' },
   checkboxGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 5 },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', width: '50%', marginBottom: 12 },
   checkbox: { width: 18, height: 18, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, marginRight: 8, justifyContent: 'center', alignItems: 'center' },
@@ -964,4 +921,61 @@ const styles = StyleSheet.create({
   checkboxLabel: { fontSize: 14, color: '#4a5568' },
   applyButton: { marginTop: 15, backgroundColor: '#2b5bbb', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   applyButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
+
+  // SelectPicker Styles (style secteur)
+  pickerWrapper: { marginBottom: 4, marginTop: 15 },
+  label: { fontSize: 13, color: '#4a5568', marginBottom: 4, fontWeight: '600' },
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  pickerText: { fontSize: 14, color: '#1b2d5a' },
+  placeholderText: { color: '#94A3B8' },
+  dropdownDisabled: { backgroundColor: '#f1f5f9', borderColor: '#e2e8f0' },
+
+  // Modal Styles (style secteur)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    height: 350,
+    padding: 16,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    marginBottom: 8,
+  },
+  modalTitle: { fontSize: 16, fontWeight: '600', color: '#1b2d5a' },
+  listWrapper: { flex: 1 },
+  optionItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+  },
+  selectedOption: { backgroundColor: '#F1F5F9', borderRadius: 6 },
+  optionText: { fontSize: 14, color: '#334155' },
+  selectedOptionText: { fontWeight: '600', color: '#2b5bbb' },
 });
