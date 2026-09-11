@@ -1,21 +1,21 @@
+import { getSecteur, getToutMobilite } from "@/app/candidat/services/CVScreen";
+import { createCommande } from '@/app/employeur/services/CreatOffesScreen';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import {
-  View,
+  Alert,
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Alert,
-  Platform,
-  Modal,
-  Pressable,
-  FlatList,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { getSecteur, getToutMobilite } from "@/app/candidat/services/CVScreen";
-import { createCommande } from '@/app/employeur/services/CreatOffesScreen';
 
 
 const decodeHTML = (str: string): string => {
@@ -71,8 +71,10 @@ const decodeHTML = (str: string): string => {
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
     // Entités nommées (recherche dynamique)
-    .replace(/&([a-zA-Z]+);/g, (match, entity) => entities[entity] || match);
+    .replace(/&([a-zA-Z]+);/g, (match, entity) => entities[entity] || match)
+    .trim(); // ← TRIM AJOUTÉ
 };
+
 const formatDate = (date: Date): string => {
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
@@ -239,62 +241,72 @@ export default function CreateOfferScreen() {
     setFormData(prev => ({ ...prev, jobId: String(j?.id_metier ?? j?.id ?? ''), jobTitle: job }));
   };
 
-  const handleSubmit = async () => {
-    const requiredFields: Array<{ key: keyof typeof formData; label: string }> = [
-      { key: 'categoryId', label: 'Catégorie' },
-      { key: 'subcategoryId', label: 'Sous-catégorie' },
-      { key: 'jobId', label: 'Métier' },
-      { key: 'jobType', label: 'Type de contrat' },
-      { key: 'startDate', label: 'Date début (MM/DD/YYYY)' },
-      { key: 'address', label: 'Adresse' },
-      { key: 'mobility', label: 'Mobilité' },
-      { key: 'positions', label: 'Nombre de postes' },
-      { key: 'salary', label: 'Salaire' },
-      { key: 'housing', label: 'Logement' },
-    ];
+ const handleSubmit = async () => {
+  const requiredFields: Array<{ key: keyof typeof formData; label: string }> = [
+    { key: 'categoryId', label: 'Catégorie' },
+    { key: 'subcategoryId', label: 'Sous-catégorie' },
+    { key: 'jobId', label: 'Métier' },
+    { key: 'jobType', label: 'Type de contrat' },
+    { key: 'startDate', label: 'Date début (MM/DD/YYYY)' },
+    { key: 'address', label: 'Adresse' },
+    { key: 'mobility', label: 'Mobilité' },
+    { key: 'positions', label: 'Nombre de postes' },
+    { key: 'salary', label: 'Salaire' },
+    { key: 'housing', label: 'Logement' },
+  ];
 
-    const nextErrors: Record<string, string> = {};
-    const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
-    
-    requiredFields.forEach((field) => {
-      if (!String(formData[field.key]).trim()) {
-        nextErrors[field.key] = `Le champ ${field.label} est obligatoire`;
-      }
-    });
-
-    if (formData.startDate && !dateRegex.test(formData.startDate)) {
-      nextErrors.startDate = 'Format date invalide : MM/DD/YYYY';
+  const nextErrors: Record<string, string> = {};
+  const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+  
+  requiredFields.forEach((field) => {
+    if (!String(formData[field.key]).trim()) {
+      nextErrors[field.key] = `Le champ ${field.label} est obligatoire`;
     }
+  });
 
-    if (formData.endDate && !dateRegex.test(formData.endDate)) {
-      nextErrors.endDate = 'Format date invalide : MM/DD/YYYY';
-    }
+  if (formData.startDate && !dateRegex.test(formData.startDate)) {
+    nextErrors.startDate = 'Format date invalide : MM/DD/YYYY';
+  }
 
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
-      return;
-    }
+  if (formData.endDate && !dateRegex.test(formData.endDate)) {
+    nextErrors.endDate = 'Format date invalide : MM/DD/YYYY';
+  }
 
-    setErrors({});
+  if (Object.keys(nextErrors).length > 0) {
+    setErrors(nextErrors);
+    return;
+  }
 
+  setErrors({});
+
+  try {
+    let ipAdresse = 'N/A';
     try {
-      const payload = {
-        ...formData,
-        startDate: formData.startDate ? parseDate(formData.startDate) : null,
-        endDate: formData.endDate ? parseDate(formData.endDate) : null,
-      };
-
-      const result = await createCommande(payload);
-      const message = result?.message || 'Offre soumise pour validation CMO';
-      Alert.alert('Résultat', message);
-      setFormData(initialFormData);
-      setErrors({});
+      const response = await fetch('https://api.ipify.org?format=json');
+      const data = await response.json();
+      ipAdresse = data.ip;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Impossible de créer la commande';
-      Alert.alert('Erreur', message);
-      console.error(error);
+      console.error('IP fetch error:', error);
     }
-  };
+
+    const payload = {
+      ...formData,
+      ip_adresse: ipAdresse,
+      startDate: formData.startDate ? parseDate(formData.startDate) : null,
+      endDate: formData.endDate ? parseDate(formData.endDate) : null,
+    };
+
+    const result = await createCommande(payload);
+    const message = result?.message || 'Offre soumise pour validation CMO';
+    Alert.alert('Résultat', message);
+    setFormData(initialFormData);
+    setErrors({});
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Impossible de créer la commande';
+    Alert.alert('Erreur', message);
+    console.error(error);
+  }
+};
 
   const filteredSubCategories = sectorData.subCategories.filter(sc => String(sc.id_categorie) === String(formData.categoryId));
   const filteredJobs = sectorData.jobs.filter(j => String(j.id_sous) === String(formData.subcategoryId));
@@ -499,7 +511,14 @@ export default function CreateOfferScreen() {
         <TextInput style={styles.input} placeholder="Nombre de postes" placeholderTextColor="#7a8ab8" value={formData.positions} onChangeText={(v) => handleChange('positions', v)} keyboardType="numeric" />
         {errors.positions ? <Text style={styles.errorText}>{errors.positions}</Text> : null}
 
-        <TextInput style={styles.input} placeholder="Salaire" placeholderTextColor="#7a8ab8" value={formData.salary} onChangeText={(v) => handleChange('salary', v)} keyboardType="numeric" />
+        <TextInput
+          style={styles.input}
+          placeholder="Salaire (ex. 2000$)"
+          placeholderTextColor="#7a8ab8"
+          value={formData.salary}
+          onChangeText={(v) => handleChange('salary', v)}
+          keyboardType="default"
+        />
         {errors.salary ? <Text style={styles.errorText}>{errors.salary}</Text> : null}
 
         <UniversalSelectPicker

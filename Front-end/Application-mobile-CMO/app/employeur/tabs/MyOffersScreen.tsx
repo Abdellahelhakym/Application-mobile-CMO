@@ -17,7 +17,7 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router'; 
 import * as WebBrowser from 'expo-web-browser';
 import { getCommandes, getDevis, AccepterRefuserDevis, getStatutFiche } from '@/app/employeur/services/MyOffers';
-import { getSecteur } from '@/app/candidat/services/CVScreen';
+import { getSecteur , getToutMobilite } from '@/app/candidat/services/CVScreen';
 
 import url from "@/app/services/url.js";
 
@@ -112,6 +112,7 @@ export default function MyOffersScreen() {
   const [commandes, setCommandes] = useState<any[]>([]);
   const [devis, setDevis] = useState<any[]>([]);
   const [statutsList, setStatutsList] = useState<StatutItem[]>([]);
+  const [mobilites, setMobilites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false); 
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null); 
@@ -132,8 +133,23 @@ export default function MyOffersScreen() {
     }
   };
 
+  // 🔄 Charger la liste des mobilités
+  const fetchMobilites = async () => {
+    try {
+      const data = await getToutMobilite();
+      const decoded = Array.isArray(data) 
+        ? data.map((m: any) => ({ ...m, titre: decodeHTML(m.titre ?? '') })) 
+        : [];
+      setMobilites(decoded);
+    } catch (error) {
+      console.error('loadMobilites error', error);
+      setMobilites([]);
+    }
+  };
+
   useEffect(() => {
     fetchStatuts();
+    fetchMobilites();
   }, []);
 
   // 🔄 Fonction de chargement des données avec sécurité anti-doublons
@@ -193,7 +209,7 @@ export default function MyOffersScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchData(false), fetchStatuts()]);
+    await Promise.all([fetchData(false), fetchStatuts(), fetchMobilites()]);
     setRefreshing(false);
   };
 
@@ -213,6 +229,13 @@ export default function MyOffersScreen() {
       titre: statusId ? `Statut #${statusId}` : '-',
       couleur: 'default',
     };
+  };
+
+  // 🔍 Helper : Récupérer le titre de mobilité par ID
+  const getMobilityTitle = (mobilityId: any): string => {
+    if (!mobilityId) return '-';
+    const mobility = mobilites.find(m => String(m.id) === String(mobilityId));
+    return mobility ? decodeHTML(mobility.titre) : '-';
   };
 
   // 📄 Ouvre le fichier PDF du devis
@@ -617,7 +640,7 @@ export default function MyOffersScreen() {
               Adresse : {decodeHTML(selectedCommande?.adresse || '-')}
             </Text>
             <Text style={styles.modalRow}>
-              Mobilite : {decodeHTML(selectedCommande?.lieu_travail2 || selectedCommande?.lieu_travail || '-')}
+              Mobilite : {getMobilityTitle(selectedCommande?.lieu_travail2)}
             </Text>
             <Text style={styles.modalRow}>
               Nombre de poste : {selectedCommande?.nbr_poste || '-'}
@@ -626,7 +649,7 @@ export default function MyOffersScreen() {
               Salaire propose : {selectedCommande?.salaire_proposer || '-'}
             </Text>
             <Text style={styles.modalRow}>
-              Logement : {selectedCommande?.logement === 1 ? 'Oui' : selectedCommande?.logement === 0 ? 'Non' : '-'}
+              Logement : {selectedCommande?.logement === 1 || selectedCommande?.logement === 'Oui' ? 'Oui' : selectedCommande?.logement === 0 || selectedCommande?.logement === 'Non' ? 'Non' : '-'}
             </Text>
             <Text style={styles.modalRow}>
               Permis : {selectedCommande?.permis || '-'}

@@ -3,17 +3,18 @@ const db = require('../db');
 
 const createOffer = express.Router();
 const auth = require('../middleware/auth');
+
 createOffer.get('/', auth, (req, res) => {
     res.send('Create Offer route');
 });
 
 createOffer.post('/commande', auth, (req, res) => {
     console.log('Received create offer request with body:', req.body);
+
     const token_id = req.user.token_id;
-    
-    // Les dates arrivent sous forme d'objets ou chaînes ISO du type "2026-07-06T13:22:00.000Z"
     const data = req.body.data || {};
 
+    // 1. Récupération de l'entreprise
     db.query(
         'SELECT id, responsable FROM mco_entreprise WHERE token_id = ? AND deleted = 0',
         [token_id],
@@ -22,107 +23,184 @@ createOffer.post('/commande', auth, (req, res) => {
                 console.error(err);
                 return res.status(500).json({ error: 'Internal server error' });
             }
+
             const idEmployer = results[0]?.id;
             const responsable = results[0]?.responsable;
+
             if (!idEmployer) {
                 return res.status(404).json({ error: 'Employer not found' });
             }
 
-            // 📅 1. Formatage des dates pour MySQL (YYYY-MM-DD)
+            // 2. Formatage des dates
             let mysqlStartDate = null;
             let mysqlEndDate = null;
 
             if (data.startDate) {
-                mysqlStartDate = new Date(data.startDate).toISOString().split('T')[0];
-            }
-            if (data.endDate) {
-                mysqlEndDate = new Date(data.endDate).toISOString().split('T')[0];
+                mysqlStartDate = data.startDate.split('T')[0];
             }
 
-            // ⏱️ 2. Calcul automatique et propre de la durée
-            let calculDuree = null;
+            if (data.endDate) {
+                mysqlEndDate = data.endDate.split('T')[0];
+            }
+
+            // 3. Calcul de la durée uniquement en jours (ex: "517 jours")
+            let calculDuree = '';
             if (data.startDate && data.endDate) {
                 const start = new Date(data.startDate);
                 const end = new Date(data.endDate);
-                
-                // Différence en jours
-                const diffTime = Math.abs(end - start);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                if (diffDays >= 30) {
-                    const months = Math.round(diffDays / 30);
-                    calculDuree = `${months} mois`;
-                } else {
+
+                if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                    const diffTime = Math.abs(end - start);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     calculDuree = `${diffDays} jours`;
                 }
             } else if (mysqlStartDate) {
-                calculDuree = "Non définie";
+                calculDuree = 'Non définie';
             }
 
+            // 4. Détection des permis
+            const permisStr = data.drivingLicense || '';
+            const permisB = permisStr.includes('B') ? 1 : 0;
+            const permisC1 = permisStr.includes('C1') ? 1 : 0;
+            const permisC1E = permisStr.includes('C1E') ? 1 : 0;
+            const permisCE = permisStr.includes('CE') ? 1 : 0;
+
+            // 5. Adresse IP (reçue dans le body ou via les headers)
+            const clientIp = req.body.ip_adresse || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+
+            // 6. Mappage mis à jour
             const payload = {
-                token_id,
-                responsable,
-                intitule_poste: data.jobTitle,
-                contrat: data.jobType,
-                duree: calculDuree,
+                id_societe: idEmployer,
+                nom_responsable: responsable,
+                adresse: data.address || '',
+                ville: '', // Force la ville à vide
+                code_postal: '',
+                intitule_poste: data.jobTitle || '',
+                fonction_essentielle: data.comments || '', // Stocke comments dans fonction_essentielle
+                competence_connaiss: '',
+                contrat: data.jobType || '',
+                duree: calculDuree, // Format "X jours"
                 date_besoin: mysqlStartDate,
                 date_fin: mysqlEndDate,
-                lieu_travail: data.address,
-                nbr_poste: data.positions,
-                salaire_proposer: data.salary,
-                logement: data.housing,
-                permis: data.drivingLicense,
-                commentaire: data.comments,
-                commentaire2: data.description,
+                lieu_travail: '',
+                lieu_travail2: data.mobility || '',
+                nbr_poste: data.positions || 1,
+                permis_b: permisB,
+                permis_c1: permisC1,
+                permis_c1e: permisC1E,
+                permis_ce: permisCE,
+                commentaire: data.description || '', // Stocke description dans commentaire
+                commentaire2: '', // commentaire2 vaut ""
+                statut_fiche: 1,
+                date_demande: new Date().toISOString().split('T')[0],
+                salaire_proposer: data.salary || '',
+                logement: data.housing || 'Non',
+                permis: data.drivingLicense || '',
+                id_user: idEmployer,
+                ip_adresse: clientIp,
+                deleted: 0
             };
 
-            if (!payload.intitule_poste || !payload.contrat || !payload.lieu_travail) {
-                return res.status(400).json({ error: 'All fields are required' });
+            // 7. Validation des champs obligatoires
+            if (!payload.intitule_poste || !payload.contrat) {
+                return res.status(400).json({ error: 'Job title and contract type are required' });
             }
 
-            db.query('SELECT MAX(id) AS max_id FROM fiche_poste', (err, results) => {
-                if (err) {
-                    console.error(err);
-                    return res.status(500).json({ error: 'Internal server error' });
-                }
-
-                const maxIdNumber = Number(results[0]?.max_id || 0);
-                const nextFicheId = `000-Cmd-${maxIdNumber + 1}`;
-
-                db.query(
-                    'INSERT INTO fiche_poste (id_societe, id_fiche_poste, intitule_poste, nom_responsable, contrat, duree, date_besoin, date_fin, lieu_travail, nbr_poste, salaire_proposer, logement, permis, commentaire, commentaire2 , statut_fiche, deleted , id_user) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ? )',
-                    [
-                        idEmployer,
-                        nextFicheId,
-                        payload.intitule_poste,
-                        payload.responsable,
-                        payload.contrat,
-                        payload.duree,
-                        payload.date_besoin,
-                        payload.date_fin,
-                        payload.lieu_travail,
-                        payload.nbr_poste,
-                        payload.salaire_proposer,
-                        payload.logement,
-                        payload.permis,
-                        payload.commentaire,
-                        payload.commentaire2,
-                        1,
-                        0, // deleted
-                        idEmployer
-                    ],
-                    (insertErr, result) => {
-                        if (insertErr) {
-                            console.error(insertErr);
-                            return res.status(500).json({ error: 'Internal server error' });
-                        }
-                        res.json({ message: 'Offer created successfully', id: result.insertId });
+            // 8. Récupération de l'ID max
+            db.query(
+                'SELECT MAX(id) AS max_id FROM fiche_poste',
+                (err, results) => {
+                    if (err) {
+                        console.error(err);
+                        return res.status(500).json({ error: 'Internal server error' });
                     }
-                );
-            });
+
+                    const maxIdNumber = Number(results[0]?.max_id || 0);
+                    const nextFicheId = `0000-Cmd-${maxIdNumber + 1}`;
+
+                    // 9. Requête d'insertion
+                    db.query(
+                        `INSERT INTO fiche_poste (
+                            id_fiche_poste,
+                            id_societe,
+                            nom_responsable,
+                            adresse,
+                            ville,
+                            code_postal,
+                            intitule_poste,
+                            fonction_essentielle,
+                            competence_connaiss,
+                            contrat,
+                            duree,
+                            date_besoin,
+                            date_fin,
+                            lieu_travail,
+                            lieu_travail2,
+                            nbr_poste,
+                            permis_b,
+                            permis_c1,
+                            permis_c1e,
+                            permis_ce,
+                            commentaire,
+                            commentaire2,
+                            statut_fiche,
+                            date_demande,
+                            salaire_proposer,
+                            logement,
+                            permis,
+                            id_user,
+                            ip_adresse,
+                            deleted
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [
+                            nextFicheId,
+                            payload.id_societe,
+                            payload.nom_responsable,
+                            payload.adresse,
+                            payload.ville,
+                            payload.code_postal,
+                            payload.intitule_poste,
+                            payload.fonction_essentielle,
+                            payload.competence_connaiss,
+                            payload.contrat,
+                            payload.duree,
+                            payload.date_besoin,
+                            payload.date_fin,
+                            payload.lieu_travail,
+                            payload.lieu_travail2,
+                            payload.nbr_poste,
+                            payload.permis_b,
+                            payload.permis_c1,
+                            payload.permis_c1e,
+                            payload.permis_ce,
+                            payload.commentaire,
+                            payload.commentaire2,
+                            payload.statut_fiche,
+                            payload.date_demande,
+                            payload.salaire_proposer,
+                            payload.logement,
+                            payload.permis,
+                            payload.id_user,
+                            payload.ip_adresse,
+                            payload.deleted
+                        ],
+                        (insertErr, result) => {
+                            if (insertErr) {
+                                console.error('Error inserting fiche_poste:', insertErr);
+                                return res.status(500).json({ error: 'Internal server error' });
+                            }
+
+                            return res.json({
+                                message: 'Offer created successfully',
+                                id: result.insertId,
+                                id_fiche_poste: nextFicheId
+                            });
+                        }
+                    );
+                }
+            );
         }
     );
 });
-
 
 module.exports = createOffer;
