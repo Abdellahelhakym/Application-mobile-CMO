@@ -1,43 +1,41 @@
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  RefreshControl,
-  Modal, 
-  Dimensions, 
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
+import { fixUtf8Encoding } from "@/app/candidat/services/decode";
 import { router, useFocusEffect } from 'expo-router';
 import { decode } from 'html-entities';
-import { fixUtf8Encoding } from "@/app/candidat/services/decode"; 
 
 import {
-  Bot,
-  FileText,
-  Heart,
-  Lock,
-  LogOut,
-  MapPin,
-  Menu,
-  Phone,
-  Settings,
-  Trash2,
-  User,
-  UserRoundCheck,
-  X // 👈 AJOUT pour l'icône de fermeture
+    FileText,
+    Heart,
+    Lock,
+    LogOut,
+    MapPin,
+    Menu,
+    Phone,
+    Settings,
+    Trash2,
+    UserRoundCheck,
+    X // 👈 AJOUT pour l'icône de fermeture
 } from 'lucide-react-native';
 
 import { getInformations } from "@/app/candidat/services/CVScreen";
+import { getPaysAutoriser, getProfile } from "@/app/candidat/services/ProfileScreen";
+import { deleteAccount } from "@/app/candidat/services/deleteAccount";
 import { Feather } from '@expo/vector-icons';
 import { getImage } from "../services/document";
-import { getProfile, getPaysAutoriser } from "@/app/candidat/services/ProfileScreen";
-import { deleteAccount } from "@/app/candidat/services/deleteAccount";
 
 import url from "@/app/services/url";
 
@@ -53,6 +51,7 @@ export default function ProfileScreen() {
   });
   const [photo, setPhoto] = useState('');
   const [avatarLoading, setAvatarLoading] = useState(false);
+  const [hasImageError, setHasImageError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   
   // État pour gérer la visibilité du bouton Assistance
@@ -102,6 +101,7 @@ export default function ProfileScreen() {
         ? url() + "documents/photos_candidats/" + imageData.image
         : '';
       setPhoto(imageUrl);
+      setHasImageError(false);
     } catch (error) {
       console.log(error);
     }
@@ -178,11 +178,11 @@ export default function ProfileScreen() {
           {/* 👈 AJOUT : Rendre l'avatar cliquable */}
           <TouchableOpacity 
             style={styles.avatarBig} 
-            onPress={() => photo && setIsImageZoomed(true)} // N'ouvre que si une photo existe
+            onPress={() => photo && !hasImageError && setIsImageZoomed(true)}
             activeOpacity={0.8}
-            disabled={!photo} // Désactivé si pas de photo
+            disabled={!photo || hasImageError}
           >
-            {photo ? (
+            {photo && !hasImageError ? (
               <>
                 <Image
                   source={{ uri: photo }}
@@ -190,7 +190,10 @@ export default function ProfileScreen() {
                   onLoadStart={() => setAvatarLoading(true)}
                   onLoad={() => setAvatarLoading(false)}
                   onLoadEnd={() => setAvatarLoading(false)}
-                  onError={() => setAvatarLoading(false)}
+                  onError={() => {
+                    setAvatarLoading(false);
+                    setHasImageError(true);
+                  }}
                 />
                 {avatarLoading ? (
                   <View style={styles.avatarLoading}>
@@ -199,7 +202,9 @@ export default function ProfileScreen() {
                 ) : null}
               </>
             ) : (
-              <User size={40} color="#2b5bbb" />
+              <View style={styles.avatarPlaceholder}>
+                <Feather name="user" size={24} color="#ffffff" />
+              </View>
             )}
           </TouchableOpacity>
 
@@ -406,6 +411,13 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: '100%',
     height: '100%',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#122F78',
   },
   avatarLoading: {
     ...StyleSheet.absoluteFillObject,

@@ -141,3 +141,30 @@ export async function getPsaudo() {
     return null;
   }
 }
+
+
+export async function getTelAgent() {
+  try {
+    const token_id = await getTokenId();
+
+    const response = await fetch(
+      url() + "candidat/Dashboard/telAgent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token_id }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching tel agent:", error);
+    return null;
+  }
+}

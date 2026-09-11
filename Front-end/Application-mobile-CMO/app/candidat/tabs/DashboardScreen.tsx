@@ -3,6 +3,7 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Image,
     Linking,
     RefreshControl,
@@ -17,7 +18,8 @@ import { getListFils } from "@/app/candidat/services/AttestationsScreen";
 import {
     categorieMetier,
     getDashboardData,
-    getSecteursActivite
+    getSecteursActivite, 
+    getTelAgent
 } from "@/app/candidat/services/DashboardScreen";
 import { fixUtf8Encoding } from "@/app/candidat/services/decode";
 import { Bell, MessageSquare, Phone } from "lucide-react-native";
@@ -28,9 +30,9 @@ import { getNotification } from '../../candidat/services/messagerie';
 const decodeHTML = (str: string): string => {
   if (!str) return '';
   return str
-    .trim() // Supprime les espaces et \n au début/fin
-    .replace(/\n/g, '') // Supprime les retours à la ligne
-    .replace(/^BTP\s*-\s*/i, '') // ✂️ Supprime "BTP - " au début du titre
+    .trim()
+    .replace(/\n/g, '')
+    .replace(/^BTP\s*-\s*/i, '')
     .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(Number(dec)))
     .replace(/&Eacute;/g, 'É')
     .replace(/&eacute;/g, 'é')
@@ -94,6 +96,12 @@ type MissingDocument = {
     titre: string;
     titre2?: string;
     etats?: number;
+};
+
+type AgentType = {
+    id?: number;
+    tel?: string | null;
+    [key: string]: any;
 };
 
 const emptyDashboardData: DashboardDataType = {
@@ -264,18 +272,27 @@ export default function DashboardScreen() {
     const [badgeLoading, setBadgeLoading] = useState(false);
     const [notifCount, setNotifCount] = useState<number>(0);
     const [refreshing, setRefreshing] = useState(false); 
+    const [agentData, setAgentData] = useState<AgentType | null>(null);
 
     const loadDashboard = React.useCallback(async () => {
         try {
-            const [data, secteursRaw, categoriesRaw, docs, notifRes] = await Promise.all([
+            const [data, secteursRaw, categoriesRaw, docs, notifRes, agentRes] = await Promise.all([
                 getDashboardData(),
                 getSecteursActivite(),
                 categorieMetier(),
                 getListFils(),
                 getNotification(),
+                getTelAgent(), // 👈 Appel de l'API agent
             ]);
 
             setDashboardData(normalizeDashboardData(data));
+            
+            // Stockage des données de l'agent
+            if (agentRes && !agentRes.error) {
+                setAgentData(agentRes);
+            } else {
+                setAgentData(null);
+            }
 
             // --- Jointure et formatage des secteurs d'activités ---
             if (Array.isArray(secteursRaw) && Array.isArray(categoriesRaw)) {
@@ -287,7 +304,7 @@ export default function DashboardScreen() {
 
                     return {
                         id_categorie: secteur.titre,
-                        categorie: decodeHTML(rawTitle), // 👈 Nettoyage + Décodage HTML
+                        categorie: decodeHTML(rawTitle),
                         total_candidatures: secteur.postuler || 0,
                     };
                 });
@@ -309,6 +326,7 @@ export default function DashboardScreen() {
             setDashboardData(emptyDashboardData);
             setSecteursActivite([]);
             setMissingDocs([]);
+            setAgentData(null);
         }
     }, []);
 
@@ -323,6 +341,22 @@ export default function DashboardScreen() {
             loadDashboard();
         }, [loadDashboard])
     );
+
+    // 📞 Gestion du clic sur Conseiller
+    const handleConseillerPress = async () => {
+        if (agentData && agentData.tel && agentData.tel.trim() !== "") {
+            const phoneNumber = `tel:${agentData.tel.trim()}`;
+            const supported = await Linking.canOpenURL(phoneNumber);
+            if (supported) {
+                await Linking.openURL(phoneNumber);
+            } else {
+                Alert.alert("Erreur", "Impossible de passer l'appel depuis cet appareil.");
+            }
+        } else {
+            // Pas d'agent ou numéro non spécifié => redirection vers le Chat
+            router.push('/candidat/autre/Chat');
+        }
+    };
 
     if (!dashboardData) {
         return (
@@ -391,8 +425,10 @@ export default function DashboardScreen() {
                             </Text>
                         </View>
                     </View>
+
                     <View style={styles.actions}>
-                        <TouchableOpacity disabled={true} style={styles.btnOutline} onPress={() => Linking.openURL("tel:+33788361923")}>
+                        {/* BOUTON CONSEILLER MIS À JOUR */}
+                        <TouchableOpacity style={styles.btnOutline} onPress={handleConseillerPress}>
                             <Phone size={16} color="#2b5bbb" />
                             <Text style={styles.btnText}>Conseiller</Text>
                         </TouchableOpacity>
@@ -401,6 +437,7 @@ export default function DashboardScreen() {
                             <MessageSquare size={16} color="#2b5bbb" />
                             <Text style={styles.btnText}>Chat</Text>
                         </TouchableOpacity>
+
                         <TouchableOpacity style={styles.btnOutline} onPress={() => router.push("/candidat/autre/Notification")}>
                             <View>
                                 <Bell size={19} color="#2b5bbb" />

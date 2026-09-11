@@ -1,36 +1,36 @@
-import React, { useState, useCallback } from "react";
 import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
-  View,
   Alert,
+  Dimensions,
+  Image,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Image,
-  RefreshControl,
-  Modal,
-  Dimensions,
+  View,
 } from "react-native";
 
+import { getEmployerInfo } from "@/app/employeur/services/EmployerInfoScreen";
+import { deleteAccount } from "@/app/employeur/services/deleteAccount";
+import { getImage } from '@/app/employeur/services/documents';
+import url from "@/app/services/url.js";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
-  Building2,
-  Mail,
-  Phone,
-  MapPin,
   CreditCard,
   FileText,
-  Settings,
   Lock,
   LogOut,
+  Mail,
+  MapPin,
   Menu,
+  Phone,
+  Settings,
   Trash2,
   X,
 } from "lucide-react-native";
-import { getEmployerInfo } from "@/app/employeur/services/EmployerInfoScreen";
-import { getImage } from '@/app/employeur/services/documents';
-import url from "@/app/services/url.js";
-import { deleteAccount } from "@/app/employeur/services/deleteAccount";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -155,7 +155,11 @@ export default function EmployerProfileScreen() {
               {photoUrl ? (
                 <Image source={{ uri: photoUrl }} style={styles.avatar} />
               ) : (
-                <Building2 size={40} color="#2b5bbb" />
+                <MaterialCommunityIcons
+                  name="account-tie"
+                  size={30}
+                  color="#2b5bbb"
+                />
               )}
             </TouchableOpacity>
 

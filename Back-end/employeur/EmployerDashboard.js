@@ -523,4 +523,34 @@ EmployerDashboard.post('/pack', auth, (req, res) => {
 
 });
 
+
+EmployerDashboard.post('/telAgent', auth, (req, res) => {
+    const token_id = req.user.token_id;
+    db.query(
+        `SELECT userss.*
+            FROM mco_entreprise
+            INNER JOIN userss
+                ON mco_entreprise.id_commercial = userss.token_id
+            WHERE mco_entreprise.token_id = ?
+            AND mco_entreprise.deleted = 0;
+            `,
+
+        [token_id],
+        (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({
+                    error: 'Internal server error'
+                });
+            }
+
+            if (results.length === 0) {
+                return res.status(200).json(null);
+            }
+
+            return res.status(200).json(results[0]);
+        }
+    );
+});
+
 module.exports = EmployerDashboard;

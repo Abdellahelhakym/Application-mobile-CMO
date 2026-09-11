@@ -29,6 +29,7 @@ const TITLES: Record<string, string> = {
 export default function Layout() {
   const [userName, setUserName] = useState("Utilisateur");
   const [profileImage, setProfileImage] = useState("");
+  const [hasImageError, setHasImageError] = useState(false);
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "android" ? insets.bottom : 0;
 
@@ -84,6 +85,7 @@ export default function Layout() {
           
           if (isMounted && imageUrl) {
             setProfileImage(imageUrl);
+            setHasImageError(false);
           }
         } catch (imageError) {
           console.error("Erreur loadImage:", imageError);
@@ -147,10 +149,11 @@ export default function Layout() {
         // =========================
         headerRight: () => (
           <View style={styles.headerRight}>
-            {profileImage ? (
+            {profileImage && !hasImageError ? (
               <Image
                 source={{ uri: profileImage }}
                 style={styles.profileImage}
+                onError={() => setHasImageError(true)}
               />
             ) : (
               <View style={styles.profileImagePlaceholder}>

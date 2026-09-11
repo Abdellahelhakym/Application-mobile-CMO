@@ -1,13 +1,46 @@
-import React, { useState, useCallback } from "react"; 
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Image, RefreshControl, Modal, Dimensions } from "react-native"; 
-import { useFocusEffect, router } from "expo-router"; 
-import { Award, Bell, Briefcase, CalendarCheck, CheckCircle, Clock, FileText, Flag, Heart, Link, MessageSquare, Phone, Plus, Search, UserCheck, UserPlus, Users, XCircle, X } from "lucide-react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router, useFocusEffect } from "expo-router";
+import {
+  Award,
+  Bell,
+  Briefcase,
+  CalendarCheck,
+  CheckCircle,
+  Clock,
+  FileText,
+  Flag,
+  Heart,
+  Link,
+  MessageSquare,
+  Phone,
+  Plus,
+  Search,
+  UserCheck,
+  UserPlus,
+  Users,
+  X,
+  XCircle
+} from "lucide-react-native";
+import React, { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  Linking,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from "react-native";
 
-import { getPhase1, getPhase2, getPhase3, getPhase4, getPhase5, getPack } from "@/app/employeur/services/EmployerDashboard";
-import { getRaison } from "@/app/employeur/services/token_id";
 import { getImage } from '@/app/employeur/services/documents';
-import { getNotification } from '../../employeur/services/messagerie'; 
+import { getPack, getPhase1, getPhase2, getPhase3, getPhase4, getPhase5, getTelAgent } from "@/app/employeur/services/EmployerDashboard";
+import { getRaison } from "@/app/employeur/services/token_id";
 import url from "@/app/services/url.js";
+import { getNotification } from '../../employeur/services/messagerie';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -24,6 +57,7 @@ export default function EmployerDashboard() {
   const [notifCount, setNotifCount] = useState<number>(0);
   const [refreshing, setRefreshing] = useState<boolean>(false); 
   const [isImageZoomed, setIsImageZoomed] = useState<boolean>(false);
+  const [loadingAgent, setLoadingAgent] = useState<boolean>(false);
   
   const [phase1Stats, setPhase1Stats] = useState({ nouvelleCommande: 0, nombrePoste: 0, enCours: 0, commandeValidee: 0, commandesRefusees: 0, commandesAnnulees: 0 });
   const [phase2Stats, setPhase2Stats] = useState({ candidatsProposes: 0, candidatsContactes: 0, candidatsInteresses: 0, candidatsAcceptes: 0, preselectionValidee: 0, preselectionNonValidee: 0 });
@@ -69,6 +103,25 @@ export default function EmployerDashboard() {
     setRefreshing(true);
     await loadDashboardData(true);
     setRefreshing(false);
+  };
+
+  const handleConseillerPress = async () => {
+    if (loadingAgent) return;
+    try {
+      setLoadingAgent(true);
+      const agent = await getTelAgent();
+
+      if (agent && agent.tel && String(agent.tel).trim() !== "") {
+        await Linking.openURL(`tel:${agent.tel}`);
+      } else {
+        router.push("/employeur/autre/Chat");
+      }
+    } catch (error) {
+      console.log("Erreur lors de la récupération du numéro de l'agent:", error);
+      router.push("/employeur/autre/Chat");
+    } finally {
+      setLoadingAgent(false);
+    }
   };
 
   const recruitmentPhases = [
@@ -152,7 +205,15 @@ export default function EmployerDashboard() {
               onPress={() => photoUrl && setIsImageZoomed(true)}
               disabled={!photoUrl}
             >
-              {photoUrl ? <Image source={{ uri: photoUrl }} style={styles.avatarImage} /> : <Text style={styles.logoText}>Logo</Text>}
+              {photoUrl ? (
+                <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+              ) : (
+                <MaterialCommunityIcons
+                  name="account-tie"
+                  size={30}
+                  color="#2b5bbb"
+                />
+              )}
             </TouchableOpacity>
             <View style={styles.infoContent}>
               <Text style={styles.company}>{getRaison()}</Text>
@@ -160,8 +221,19 @@ export default function EmployerDashboard() {
             </View>
           </View>
           <View style={styles.actions}>
-            <TouchableOpacity disabled={true} style={styles.btnOutline} onPress={() => Linking.openURL("tel:+33788361923")}>
-              <Phone size={16} color="#2b5bbb" /><Text style={styles.btnText}>Conseiller</Text>
+            <TouchableOpacity 
+              style={styles.btnOutline} 
+              onPress={handleConseillerPress}
+              disabled={loadingAgent}
+            >
+              {loadingAgent ? (
+                <ActivityIndicator size="small" color="#2b5bbb" />
+              ) : (
+                <>
+                  <Phone size={16} color="#2b5bbb" />
+                  <Text style={styles.btnText}>Conseiller</Text>
+                </>
+              )}
             </TouchableOpacity>
             <TouchableOpacity style={styles.btnOutline} onPress={() => router.push("/employeur/autre/Chat")}>
               <MessageSquare size={16} color="#2b5bbb" /><Text style={styles.btnText}>Chat</Text>
@@ -254,7 +326,6 @@ const styles = StyleSheet.create({
   infoCard: { backgroundColor: "#fff", borderRadius: 18, padding: 15 },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   logoBox: { width: 50, height: 50, borderRadius: 12, backgroundColor: "#eef3ff", justifyContent: "center", alignItems: "center", overflow: "hidden" },
-  logoText: { fontSize: 10, color: "#2b5bbb" },
   avatarImage: { width: "100%", height: "100%", resizeMode: "cover" },
   infoContent: { flex: 1 },
   company: { fontSize: 15, fontWeight: "600", color: "#1b2d5a" },
@@ -296,7 +367,6 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 22, fontWeight: '700', marginTop: 4 },
 
-  // Styles pour le Modal de Zoom
   modalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.9)',

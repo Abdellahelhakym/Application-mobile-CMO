@@ -226,4 +226,62 @@ dashboard.post('/categorieMetier', auth, (req, res) => {
         }
     );
 });
+
+
+dashboard.post('/telAgent', auth, (req, res) => {
+    const token_id = req.user.token_id;
+
+    db.query(
+        `SELECT id_agent_digital
+         FROM cmo_candidats
+         WHERE token_id = ? AND deleted = 0
+         LIMIT 1`,
+        [token_id],
+        (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({
+                    error: 'Internal server error'
+                });
+            }
+
+            if (results.length === 0) {
+                return res.status(200).json(null);
+            }
+
+            const id_agent_digital = results[0].id_agent_digital;
+
+            // Aucun agent affecté
+            if (!id_agent_digital) {
+                return res.status(200).json(null);
+            }
+
+            db.query(
+                `SELECT *
+                 FROM userss
+                 WHERE id = ?
+                 LIMIT 1`,
+                [id_agent_digital],
+                (err, results) => {
+                    if (err) {
+                        console.error(err);
+                        return res.status(500).json({
+                            error: 'Internal server error'
+                        });
+                    }
+
+                    // L'agent n'existe pas
+                    if (results.length === 0) {
+                        return res.status(200).json(null);
+                    }
+
+                    return res.status(200).json(results[0]);
+                }
+            );
+        }
+    );
+});
+
+
+
 module.exports = dashboard;

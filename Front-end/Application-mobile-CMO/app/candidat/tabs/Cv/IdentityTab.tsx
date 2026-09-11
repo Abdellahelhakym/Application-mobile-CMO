@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Trash2, Upload } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -44,6 +45,7 @@ export const IdentityTab = ({
 }: IdentityTabProps) => {
   const [photo, setPhoto] = useState('');
   const [avatarLoading, setAvatarLoading] = useState(false);
+  const [hasImageError, setHasImageError] = useState(false);
 
   const set = (key: string) => (v: string) =>
     setFormData((p: any) => ({ ...p, [key]: v }));
@@ -75,6 +77,7 @@ export const IdentityTab = ({
         ? url() + "documents/photos_candidats/" + imageData.image
         : '';
       setPhoto(imageUrl);
+      setHasImageError(false);
     } catch (error) {
       console.log('Erreur chargement image:', error);
     }
@@ -129,6 +132,7 @@ export const IdentityTab = ({
 
       const asset = result.assets[0];
       setPhoto(asset.uri);
+      setHasImageError(false);
 
       const image = {
         uri: asset.uri,
@@ -184,14 +188,17 @@ export const IdentityTab = ({
         </SectionTitle>
         <View style={styles.photoContainer}>
           <View style={styles.photoBox}>
-            {photo ? (
+            {photo && !hasImageError ? (
               <>
                 <Image
                   source={{ uri: photo }}
                   style={styles.photoImage}
                   onLoadStart={() => setAvatarLoading(true)}
                   onLoadEnd={() => setAvatarLoading(false)}
-                  onError={() => setAvatarLoading(false)}
+                  onError={() => {
+                    setAvatarLoading(false);
+                    setHasImageError(true);
+                  }}
                 />
                 {avatarLoading ? (
                   <View style={styles.photoLoading}>
@@ -200,7 +207,9 @@ export const IdentityTab = ({
                 ) : null}
               </>
             ) : (
-              <Camera size={28} color={C.blue} />
+              <View style={styles.photoPlaceholder}>
+                <Feather name="user" size={28} color={C.white} />
+              </View>
             )}
           </View>
 
@@ -324,6 +333,13 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   photoImage: { width: '100%', height: '100%' },
+  photoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.blue,
+  },
   photoLoading: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',

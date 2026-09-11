@@ -1,12 +1,12 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { Tabs } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { Platform, StyleSheet, Text, View, Image } from "react-native";
+import { Image, Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { getRaison } from "@/app/employeur/services/token_id";
 import { getImage } from "@/app/employeur/services/documents";
+import { getRaison } from "@/app/employeur/services/token_id";
 
 import url from "@/app/services/url.js";
 
@@ -90,7 +90,11 @@ export default function Layout() {
               />
             ) : (
               <View style={styles.profileImagePlaceholder}>
-                <Feather name="user" size={16} color="#ffffff" />
+                <MaterialCommunityIcons
+                  name="account-tie"
+                  size={30}
+                  color="#2b5bbb"
+                />
               </View>
             )}
             <Text style={styles.userName}>{userName}</Text>
@@ -216,7 +220,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: "#ffffff",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1.5,
