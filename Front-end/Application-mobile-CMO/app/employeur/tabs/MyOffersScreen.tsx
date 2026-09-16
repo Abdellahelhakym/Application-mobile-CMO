@@ -1,23 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  StyleSheet,
   ActivityIndicator,
   Alert,
   Modal,
   RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
-import { ChevronDown, Eye, Download } from 'lucide-react-native';
-import { Feather } from '@expo/vector-icons'; 
-import { useRouter } from 'expo-router'; 
+import { getSecteur, getToutMobilite } from '@/app/candidat/services/CVScreen';
+import { AccepterRefuserDevis, getCommandes, getDevis, getStatutFiche } from '@/app/employeur/services/MyOffers';
+import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { getCommandes, getDevis, AccepterRefuserDevis, getStatutFiche } from '@/app/employeur/services/MyOffers';
-import { getSecteur , getToutMobilite } from '@/app/candidat/services/CVScreen';
+import { ChevronDown, Download, Eye } from 'lucide-react-native';
 
 import url from "@/app/services/url.js";
 
@@ -29,24 +29,67 @@ interface StatutItem {
   deleted: number;
 }
 
-// 🔧 Fonction globale de décodage des entités HTML
-const decodeHTML = (str: string): string => {
+// 🔧 Fonction de décodage UTF-8 & HTML COMPLET
+const decodeText = (str: string): string => {
   if (!str) return '';
-  return str
-    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
-    .replace(/&eacute;/gi, 'é')  
-    .replace(/&egrave;/gi, 'è')
-    .replace(/&ecirc;/gi, 'ê')
-    .replace(/&euml;/gi, 'ë')
-    .replace(/&agrave;/gi, 'à')
-    .replace(/&acirc;/gi, 'â')
-    .replace(/&icirc;/gi, 'î')
-    .replace(/&iuml;/gi, 'ï')
-    .replace(/&amp;/gi, '&')
-    .replace(/&quot;/gi, '"')
-    .replace(/&apos;/gi, "'")
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>');
+  let decoded = str;
+
+  const utf8Fixes: { [key: string]: string } = {
+    'â€"': '-', 'â€': '-', 'â€"/': '–',
+    'Â©': '©', 'Â¢': '¢', 'â„¢': '™',
+    'â€œ': '"', 'â€\u009d': '"', 'â€\u009c': '"',
+    'â€˜': "'", 'â€™': "'", 'â€\u0098': "'",
+    'â€•': '—', 'â€¢': '•', 'â€¦': '…', 'â€‹': '', 'â€›': '›',
+    'â€\u0082': '‚', 'â€ƒ': 'ƒ', 'â€„': '„',
+    'â€…': '…', 'â€†': '†', 'â€‡': '‡',
+    'Ã©': 'é', 'Ã¡': 'á', 'Ã ': 'à', 'Ã¤': 'ä', 'Ã¥': 'å',
+    'Ã¨': 'è', 'Ã¢': 'â', 'Ã¾': 'þ',
+    'Ã¬': 'ì', 'Ã®': 'î', 'Ã¯': 'ï', 'Ã­': 'í',
+    'Ã²': 'ò', 'Ã´': 'ô', 'Ã¶': 'ö', 'Ã³': 'ó', 'Ãµ': 'õ',
+    'Ã¹': 'ù', 'Ã»': 'û', 'Ã¼': 'ü', 'Ãº': 'ú',
+    'Ã§': 'ç', 'Ã±': 'ñ',
+    'Ã¿': 'ÿ', 'Ã˜': 'Ø', 'Ã†': 'Æ',
+    'Ã‰': 'É', 'Ã€': 'À', 'ÃŠ': 'Ê', 'Ã‹': 'Ë',
+    'ÃŒ': 'Ì', 'ÃŽ': 'Î',
+    'Ã"': 'Ó', 'Ã•': 'Õ', 'Ã–': 'Ö',
+    'Ã™': 'Ù', 'Ãš': 'Ú', 'Ã›': 'Û', 'Ãœ': 'Ü',
+    'Ã‡': 'Ç', 'Ãˆ': 'È',
+    'Â': '', 'Ã': ''
+  };
+
+  Object.keys(utf8Fixes).forEach(key => {
+    if (decoded.includes(key)) {
+      decoded = decoded.split(key).join(utf8Fixes[key]);
+    }
+  });
+
+  decoded = decoded.replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec)));
+
+  const htmlEntities: { [key: string]: string } = {
+    '&eacute;': 'é', '&egrave;': 'è', '&ecirc;': 'ê', '&euml;': 'ë',
+    '&agrave;': 'à', '&acirc;': 'â', '&aring;': 'å',
+    '&icirc;': 'î', '&iuml;': 'ï',
+    '&ocirc;': 'ô', '&ouml;': 'ö',
+    '&ugrave;': 'ù', '&ucirc;': 'û', '&uuml;': 'ü',
+    '&ccedil;': 'ç',
+    '&Eacute;': 'É', '&Egrave;': 'È', '&Ecirc;': 'Ê', '&Euml;': 'Ë',
+    '&Agrave;': 'À', '&Acirc;': 'Â', '&Aring;': 'Å',
+    '&Icirc;': 'Î', '&Iuml;': 'Ï',
+    '&Ocirc;': 'Ô', '&Ouml;': 'Ö',
+    '&Ugrave;': 'Ù', '&Ucirc;': 'Û', '&Uuml;': 'Ü',
+    '&Ccedil;': 'Ç', '&Ntilde;': 'Ñ',
+    '&amp;': '&', '&quot;': '"', '&apos;': "'", '&lt;': '<', '&gt;': '>',
+    '&nbsp;': ' ', '&rsquo;': "'", '&lsquo;': "'",
+    '&ndash;': '–', '&mdash;': '—',
+  };
+
+  Object.keys(htmlEntities).forEach(entity => {
+    if (decoded.includes(entity)) {
+      decoded = decoded.split(entity).join(htmlEntities[entity]);
+    }
+  });
+
+  return decoded;
 };
 
 // 🔧 Fonction pour formater les dates MySQL
@@ -121,6 +164,20 @@ export default function MyOffersScreen() {
   const [selectedCommande, setSelectedCommande] = useState<any | null>(null);
   const [entriesOpen, setEntriesOpen] = useState(false);
   const [entriesValue, setEntriesValue] = useState<'10' | '20' | '30' | '40' | 'all'>('10');
+  
+  // 🔍 NOUVEAUX ÉTATS POUR RECHERCHE ET FILTRES
+  const [searchText, setSearchText] = useState('');
+  const [filterSecteur, setFilterSecteur] = useState<string>('');
+  const [filterSousCategorie, setFilterSousCategorie] = useState<string>('');
+  const [filterMetier, setFilterMetier] = useState<string>('');
+  const [secteurOpen, setSecteurOpen] = useState(false);
+  const [sousCatOpen, setSousCatOpen] = useState(false);
+  const [metierOpen, setMetierOpen] = useState(false);
+  const [secteurData, setSecteurData] = useState({
+    categories: [] as any[],
+    subCategories: [] as any[],
+    metiers: [] as any[],
+  });
 
   // 🔄 Charger la liste globale des statuts
   const fetchStatuts = async () => {
@@ -138,7 +195,7 @@ export default function MyOffersScreen() {
     try {
       const data = await getToutMobilite();
       const decoded = Array.isArray(data) 
-        ? data.map((m: any) => ({ ...m, titre: decodeHTML(m.titre ?? '') })) 
+        ? data.map((m: any) => ({ ...m, titre: decodeText(m.titre ?? '') })) 
         : [];
       setMobilites(decoded);
     } catch (error) {
@@ -150,6 +207,13 @@ export default function MyOffersScreen() {
   useEffect(() => {
     fetchStatuts();
     fetchMobilites();
+    getSecteur()
+      .then((data) => setSecteurData({
+        categories: data?.secteurs ?? [],
+        subCategories: data?.sousCategories ?? [],
+        metiers: data?.metiers ?? [],
+      }))
+      .catch((error) => console.error('Erreur lors de la récupération des secteurs:', error));
   }, []);
 
   // 🔄 Fonction de chargement des données avec sécurité anti-doublons
@@ -220,7 +284,7 @@ export default function MyOffersScreen() {
 
     if (found) {
       return {
-        titre: decodeHTML(found.titre),
+        titre: decodeText(found.titre),
         couleur: found.couleur,
       };
     }
@@ -235,7 +299,106 @@ export default function MyOffersScreen() {
   const getMobilityTitle = (mobilityId: any): string => {
     if (!mobilityId) return '-';
     const mobility = mobilites.find(m => String(m.id) === String(mobilityId));
-    return mobility ? decodeHTML(mobility.titre) : '-';
+    return mobility ? decodeText(mobility.titre) : '-';
+  };
+
+  // 🔍 FONCTION DE FILTRAGE AMÉLIORÉE
+  const getFilteredData = () => {
+    const data = activeTab === 'quotes' ? devis : commandes;
+    
+    return data.filter((item) => {
+      // Filtre par numéro de commande (ex: rechercher "314" trouve "000-Cmd-314")
+      if (searchText.trim()) {
+        const cmdNumber = item.id_fiche_poste ? String(item.id_fiche_poste) : '';
+        // Cherche le texte saisi dans le numéro de commande
+        if (!cmdNumber.includes(searchText.trim())) {
+          return false;
+        }
+      }
+
+      // Filtre par secteur (uniquement pour onglet commandes)
+      if (activeTab === 'commands' && filterSecteur) {
+        const category = secteurData.categories.find((entry) => String(entry.id_categorie) === filterSecteur);
+        const values = [item.secteur_id, item.id_categorie, item.secteur, item.categorie]
+          .filter(Boolean)
+          .map((value) => decodeText(String(value)).trim().toLowerCase());
+        if (!values.includes(filterSecteur) && !values.includes(decodeText(category?.titre || '').trim().toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Filtre par sous-catégorie (uniquement pour onglet commandes)
+      if (activeTab === 'commands' && filterSousCategorie) {
+        const subCategory = secteurData.subCategories.find((entry) => String(entry.id_sous) === filterSousCategorie);
+        const values = [item.sous_categorie_id, item.id_sous, item.sous_categorie]
+          .filter(Boolean)
+          .map((value) => decodeText(String(value)).trim().toLowerCase());
+        if (!values.includes(filterSousCategorie) && !values.includes(decodeText(subCategory?.titre || '').trim().toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Filtre par métier (uniquement pour onglet commandes)
+      if (activeTab === 'commands' && filterMetier) {
+        const metier = secteurData.metiers.find((entry) => String(entry.id_metier) === filterMetier);
+        const values = [item.metier_id, item.id_metier, item.metier]
+          .filter(Boolean)
+          .map((value) => decodeText(String(value)).trim().toLowerCase());
+        if (!values.includes(filterMetier) && !values.includes(decodeText(metier?.titre || '').trim().toLowerCase())) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  };
+
+  // 📋 Récupérer les listes uniques de secteurs, sous-catégories et métiers
+  const getUniqueSecteurs = () => {
+    if (secteurData.categories.length > 0) {
+      return secteurData.categories.map((category) => ({
+        value: String(category.id_categorie),
+        label: decodeText(category.titre || 'Catégorie'),
+      }));
+    }
+    const set = new Set(commandes.map(c => c.secteur_id || c.secteur).filter(Boolean));
+    return Array.from(set).map((value) => ({ value: String(value), label: decodeText(String(value)) }));
+  };
+
+  const getUniqueSousCategories = () => {
+    if (secteurData.subCategories.length > 0) {
+      return secteurData.subCategories
+        .filter((category) => String(category.id_categorie) === filterSecteur)
+        .map((category) => ({
+          value: String(category.id_sous),
+          label: decodeText(category.titre || 'Sous-catégorie'),
+        }));
+    }
+    const filtered = filterSecteur 
+      ? commandes.filter(c => String(c.secteur_id || c.secteur) === filterSecteur)
+      : commandes;
+    const set = new Set(filtered.map(c => c.sous_categorie_id || c.sous_categorie).filter(Boolean));
+    return Array.from(set).map((value) => ({ value: String(value), label: decodeText(String(value)) }));
+  };
+
+  const getUniqueMetiers = () => {
+    if (secteurData.metiers.length > 0) {
+      return secteurData.metiers
+        .filter((metier) => String(metier.id_sous) === filterSousCategorie)
+        .map((metier) => ({
+          value: String(metier.id_metier),
+          label: decodeText(metier.titre || 'Métier'),
+        }));
+    }
+    let filtered = commandes;
+    if (filterSecteur) {
+      filtered = filtered.filter(c => String(c.secteur_id || c.secteur) === filterSecteur);
+    }
+    if (filterSousCategorie) {
+      filtered = filtered.filter(c => String(c.sous_categorie_id || c.sous_categorie) === filterSousCategorie);
+    }
+    const set = new Set(filtered.map(c => c.metier_id || c.metier).filter(Boolean));
+    return Array.from(set).map((value) => ({ value: String(value), label: decodeText(String(value)) }));
   };
 
   // 📄 Ouvre le fichier PDF du devis
@@ -321,7 +484,7 @@ export default function MyOffersScreen() {
           { key: 'statut_fiche', label: 'Statut', width: 90 },
         ];
 
-  const data = activeTab === 'quotes' ? devis : commandes;
+  const filteredData = getFilteredData();
 
   const entriesOptions: Array<{ label: string; value: '10' | '20' | '30' | '40' | 'all' }> = [
     { label: '10', value: '10' },
@@ -331,8 +494,8 @@ export default function MyOffersScreen() {
     { label: 'tout', value: 'all' },
   ];
 
-  const displayCount = entriesValue === 'all' ? data.length : Number(entriesValue);
-  const displayedData = data.slice(0, displayCount);
+  const displayCount = entriesValue === 'all' ? filteredData.length : Number(entriesValue);
+  const displayedData = filteredData.slice(0, displayCount);
 
   const openDetails = (commande: any) => {
     setSelectedCommande(commande);
@@ -342,6 +505,14 @@ export default function MyOffersScreen() {
   const closeDetails = () => {
     setDetailsVisible(false);
     setSelectedCommande(null);
+  };
+
+  // 🔧 Réinitialiser tous les filtres
+  const resetFilters = () => {
+    setSearchText('');
+    setFilterSecteur('');
+    setFilterSousCategorie('');
+    setFilterMetier('');
   };
 
   return (
@@ -380,7 +551,10 @@ export default function MyOffersScreen() {
             {['commands', 'quotes'].map((tab) => (
               <TouchableOpacity
                 key={tab}
-                onPress={() => setActiveTab(tab as any)}
+                onPress={() => {
+                  setActiveTab(tab as any);
+                  resetFilters();
+                }}
                 style={[
                   styles.tab,
                   activeTab === tab && styles.tabActive,
@@ -397,6 +571,176 @@ export default function MyOffersScreen() {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* 🔍 SECTION FILTRES (SEULEMENT POUR COMMANDES) */}
+          {activeTab === 'commands' && (
+            <View style={styles.filtersContainer}>
+              <Text style={styles.filterTitle}>Filtres</Text>
+              
+              <View style={styles.filtersGrid}>
+                {/* Filtre Secteur - TOUJOURS VISIBLE */}
+                <View style={[styles.filterItem, secteurOpen && styles.filterItemOpen]}>
+                  <Text style={styles.filterLabel}>Secteur</Text>
+                  <View>
+                    <TouchableOpacity
+                      style={styles.filterSelect}
+                      onPress={() => {
+                        setSecteurOpen((open) => !open);
+                        setSousCatOpen(false);
+                        setMetierOpen(false);
+                      }}
+                    >
+                      <Text style={styles.filterSelectText}>
+                        {filterSecteur
+                          ? decodeText(secteurData.categories.find((category) => String(category.id_categorie) === filterSecteur)?.titre || filterSecteur)
+                          : 'Tous'}
+                      </Text>
+                      <ChevronDown size={14} color="#2b5bbb" />
+                    </TouchableOpacity>
+                    {secteurOpen && (
+                      <View style={styles.filterMenu}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setFilterSecteur('');
+                            setFilterSousCategorie('');
+                            setFilterMetier('');
+                            setSecteurOpen(false);
+                          }}
+                          style={styles.filterMenuOption}
+                        >
+                          <Text style={styles.filterMenuText}>Tous</Text>
+                        </TouchableOpacity>
+                        {getUniqueSecteurs().map((secteur: any) => (
+                          <TouchableOpacity
+                            key={secteur.value}
+                            onPress={() => {
+                              setFilterSecteur(secteur.value);
+                              setSecteurOpen(false);
+                              setFilterSousCategorie('');
+                              setFilterMetier('');
+                            }}
+                            style={styles.filterMenuOption}
+                          >
+                            <Text style={styles.filterMenuText}>{secteur.label}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {/* Filtre Sous-Catégorie - SEULEMENT SI SECTEUR CHOISI */}
+                {filterSecteur && (
+                  <View style={[styles.filterItem, sousCatOpen && styles.filterItemOpen]}>
+                    <Text style={styles.filterLabel}>Sous-Catégorie</Text>
+                    <View>
+                      <TouchableOpacity
+                        style={styles.filterSelect}
+                        onPress={() => {
+                          setSousCatOpen((open) => !open);
+                          setSecteurOpen(false);
+                          setMetierOpen(false);
+                        }}
+                      >
+                        <Text style={styles.filterSelectText}>
+                          {filterSousCategorie
+                            ? decodeText(secteurData.subCategories.find((category) => String(category.id_sous) === filterSousCategorie)?.titre || filterSousCategorie)
+                            : 'Tous'}
+                        </Text>
+                        <ChevronDown size={14} color="#2b5bbb" />
+                      </TouchableOpacity>
+                      {sousCatOpen && (
+                        <View style={styles.filterMenu}>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setFilterSousCategorie('');
+                              setFilterMetier('');
+                              setSousCatOpen(false);
+                            }}
+                            style={styles.filterMenuOption}
+                          >
+                            <Text style={styles.filterMenuText}>Tous</Text>
+                          </TouchableOpacity>
+                          {getUniqueSousCategories().map((sous: any) => (
+                            <TouchableOpacity
+                              key={sous.value}
+                              onPress={() => {
+                                setFilterSousCategorie(sous.value);
+                                setSousCatOpen(false);
+                                setFilterMetier('');
+                              }}
+                              style={styles.filterMenuOption}
+                            >
+                              <Text style={styles.filterMenuText}>{sous.label}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                {/* Filtre Métier - SEULEMENT SI SOUS-CATÉGORIE CHOISI */}
+                {filterSecteur && filterSousCategorie && (
+                  <View style={[styles.filterItem, metierOpen && styles.filterItemOpen]}>
+                    <Text style={styles.filterLabel}>Métier</Text>
+                    <View>
+                      <TouchableOpacity
+                        style={styles.filterSelect}
+                        onPress={() => {
+                          setMetierOpen((open) => !open);
+                          setSecteurOpen(false);
+                          setSousCatOpen(false);
+                        }}
+                      >
+                        <Text style={styles.filterSelectText}>
+                          {filterMetier
+                            ? decodeText(secteurData.metiers.find((metier) => String(metier.id_metier) === filterMetier)?.titre || filterMetier)
+                            : 'Tous'}
+                        </Text>
+                        <ChevronDown size={14} color="#2b5bbb" />
+                      </TouchableOpacity>
+                      {metierOpen && (
+                        <View style={styles.filterMenu}>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setFilterMetier('');
+                              setMetierOpen(false);
+                            }}
+                            style={styles.filterMenuOption}
+                          >
+                            <Text style={styles.filterMenuText}>Tous</Text>
+                          </TouchableOpacity>
+                          {getUniqueMetiers().map((metier: any) => (
+                            <TouchableOpacity
+                              key={metier.value}
+                              onPress={() => {
+                                setFilterMetier(metier.value);
+                                setMetierOpen(false);
+                              }}
+                              style={styles.filterMenuOption}
+                            >
+                              <Text style={styles.filterMenuText}>{metier.label}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* Bouton Réinitialiser */}
+              {(filterSecteur || filterSousCategorie || filterMetier) && (
+                <TouchableOpacity 
+                  style={styles.resetButton}
+                  onPress={resetFilters}
+                >
+                  <Text style={styles.resetButtonText}>Réinitialiser les filtres</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
 
           {/* TABLE */}
           <View style={styles.tableCard}>
@@ -434,12 +778,18 @@ export default function MyOffersScreen() {
 
             <View style={styles.searchRow}>
               <Text style={styles.smallText}>Rechercher :</Text>
-              <TextInput style={styles.input} />
+              <TextInput 
+                style={styles.input}
+                placeholder="Ex: 314"
+                placeholderTextColor="#999"
+                value={searchText}
+                onChangeText={setSearchText}
+              />
             </View>
 
             {loading ? (
               <ActivityIndicator size="small" color="#2b5bbb" />
-            ) : data.length === 0 ? (
+            ) : filteredData.length === 0 ? (
               <Text style={styles.empty}>
                 Affichage de 0 à 0 sur 0 entrées
               </Text>
@@ -501,7 +851,7 @@ export default function MyOffersScreen() {
                             displayValue = value ?? '-';
                           }
 
-                          const cleanedText = typeof displayValue === 'string' ? decodeHTML(displayValue) : displayValue;
+                          const cleanedText = typeof displayValue === 'string' ? decodeText(displayValue) : displayValue;
 
                           if (col.key === 'download' && activeTab === 'quotes') {
                             const idDevis = row?.id_devis || row?.id;
@@ -594,7 +944,7 @@ export default function MyOffersScreen() {
                   })}
                 </View>
                 <Text style={styles.empty}>
-                  Affichage de 1 à {displayedData.length} sur {data.length} entrées
+                  Affichage de 1 à {displayedData.length} sur {filteredData.length} entrées
                 </Text>
               </View>
             )}
@@ -602,7 +952,7 @@ export default function MyOffersScreen() {
         </View>
       </ScrollView>
 
-      {/* MODAL DETAILS */}
+      {/* MODAL DETAILS - AVEC AFFICHAGE HTML CORRIGÉ */}
       <Modal
         visible={detailsVisible}
         transparent
@@ -610,55 +960,57 @@ export default function MyOffersScreen() {
         onRequestClose={closeDetails}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Détails</Text>
+          <ScrollView style={styles.modalScrollView}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Détails</Text>
 
-            <Text style={styles.modalRow}>
-              Catégorie : {decodeHTML(selectedCommande?.categorie || '-')}
-            </Text>
-            <Text style={styles.modalRow}>
-              Sous Categorie : {decodeHTML(selectedCommande?.sous_categorie || '-')}
-            </Text>
-            <Text style={styles.modalRow}>
-              Metier : {decodeHTML(selectedCommande?.metier || '-')}
-            </Text>
-            <Text style={styles.modalRow}>
-              Contrat : {selectedCommande?.contrat || '-'}
-            </Text>
-            
-            <Text style={styles.modalRow}>
-              Date de debut : {formatDate(selectedCommande?.date_besoin)}
-            </Text>
-            <Text style={styles.modalRow}>
-              Date de fin : {formatDate(selectedCommande?.date_fin)}
-            </Text>
-            <Text style={styles.modalRow}>
-              Durée : {selectedCommande?.duree || '-'}
-            </Text>
+              <Text style={styles.modalRow}>
+                Catégorie : {decodeText(selectedCommande?.categorie || '-')}
+              </Text>
+              <Text style={styles.modalRow}>
+                Sous Categorie : {decodeText(selectedCommande?.sous_categorie || '-')}
+              </Text>
+              <Text style={styles.modalRow}>
+                Metier : {decodeText(selectedCommande?.metier || '-')}
+              </Text>
+              <Text style={styles.modalRow}>
+                Contrat : {decodeText(selectedCommande?.contrat || '-')}
+              </Text>
+              
+              <Text style={styles.modalRow}>
+                Date de debut : {formatDate(selectedCommande?.date_besoin)}
+              </Text>
+              <Text style={styles.modalRow}>
+                Date de fin : {formatDate(selectedCommande?.date_fin)}
+              </Text>
+              <Text style={styles.modalRow}>
+                Durée : {decodeText(String(selectedCommande?.duree || '-'))}
+              </Text>
 
-            <Text style={styles.modalRow}>
-              Adresse : {decodeHTML(selectedCommande?.adresse || '-')}
-            </Text>
-            <Text style={styles.modalRow}>
-              Mobilite : {getMobilityTitle(selectedCommande?.lieu_travail2)}
-            </Text>
-            <Text style={styles.modalRow}>
-              Nombre de poste : {selectedCommande?.nbr_poste || '-'}
-            </Text>
-            <Text style={styles.modalRow}>
-              Salaire propose : {selectedCommande?.salaire_proposer || '-'}
-            </Text>
-            <Text style={styles.modalRow}>
-              Logement : {selectedCommande?.logement === 1 || selectedCommande?.logement === 'Oui' ? 'Oui' : selectedCommande?.logement === 0 || selectedCommande?.logement === 'Non' ? 'Non' : '-'}
-            </Text>
-            <Text style={styles.modalRow}>
-              Permis : {selectedCommande?.permis || '-'}
-            </Text>
+              <Text style={styles.modalRow}>
+                Adresse : {decodeText(selectedCommande?.adresse || '-')}
+              </Text>
+              <Text style={styles.modalRow}>
+                Mobilite : {decodeText(getMobilityTitle(selectedCommande?.lieu_travail2))}
+              </Text>
+              <Text style={styles.modalRow}>
+                Nombre de poste : {selectedCommande?.nbr_poste || '-'}
+              </Text>
+              <Text style={styles.modalRow}>
+                Salaire propose : {decodeText(selectedCommande?.salaire_proposer || '-')}
+              </Text>
+              <Text style={styles.modalRow}>
+                Logement : {selectedCommande?.logement === 1 || selectedCommande?.logement === 'Oui' ? 'Oui' : selectedCommande?.logement === 0 || selectedCommande?.logement === 'Non' ? 'Non' : '-'}
+              </Text>
+              <Text style={styles.modalRow}>
+                Permis : {decodeText(selectedCommande?.permis || '-')}
+              </Text>
 
-            <TouchableOpacity style={styles.modalClose} onPress={closeDetails}>
-              <Text style={styles.modalCloseText}>Fermer</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity style={styles.modalClose} onPress={closeDetails}>
+                <Text style={styles.modalCloseText}>Fermer</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
     </View>
@@ -709,6 +1061,102 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: '#ffe9cf', borderColor: '#f2d9bf' },
   tabText: { fontSize: 12, color: '#1b2d5a' },
   tabTextActive: { fontWeight: '700' },
+
+  /* 🔍 Styles des filtres */
+  filtersContainer: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e1e9fb',
+    gap: 10,
+    zIndex: 20,
+    elevation: 20,
+  },
+  filterTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2b5bbb',
+    marginBottom: 5,
+  },
+  filtersGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+    zIndex: 20,
+  },
+  filterItem: {
+    flex: 1,
+    minWidth: 140,
+  },
+  filterItemOpen: {
+    zIndex: 20,
+    elevation: 20,
+  },
+  filterLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#2b5bbb',
+    marginBottom: 4,
+  },
+  filterSelect: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#cfd9ee',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+  },
+  filterSelectText: {
+    fontSize: 11,
+    color: '#1b2d5a',
+    fontWeight: '500',
+    flex: 1,
+  },
+  filterMenu: {
+    position: 'absolute',
+    top: 40,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#cfd9ee',
+    borderRadius: 10,
+    zIndex: 10,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    maxHeight: 200,
+  },
+  filterMenuOption: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  filterMenuText: {
+    fontSize: 11,
+    color: '#1b2d5a',
+  },
+  resetButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#ffe9cf',
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  resetButtonText: {
+    fontSize: 11,
+    color: '#2b5bbb',
+    fontWeight: '600',
+  },
+
   tableCard: { backgroundColor: '#fff', borderRadius: 16 },
   tableControls: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center' },
   smallText: { fontSize: 12, color: '#1b2d5a' },
@@ -756,9 +1204,10 @@ const styles = StyleSheet.create({
   radioCircle: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#94a3b8', alignItems: 'center', justifyContent: 'center' },
   radioLabel: { fontSize: 11, color: '#475569', fontWeight: '500' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.3)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalCard: { width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 16 },
+  modalScrollView: { flex: 1, width: '100%' },
+  modalCard: { width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 16, marginVertical: 'auto' },
   modalTitle: { fontSize: 16, color: '#1b2d5a', marginBottom: 10, fontWeight: '600' },
-  modalRow: { fontSize: 12, color: '#1b2d5a', marginBottom: 6 },
-  modalClose: { marginTop: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: '#2b5bbb', alignItems: 'center' },
+  modalRow: { fontSize: 12, color: '#1b2d5a', marginBottom: 8, lineHeight: 18 },
+  modalClose: { marginTop: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: '#2b5bbb', alignItems: 'center' },
   modalCloseText: { color: '#fff', fontSize: 12, fontWeight: '600' },
 });
