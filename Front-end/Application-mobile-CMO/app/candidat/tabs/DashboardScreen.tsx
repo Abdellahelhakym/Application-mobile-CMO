@@ -18,7 +18,7 @@ import { getListFils } from "@/app/candidat/services/AttestationsScreen";
 import {
     categorieMetier,
     getDashboardData,
-    getSecteursActivite, 
+    getSecteursActivite,
     getTelAgent
 } from "@/app/candidat/services/DashboardScreen";
 import { fixUtf8Encoding } from "@/app/candidat/services/decode";
@@ -26,7 +26,7 @@ import { Bell, MessageSquare, Phone } from "lucide-react-native";
 import Svg, { Path, Text as SvgText } from "react-native-svg";
 import { getNotification } from '../../candidat/services/messagerie';
 
-// 🔧 Décodage des entités HTML & nettoyage des préfixes (ex: "BTP - ") et retours à la ligne
+// 🔧 Décodage des entités HTML & nettoyage des préfixes (ex: "BTP - ") et retours à la ligne test
 const decodeHTML = (str: string): string => {
   if (!str) return '';
   return str
