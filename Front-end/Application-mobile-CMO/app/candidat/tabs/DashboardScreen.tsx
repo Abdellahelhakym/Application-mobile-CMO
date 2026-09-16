@@ -343,20 +343,30 @@ export default function DashboardScreen() {
     );
 
     // 📞 Gestion du clic sur Conseiller
-    const handleConseillerPress = async () => {
-        if (agentData && agentData.tel && agentData.tel.trim() !== "") {
-            const phoneNumber = `tel:${agentData.tel.trim()}`;
-            const supported = await Linking.canOpenURL(phoneNumber);
-            if (supported) {
-                await Linking.openURL(phoneNumber);
-            } else {
-                Alert.alert("Erreur", "Impossible de passer l'appel depuis cet appareil.");
-            }
-        } else {
-            // Pas d'agent ou numéro non spécifié => redirection vers le Chat
-            router.push('/candidat/autre/Chat');
-        }
-    };
+  const handleConseillerPress = async () => {
+    const phone = agentData?.tel?.replace(/[^\d+]/g, "");
+
+    if (!phone) {
+        router.push("/candidat/autre/Chat");
+        return;
+    }
+
+    const url = `tel:${phone}`;
+
+    console.log("Attempting to call agent at:", url);
+
+    try {
+        await Linking.openURL(url);
+    } catch (error) {
+        console.error("Impossible de lancer l'appel :", error);
+
+        Alert.alert(
+            "Erreur",
+            "Impossible de passer un appel depuis cet appareil."
+        );
+    }
+};
+
 
     if (!dashboardData) {
         return (

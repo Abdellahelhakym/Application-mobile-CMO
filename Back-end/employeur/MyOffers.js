@@ -6,7 +6,7 @@ const myOffers = express.Router();
 const auth = require('../middleware/auth');
 
 myOffers.get('/', auth, (req, res) => {
-    res.send('My Offers route');
+    res.send('My Offers route V2');
 });
 
 myOffers.post('/commandes', auth, (req, res) => {

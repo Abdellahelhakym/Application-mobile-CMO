@@ -5,7 +5,7 @@ const EmployerDashboard = express.Router();
 const auth = require('../middleware/auth');
 
 EmployerDashboard.get('/',auth, (req, res) => {
-    res.send('Employer Dashboard route');
+    res.send('Employer Dashboard route V2');
 });
 EmployerDashboard.post('/pseudo', auth, (req, res) => {
    const token_id = req.user.token_id;

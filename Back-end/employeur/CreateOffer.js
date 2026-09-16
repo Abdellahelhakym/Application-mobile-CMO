@@ -5,7 +5,7 @@ const createOffer = express.Router();
 const auth = require('../middleware/auth');
 
 createOffer.get('/', auth, (req, res) => {
-    res.send('Create Offer route');
+    res.send('Create Offer route V2');
 });
 
 createOffer.post('/commande', auth, (req, res) => {

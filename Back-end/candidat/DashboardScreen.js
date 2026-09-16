@@ -6,7 +6,7 @@ const auth = require('../middleware/auth');
 const { decodeObject, decodeArray } = require('../middleware/encoding');
 
 dashboard.get('/', auth, (req, res) => {
-    res.send('Dashboard route');
+    res.send('Dashboard route v2');
 });
 
 dashboard.post('/', auth, (req, res) => {
