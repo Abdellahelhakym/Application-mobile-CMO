@@ -26,7 +26,7 @@ import { Bell, MessageSquare, Phone } from "lucide-react-native";
 import Svg, { Path, Text as SvgText } from "react-native-svg";
 import { getNotification } from '../../candidat/services/messagerie';
 
-// 🔧 Décodage des entités HTML & nettoyage des préfixes (ex: "BTP - ") et retours à la ligne test
+// 🔧 Décodage des entités HTML & nettoyage des préfixes (ex: "BTP - ") et retours à la ligne test 2
 const decodeHTML = (str: string): string => {
   if (!str) return '';
   return str
