@@ -15,7 +15,7 @@ CVScreen.get('/', auth, (req, res) => {
 CVScreen.post('/Informations', auth, (req, res) => {
     const token_id = req.user.token_id;
 
-    console.log('Received CV Informations request with token_id:', token_id);
+    console.log('Received CV Informations request with token_id:');
 
     db.query(
         'SELECT photo, civilite, prenom, nom, email, tel, tel2, adresse, code_postal, ville, pays, num_secur_social FROM cmo_candidats WHERE token_id = ? AND deleted = 0',
@@ -52,7 +52,7 @@ CVScreen.post('/ToutMobilite', (req, res) => {
 CVScreen.post('/Mobilite', auth, (req, res) => {
     const token_id = req.user.token_id;
 
-    console.log('Received CV Mobilite request with token_id:', token_id);
+    console.log('Received CV Mobilite request with token_id:' );
 
     if (!token_id) {
         return res.status(400).json({ error: 'token_id is required' });
@@ -123,7 +123,7 @@ CVScreen.post('/Mobilite', auth, (req, res) => {
 CVScreen.post('/Permis', auth, (req, res) => {
     const token_id = req.user.token_id;
 
-    console.log('Received CV Permis request with token_id:', token_id);
+    console.log('Received CV Permis request with token_id:');
 
     db.query('SELECT * FROM permis WHERE token_id_cand = ?', [token_id], (err, results) => {
         if (err) {
@@ -136,25 +136,84 @@ CVScreen.post('/Permis', auth, (req, res) => {
     });
 });
 
+
+//--------------------------------LANGUES---------------------------------
 CVScreen.post('/Langues', auth, (req, res) => {
     const token_id = req.user.token_id;
 
-    console.log('Received CV Langues request with token_id:', token_id);
+    console.log('Received CV Langues request with token_id:');
 
     if (!token_id) {
-        return res.status(400).json({ error: 'token_id is required' });
+        return res.status(400).json({
+            error: 'token_id is required'
+        });
     }
 
-    db.query('SELECT * FROM langues WHERE token_id_cand = ?', [token_id], (err, results) => {
+    const sql = `
+        SELECT
+            l.id,
+            l.lang_fr,
+            l.lang_en,
+            l.lang_es,
+            l.lang_de,
+            l.lang_it,
+            l.lang_ch,
+            l.lang_po,
+            l.lang_da,
+            l.lang_ru,
+            l.lang_ar,
+            l.lang_ne,
+            l.lang_por,
+            l.lang_no,
+            l.lang_fi,
+            l.token_id_cand,
+            l.deleted,
+
+            e.niveau_fr,
+            e.niveau_en,
+            e.niveau_es,
+            e.niveau_de,
+            e.niveau_it,
+            e.niveau_ch,
+            e.niveau_po,
+            e.niveau_da,
+            e.niveau_ru,
+            e.niveau_ar,
+            e.niveau_ne,
+            e.niveau_por,
+            e.niveau_no,
+            e.niveau_fi
+
+        FROM langues l
+
+        LEFT JOIN evaluation_langues e
+            ON l.token_id_cand = e.token_id_cand
+
+        WHERE l.token_id_cand = ?
+        AND l.deleted = 0
+    `;
+
+    db.query(sql, [token_id], (err, results) => {
         if (err) {
             console.error('Erreur SELECT Langues :', err);
-            return res.status(500).json({ error: 'Internal server error' });
+
+            return res.status(500).json({
+                error: 'Internal server error'
+            });
         }
 
         const fixedResults = results.map(item => decodeObject(item));
+
         return res.json(fixedResults);
     });
 });
+
+
+
+
+
+
+//---------------------------------SECTEUR---------------------------------
 
 CVScreen.get('/Secteur', (req, res) => {
     console.log('Received CV Secteur request');
@@ -238,7 +297,7 @@ CVScreen.post('/Secteur', auth, (req, res) => {
 CVScreen.post('/experiences', auth, (req, res) => {
     const token_id = req.user.token_id;
 
-    console.log('Received CV experiences request with token_id:', token_id);
+    console.log('Received CV experiences request with token_id:');
 
     if (!token_id) {
         return res.status(400).json({ error: 'token_id is required' });
@@ -275,7 +334,7 @@ CVScreen.post('/experiences', auth, (req, res) => {
 CVScreen.post('/formation', auth, (req, res) => {
     const token_id = req.user.token_id;
 
-    console.log('Received CV formation request with token_id:', token_id);
+    console.log('Received CV formation request with token_id:');
 
     if (!token_id) {
         return res.status(400).json({ error: 'token_id is required' });
@@ -303,7 +362,7 @@ CVScreen.post('/updateInformations', auth, (req, res) => {
     const { civilite, prenom, nom, email, tel, tel2, adresse, code_postal, ville, pays, num_secur_social } = encodedBody;
     const token_id = req.user.token_id;
 
-    console.log('Received CV updateInformations request with token_id:', token_id);
+    console.log('Received CV updateInformations request with token_id:');
 
     const updateSql = `
         UPDATE cmo_candidats
@@ -362,7 +421,7 @@ CVScreen.post('/updateMobilite', auth, (req, res) => {
     const { mobilite, niveau_etude, experience, contrat_prefere1, contrat_prefere2, disponibilite, date_disponibilite } = encodedBody;
     const token_id = req.user.token_id;
 
-    console.log('Received CV updateMobilite request with token_id:', token_id);
+    console.log('Received CV updateMobilite request with token_id:');
 
     const updateMobiliteSql = `
         UPDATE mobilite_candidats SET id_region = ?
@@ -444,7 +503,7 @@ CVScreen.post('/updatePermis', auth, (req, res) => {
     const { perm_am, perm_a1, perm_a2, perm_a, perm_b1, perm_b, perm_c1, perm_c, perm_d1, perm_d, perm_be, perm_c1e, perm_ce, perm_d1e, perm_de, perm_cotier, perm_fluvial, perm_grandes_eaux, perm_hauturier } = encodedBody;
     const token_id = req.user.token_id;
 
-    console.log('Received CV updatePermis request with token_id:', token_id);
+    console.log('Received CV updatePermis request with token_id:');
 
     const updateSql = `
         UPDATE permis SET perm_am = ?, perm_a1 = ?, perm_a2 = ?, perm_a = ?, perm_b1 = ?, perm_b = ?, perm_c1 = ?, perm_c = ?, perm_d1 = ?, perm_d = ?, perm_be = ?, perm_c1e = ?, perm_ce = ?, perm_d1e = ?, perm_de = ?, perm_cotier = ?, perm_fluvial = ?, perm_grandes_eaux = ?, perm_hauturier = ?
@@ -489,52 +548,309 @@ CVScreen.post('/updatePermis', auth, (req, res) => {
 
 CVScreen.post('/updateLangues', auth, (req, res) => {
     const encodedBody = encodeObject(req.body);
-    const { lang_fr, lang_en, lang_es, lang_de, lang_it, lang_ch, lang_po, lang_da, lang_ru, lang_ar, lang_ne, lang_por, lang_no, lang_fi } = encodedBody;
+
+    const {
+        lang_fr,
+        lang_en,
+        lang_es,
+        lang_de,
+        lang_it,
+        lang_ch,
+        lang_po,
+        lang_da,
+        lang_ru,
+        lang_ar,
+        lang_ne,
+        lang_por,
+        lang_no,
+        lang_fi,
+
+        niveau_fr,
+        niveau_en,
+        niveau_es,
+        niveau_de,
+        niveau_it,
+        niveau_ch,
+        niveau_po,
+        niveau_da,
+        niveau_ru,
+        niveau_ar,
+        niveau_ne,
+        niveau_por,
+        niveau_no,
+        niveau_fi
+    } = encodedBody;
+
     const token_id = req.user.token_id;
 
-    console.log('Received CV updateLangues request with token_id:', token_id);
+    console.log(
+        'Received CV updateLangues request with token_id'
+    );
 
-    const updateSql = `
-        UPDATE langues SET lang_fr = ?, lang_en = ?, lang_es = ?, lang_de = ?, lang_it = ?, lang_ch = ?, lang_po = ?, lang_da = ?, lang_ru = ?, lang_ar = ?, lang_ne = ?, lang_por = ?, lang_no = ?, lang_fi = ?
+    // =========================================================
+    // 1. UPDATE langues
+    // =========================================================
+
+    const updateLanguesSql = `
+        UPDATE langues
+        SET
+            lang_fr = ?,
+            lang_en = ?,
+            lang_es = ?,
+            lang_de = ?,
+            lang_it = ?,
+            lang_ch = ?,
+            lang_po = ?,
+            lang_da = ?,
+            lang_ru = ?,
+            lang_ar = ?,
+            lang_ne = ?,
+            lang_por = ?,
+            lang_no = ?,
+            lang_fi = ?
         WHERE token_id_cand = ?
         AND deleted = 0
     `;
 
-    const insertSql = `
+    const insertLanguesSql = `
         INSERT INTO langues (
-            token_id_cand, lang_fr, lang_en, lang_es, lang_de, lang_it, lang_ch, lang_po, lang_da, lang_ru, lang_ar, lang_ne, lang_por, lang_no, lang_fi, deleted
+            token_id_cand,
+            lang_fr,
+            lang_en,
+            lang_es,
+            lang_de,
+            lang_it,
+            lang_ch,
+            lang_po,
+            lang_da,
+            lang_ru,
+            lang_ar,
+            lang_ne,
+            lang_por,
+            lang_no,
+            lang_fi,
+            deleted
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     `;
 
     db.query(
-        updateSql,
-        [lang_fr, lang_en, lang_es, lang_de, lang_it, lang_ch, lang_po, lang_da, lang_ru, lang_ar, lang_ne, lang_por, lang_no, lang_fi, token_id],
+        updateLanguesSql,
+        [
+            lang_fr || 0,
+            lang_en || 0,
+            lang_es || 0,
+            lang_de || 0,
+            lang_it || 0,
+            lang_ch || 0,
+            lang_po || 0,
+            lang_da || 0,
+            lang_ru || 0,
+            lang_ar || 0,
+            lang_ne || 0,
+            lang_por || 0,
+            lang_no || 0,
+            lang_fi || 0,
+            token_id
+        ],
         (err, result) => {
+
             if (err) {
                 console.error('Erreur UPDATE langues :', err);
-                return res.status(500).json({ error: 'Internal server error' });
+                return res.status(500).json({
+                    error: 'Internal server error'
+                });
             }
 
-            if (result.affectedRows > 0) {
-                return res.json({ message: 'Langues updated successfully' });
-            }
+            // =========================================================
+            // Si la ligne langues n'existe pas → INSERT
+            // =========================================================
 
-            db.query(
-                insertSql,
-                [token_id, lang_fr, lang_en, lang_es, lang_de, lang_it, lang_ch, lang_po, lang_da, lang_ru, lang_ar, lang_ne, lang_por, lang_no, lang_fi],
-                (insertErr) => {
-                    if (insertErr) {
-                        console.error('Erreur INSERT langues :', insertErr);
-                        return res.status(500).json({ error: 'Internal server error' });
+            if (result.affectedRows === 0) {
+
+                db.query(
+                    insertLanguesSql,
+                    [
+                        token_id,
+                        lang_fr || 0,
+                        lang_en || 0,
+                        lang_es || 0,
+                        lang_de || 0,
+                        lang_it || 0,
+                        lang_ch || 0,
+                        lang_po || 0,
+                        lang_da || 0,
+                        lang_ru || 0,
+                        lang_ar || 0,
+                        lang_ne || 0,
+                        lang_por || 0,
+                        lang_no || 0,
+                        lang_fi || 0
+                    ],
+                    (insertErr) => {
+
+                        if (insertErr) {
+                            console.error(
+                                'Erreur INSERT langues :',
+                                insertErr
+                            );
+
+                            return res.status(500).json({
+                                error: 'Internal server error'
+                            });
+                        }
+
+                        // Après insertion langues,
+                        // on continue vers evaluation
+                        updateEvaluation();
                     }
+                );
 
-                    return res.json({ message: 'Langues updated successfully' });
-                }
-            );
+            } else {
+
+                // Ligne langues déjà existante
+                updateEvaluation();
+            }
         }
     );
+
+
+    // =========================================================
+    // 2. UPDATE / INSERT evaluation_langues
+    // =========================================================
+
+    function updateEvaluation() {
+
+        const updateEvaluationSql = `
+            UPDATE evaluation_langues
+            SET
+                niveau_fr = ?,
+                niveau_en = ?,
+                niveau_es = ?,
+                niveau_de = ?,
+                niveau_it = ?,
+                niveau_ch = ?,
+                niveau_po = ?,
+                niveau_da = ?,
+                niveau_ru = ?,
+                niveau_ar = ?,
+                niveau_ne = ?,
+                niveau_por = ?,
+                niveau_no = ?,
+                niveau_fi = ?
+            WHERE token_id_cand = ?
+            AND deleted = 0
+        `;
+
+        const insertEvaluationSql = `
+            INSERT INTO evaluation_langues (
+                token_id_cand,
+                niveau_fr,
+                niveau_en,
+                niveau_es,
+                niveau_de,
+                niveau_it,
+                niveau_ch,
+                niveau_po,
+                niveau_da,
+                niveau_ru,
+                niveau_ar,
+                niveau_ne,
+                niveau_por,
+                niveau_no,
+                niveau_fi,
+                deleted
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `;
+
+        db.query(
+            updateEvaluationSql,
+            [
+                niveau_fr || 0,
+                niveau_en || 0,
+                niveau_es || 0,
+                niveau_de || 0,
+                niveau_it || 0,
+                niveau_ch || 0,
+                niveau_po || 0,
+                niveau_da || 0,
+                niveau_ru || 0,
+                niveau_ar || 0,
+                niveau_ne || 0,
+                niveau_por || 0,
+                niveau_no || 0,
+                niveau_fi || 0,
+                token_id
+            ],
+            (err, result) => {
+
+                if (err) {
+                    console.error(
+                        'Erreur UPDATE evaluation_langues :',
+                        err
+                    );
+
+                    return res.status(500).json({
+                        error: 'Internal server error'
+                    });
+                }
+
+                // =====================================================
+                // Si aucune ligne → INSERT
+                // =====================================================
+
+                if (result.affectedRows === 0) {
+
+                    db.query(
+                        insertEvaluationSql,
+                        [
+                            token_id,
+                            niveau_fr || 0,
+                            niveau_en || 0,
+                            niveau_es || 0,
+                            niveau_de || 0,
+                            niveau_it || 0,
+                            niveau_ch || 0,
+                            niveau_po || 0,
+                            niveau_da || 0,
+                            niveau_ru || 0,
+                            niveau_ar || 0,
+                            niveau_ne || 0,
+                            niveau_por || 0,
+                            niveau_no || 0,
+                            niveau_fi || 0
+                        ],
+                        (insertErr) => {
+
+                            if (insertErr) {
+                                console.error(
+                                    'Erreur INSERT evaluation_langues :',
+                                    insertErr
+                                );
+
+                                return res.status(500).json({
+                                    error: 'Internal server error'
+                                });
+                            }
+
+                            return res.json({
+                                message: 'Langues et évaluations enregistrées avec succès'
+                            });
+                        }
+                    );
+
+                } else {
+
+                    return res.json({
+                        message: 'Langues et évaluations mises à jour avec succès'
+                    });
+                }
+            }
+        );
+    }
 });
+
 
 CVScreen.post('/updateSecteur', auth, (req, res) => {
     const { secteur } = req.body;
@@ -669,7 +985,7 @@ CVScreen.post('/updateExperiences', auth, (req, res) => {
     const { id, date1, date2, titre, societe, ville_pays, pays, description } = encodedBody;
     const token_id = req.user.token_id;
 
-    console.log('Received CV updateExperiences request with token_id:', token_id);
+    console.log('Received CV updateExperiences request with token_id:');
 
     if (!token_id) {
         return res.status(400).json({ error: 'token_id is required' });
@@ -694,7 +1010,7 @@ CVScreen.post('/addExperience', auth, (req, res) => {
     const { date1, date2, titre, societe, ville_pays, pays, description } = encodedBody;
     const token_id = req.user.token_id;
 
-    console.log('Received CV addExperience request with token_id:', token_id);
+    console.log('Received CV addExperience request with token_id:');
 
     db.query(
         `INSERT INTO experiences (token_id, date1, date2, titre, societe, ville_pays, pays, description, deleted)
@@ -743,7 +1059,7 @@ CVScreen.post('/updateFormation', auth, (req, res) => {
     const { id, ecole, diplome, mois_debut, annee_debut, mois_obtention, annee_obtention, description } = encodedBody;
     const token_id = req.user.token_id;
 
-    console.log('Received CV updateFormation request with token_id:', token_id);
+    console.log('Received CV updateFormation request with token_id:');
 
     db.query(
         `UPDATE expenreicenformations_scolaire SET ecole = ?, diplome = ?, mois_debut = ?, annee_debut = ?, mois_obtention = ?, annee_obtention = ?, description = ?
@@ -764,7 +1080,7 @@ CVScreen.post('/addFormation', auth, (req, res) => {
     const { ecole, diplome, mois_debut, annee_debut, mois_obtention, annee_obtention, description } = encodedBody;
     const token_id = req.user.token_id;
 
-    console.log('Received CV addFormation request with token_id:', token_id);
+    console.log('Received CV addFormation request with token_id:');
 
     db.query(
         `INSERT INTO expenreicenformations_scolaire (token_id, ecole, diplome, mois_debut, annee_debut, mois_obtention, annee_obtention, description, deleted)
