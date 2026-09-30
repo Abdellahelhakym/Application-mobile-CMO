@@ -242,7 +242,7 @@ export async function updatePermis(perm_am, perm_a1, perm_a2, perm_a, perm_b1, p
 }
 
 
-export async function updateLangues( lang_fr , lang_en ,  lang_es , lang_de , lang_it , lang_ch , lang_po , lang_da , lang_ru , lang_ar , lang_ne , lang_por , lang_no , lang_fi) {
+export async function updateLangues(data) {
     try {
         const token_id = await getTokenId();
         const response = await fetch(url() + "candidat/cv/updateLangues", {
@@ -250,16 +250,15 @@ export async function updateLangues( lang_fr , lang_en ,  lang_es , lang_de , la
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ token_id,  lang_fr , lang_en ,  lang_es , lang_de , lang_it , lang_ch , lang_po , lang_da , lang_ru , lang_ar , lang_ne , lang_por , lang_no , lang_fi }),
+            body: JSON.stringify({ token_id, ...data }),
         });
-        const data = await response.json();
-        return data;
+        const responseData = await response.json();
+        return responseData;
     } catch (error) {
         console.error("Error updating langues:", error);
         throw error;
     }
 }
-
 
 
 

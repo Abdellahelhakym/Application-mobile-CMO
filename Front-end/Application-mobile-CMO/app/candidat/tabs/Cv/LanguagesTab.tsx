@@ -1,17 +1,64 @@
 import { Globe } from 'lucide-react-native';
-import React, { useEffect } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
+import Slider from '@react-native-community/slider';
 
 import { getLangues, updateLangues } from "@/app/candidat/services/CVScreen";
 import { C } from './colors';
 import { Card, CheckItem, SectionSaveButton, SectionTitle, SectionWarning } from './utils';
 
-const LANGUAGES = ['Allemand', 'Anglais', 'Arabe', 'Chinois', 'Danois', 'Espagnol', 'Finnois', 'Français', 'Italien', 'Néerlandais', 'Norvégien', 'Polonais', 'Portugais', 'Russe'];
-const LANGUAGE_KEYS: Record<string, string> = {
-  Allemand: 'lang_de', Anglais: 'lang_en', Arabe: 'lang_ar', Chinois: 'lang_ch',
-  Danois: 'lang_da', Espagnol: 'lang_es', Finnois: 'lang_fi', Français: 'lang_fr',
-  Italien: 'lang_it', Néerlandais: 'lang_ne', Norvégien: 'lang_no', Polonais: 'lang_po',
-  Portugais: 'lang_por', Russe: 'lang_ru',
+const LANGUAGES = [
+  'Allemand', 'Anglais', 'Arabe', 'Chinois', 'Danois', 
+  'Espagnol', 'Finnois', 'Français', 'Italien', 'Néerlandais', 
+  'Norvégien', 'Polonais', 'Portugais', 'Russe'
+] as const;
+
+type LanguageType = typeof LANGUAGES[number];
+
+const LANGUAGE_CONFIG: Record<string, { langKey: string; levelKey: string }> = {
+  Allemand: { langKey: 'lang_de', levelKey: 'niveau_de' },
+  Anglais: { langKey: 'lang_en', levelKey: 'niveau_en' },
+  Arabe: { langKey: 'lang_ar', levelKey: 'niveau_ar' },
+  Chinois: { langKey: 'lang_ch', levelKey: 'niveau_ch' },
+  Danois: { langKey: 'lang_da', levelKey: 'niveau_da' },
+  Espagnol: { langKey: 'lang_es', levelKey: 'niveau_es' },
+  Finnois: { langKey: 'lang_fi', levelKey: 'niveau_fi' },
+  Français: { langKey: 'lang_fr', levelKey: 'niveau_fr' },
+  Italien: { langKey: 'lang_it', levelKey: 'niveau_it' },
+  Néerlandais: { langKey: 'lang_ne', levelKey: 'niveau_ne' },
+  Norvégien: { langKey: 'lang_no', levelKey: 'niveau_no' },
+  Polonais: { langKey: 'lang_po', levelKey: 'niveau_po' },
+  Portugais: { langKey: 'lang_por', levelKey: 'niveau_por' },
+  Russe: { langKey: 'lang_ru', levelKey: 'niveau_ru' },
+};
+
+interface CustomSliderProps {
+  label: string;
+  value: number;
+  onChange: (val: number) => void;
+}
+
+// 🎚️ Composant Slider officiel, simple et très fluide
+const NativeSlider: React.FC<CustomSliderProps> = ({ label, value, onChange }) => {
+  return (
+    <View style={styles.sliderCard}>
+      <Text style={styles.sliderTitle}>Score {label}</Text>
+
+      <Slider
+        style={{ width: '100%', height: 35 }}
+        minimumValue={0}
+        maximumValue={10}
+        step={1}
+        value={value}
+        onValueChange={onChange}
+        minimumTrackTintColor={C.blue || '#2563EB'}
+        maximumTrackTintColor="#E5E7EB"
+        thumbTintColor={C.blue || '#2563EB'}
+      />
+
+      <Text style={styles.scoreText}>{value}/10</Text>
+    </View>
+  );
 };
 
 interface LanguagesTabProps {
@@ -19,8 +66,9 @@ interface LanguagesTabProps {
   setLangues: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
-export const LanguagesTab = ({ langues, setLangues }: LanguagesTabProps) => {
-  // 📱 Charger les langues au montage
+export const LanguagesTab: React.FC<LanguagesTabProps> = ({ langues, setLangues }) => {
+  const [niveaux, setNiveaux] = useState<Record<string, number>>({});
+
   useEffect(() => {
     loadLangues();
   }, []);
@@ -32,42 +80,67 @@ export const LanguagesTab = ({ langues, setLangues }: LanguagesTabProps) => {
 
       if (!langInfo || Object.keys(langInfo).length === 0) {
         setLangues([]);
+        setNiveaux({});
         return;
       }
 
-      const selected = LANGUAGES.filter((label) => {
-        const key = LANGUAGE_KEYS[label];
-        return langInfo?.[key] === 1 || langInfo?.[key] === '1';
+      const selected: string[] = [];
+      const loadedNiveaux: Record<string, number> = {};
+
+      LANGUAGES.forEach((label) => {
+        const config = LANGUAGE_CONFIG[label];
+        if (!config) return;
+
+        const isChecked = langInfo?.[config.langKey] === 1 || langInfo?.[config.langKey] === '1';
+
+        if (isChecked) {
+          selected.push(label);
+        }
+        loadedNiveaux[label] = Number(langInfo?.[config.levelKey] ?? 0);
       });
 
       setLangues(selected);
+      setNiveaux(loadedNiveaux);
     } catch (error) {
       console.log('Erreur chargement langues:', error);
       setLangues([]);
+      setNiveaux({});
     }
   };
 
   const toggleLangue = (label: string) => {
-    setLangues((prev) => (
+    setLangues((prev) =>
       prev.includes(label)
         ? prev.filter((x) => x !== label)
         : [...prev, label]
-    ));
+    );
+  };
+
+  const handleNiveauChange = (label: string, value: number) => {
+    setNiveaux((prev) => ({
+      ...prev,
+      [label]: value,
+    }));
   };
 
   const handleSaveLangues = async () => {
     try {
       const selected = new Set(langues);
-      const has = (label: string) => (selected.has(label) ? 1 : 0);
+      const payload: Record<string, number> = {};
 
-      await updateLangues(
-        has('Français'), has('Anglais'), has('Espagnol'), has('Allemand'),
-        has('Italien'), has('Chinois'), has('Polonais'), has('Danois'),
-        has('Russe'), has('Arabe'), has('Néerlandais'), has('Portugais'),
-        has('Norvégien'), has('Finnois')
-      );
+      LANGUAGES.forEach((label) => {
+        const config = LANGUAGE_CONFIG[label];
+        if (!config) return;
 
-      Alert.alert('Enregistré', 'Langues enregistrées avec succès.');
+        const isSelected = selected.has(label);
+
+        payload[config.langKey] = isSelected ? 1 : 0;
+        payload[config.levelKey] = isSelected ? (niveaux[label] ?? 0) : 0;
+      });
+
+      await updateLangues(payload);
+
+      Alert.alert('Enregistré', 'Langues et niveaux enregistrés avec succès.');
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de sauvegarder les langues.');
     }
@@ -81,15 +154,29 @@ export const LanguagesTab = ({ langues, setLangues }: LanguagesTabProps) => {
         </SectionTitle>
 
         <View style={styles.checkGrid}>
-          {LANGUAGES.map((lang) => (
-            <CheckItem
-              key={lang}
-              label={lang}
-              checked={langues.includes(lang)}
-              onToggle={() => toggleLangue(lang)}
-              wide
-            />
-          ))}
+          {LANGUAGES.map((lang) => {
+            const isChecked = langues.includes(lang);
+            const currentLevel = niveaux[lang] ?? 0;
+
+            return (
+              <View key={lang} style={styles.langItemContainer}>
+                <CheckItem
+                  label={lang}
+                  checked={isChecked}
+                  onToggle={() => toggleLangue(lang)}
+                  wide
+                />
+
+                {isChecked && (
+                  <NativeSlider
+                    label={lang}
+                    value={currentLevel}
+                    onChange={(val) => handleNiveauChange(lang, val)}
+                  />
+                )}
+              </View>
+            );
+          })}
         </View>
       </Card>
 
@@ -103,5 +190,24 @@ export const LanguagesTab = ({ langues, setLangues }: LanguagesTabProps) => {
 };
 
 const styles = StyleSheet.create({
-  checkGrid: { gap: 8 },
+  checkGrid: { gap: 14 },
+  langItemContainer: { gap: 8 },
+  sliderCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 8,
+  },
+  sliderTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: C.blue || '#1D4ED8',
+  },
+  scoreText: {
+    fontSize: 13,
+    color: '#4B5563',
+    fontWeight: '500',
+  },
 });
