@@ -960,7 +960,10 @@ export default function MyOffersScreen() {
         onRequestClose={closeDetails}
       >
         <View style={styles.modalBackdrop}>
-          <ScrollView style={styles.modalScrollView}>
+          <ScrollView
+            style={styles.modalScrollView}
+            contentContainerStyle={styles.modalScrollContent}
+          >
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>Détails</Text>
 
@@ -1204,8 +1207,9 @@ const styles = StyleSheet.create({
   radioCircle: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#94a3b8', alignItems: 'center', justifyContent: 'center' },
   radioLabel: { fontSize: 11, color: '#475569', fontWeight: '500' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.3)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalScrollView: { flex: 1, width: '100%' },
-  modalCard: { width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 16, marginVertical: 'auto' },
+  modalScrollView: { width: '100%', maxHeight: '90%', flexGrow: 0 },
+  modalScrollContent: { flexGrow: 1, justifyContent: 'center' },
+  modalCard: { width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 16 },
   modalTitle: { fontSize: 16, color: '#1b2d5a', marginBottom: 10, fontWeight: '600' },
   modalRow: { fontSize: 12, color: '#1b2d5a', marginBottom: 8, lineHeight: 18 },
   modalClose: { marginTop: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: '#2b5bbb', alignItems: 'center' },
