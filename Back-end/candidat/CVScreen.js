@@ -7,7 +7,7 @@ const { decodeObject, encodeObject, encodeForLegacyWeb } = require('../middlewar
 const CVScreen = express.Router();
 
 CVScreen.get('/', auth, (req, res) => {
-    res.send('CV Screen route');
+    res.send('CV Screen route v2');
 });
 
 //---------------------------------AFFICHAGE---------------------------------
