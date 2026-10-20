@@ -32,6 +32,12 @@ const employeurItems = [
   'Réduction du turnover et gain de temps',
 ];
 
+const invitéItems = [
+  'Consultez les offres sans créer de compte',
+  'Recherchez par métier, ville ou secteur',
+  'Créez un compte quand vous êtes prêt à postuler',
+];
+
 export default function Index() {
   return (
     <ScrollView style={styles.container}>
@@ -76,6 +82,49 @@ export default function Index() {
           </Text>
 
 
+     {/* CARD invité */}
+
+            <View style={styles.card}>
+        <View style={styles.iconCircle}>
+          <MaterialCommunityIcons
+            name="account-question-outline"
+            size={30}
+            color="#2b5bbb"
+          />
+        </View>
+
+        <Text style={styles.cardTitle}>Je suis Invité</Text>
+
+        <Text style={styles.cardSubtitle}>
+         Découvrez les offres d’emploi sans créer de compte 
+        </Text>
+
+        {invitéItems.map((item) => (
+          <View key={item} style={styles.row}>
+            <CheckIcon />
+            <Text style={styles.itemText}>{item}</Text>
+          </View>
+        ))}
+
+        <View style={styles.cta}>
+          <TouchableOpacity
+            onPress={() => {
+              router.replace("/invite/tabs/OffresScreen");
+            }}
+          >
+            <Text style={styles.ctaText}>
+              Continuer en tant qu’invité
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+
+
+
+
+
+
   {/* CARD CANDIDAT */}
         <View style={styles.card}>
           <View style={styles.iconCircle}>
@@ -109,7 +158,13 @@ export default function Index() {
         </View>
 
 
-     {/* CARD EMPLOYEUR */}
+
+
+
+
+
+     {/* CARD employeur */}
+
       <View style={styles.card}>
         <View style={styles.iconCircle}>
           <MaterialCommunityIcons
@@ -146,8 +201,6 @@ export default function Index() {
       </View>
 
 
-        
-      
 
        
 
@@ -268,6 +321,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#122f78',
     padding: 12,
     borderRadius: 10,
+    
+    
   },
 
   ctaText: {

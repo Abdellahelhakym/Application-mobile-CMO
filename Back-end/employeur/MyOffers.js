@@ -216,4 +216,64 @@ myOffers.post('/AccepterRefuserDevis', auth, (req, res) => {
     );
 });
 
+
+
+//-----------------------------inviter -------------------------------------
+
+myOffers.post('/getAllOffres', (req, res) => {
+    const limit = 12;
+    const page = req.body && req.body.page ? Math.max(1, parseInt(req.body.page)) : 1;
+    const offset = (page - 1) * limit;
+
+    // Requête pour compter le nombre total d'offres
+    const countSql = `
+        SELECT COUNT(*) AS total 
+        FROM offres_emploi o
+        WHERE o.deleted = '0'
+    `;
+
+    db.query(countSql, (err, countResult) => {
+        if (err) {
+            console.error("Erreur de comptage :", err);
+            return res.status(500).json({ success: false, message: "Erreur serveur" });
+        }
+
+        const total = countResult[0].total;
+        const pages = Math.ceil(total / limit);
+
+        // Requête principale
+        const sql = `
+            SELECT 
+                o.*, 
+                m.titre AS metier, 
+                m.icone, 
+                cat.titre AS categorie,
+                r.titre AS region_titre
+            FROM offres_emploi o
+            LEFT JOIN metiers m ON o.id_metiers = m.id
+            LEFT JOIN categorie_metier cat ON m.id_cat = cat.id
+            LEFT JOIN regions r ON o.lieu = r.id AND r.deleted = '0'
+            WHERE o.deleted = '0'
+            ORDER BY o.id DESC
+            LIMIT ? OFFSET ?
+        `;
+
+        // On passe explicitement limit et offset dans un tableau
+        db.query(sql, [limit, offset], (err, rows) => {
+            if (err) {
+                console.error("Erreur de récupération des offres :", err);
+                return res.status(500).json({ success: false, message: "Erreur serveur" });
+            }
+
+            return res.status(200).json({
+                success: true,
+                total: total,
+                pages: pages,
+                page: page,
+                offres: rows
+            });
+        });
+    });
+});
+
 module.exports = myOffers;
