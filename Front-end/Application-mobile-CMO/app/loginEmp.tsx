@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -11,10 +12,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Alert, // Ajouté pour gérer les erreurs éventuelles du navigateur
+  Alert,
   View,
 } from "react-native";
-import * as WebBrowser from "expo-web-browser"; // <-- Importation du navigateur intégré d'Expo
 import { setRaison, setTokenId } from "./employeur/services/token_id";
 import { loginEmp } from "./services/login";
 
@@ -28,11 +28,10 @@ export default function LoginScreen() {
   const isEmailValid = (value: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
 
-  // Fonction utilitaire pour ouvrir un lien dans le navigateur interne de l'application
-  const openInternalLink = async (url: string) => {
+  const openLink = async (url: string) => {
     try {
       await WebBrowser.openBrowserAsync(url, {
-        toolbarColor: "#122F78", // Couleur de l'en-tête (assortie à tes boutons)
+        toolbarColor: "#122F78",
         controlsColor: "#ffffff",
         showTitle: true,
         enableBarCollapsing: true,
@@ -145,7 +144,7 @@ export default function LoginScreen() {
 
             {/* Mot de passe oublié */}
             <TouchableOpacity
-              onPress={() => openInternalLink("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie")}
+              onPress={() => openLink("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie")}
             >
               <Text style={styles.forgot}>Mot de passe oublié ?</Text>
             </TouchableOpacity>
@@ -167,11 +166,14 @@ export default function LoginScreen() {
               {/* Créer un compte */}
               <TouchableOpacity
                 style={styles.secondaryBtn}
-                onPress={() => openInternalLink("https://conceptmaindoeuvre.com/compte-employeur")}
+                onPress={() => openLink("https://conceptmaindoeuvre.com/compte-employeur")}
               >
                 <Text style={styles.secondaryText}>Créer un compte</Text>
               </TouchableOpacity>
             </View>
+            <Text style={styles.accountGuidance}>
+              Après la création de votre compte, revenez dans l’application pour vous connecter.
+            </Text>
           </View>
         </View>
       </ScrollView>
@@ -285,6 +287,12 @@ const styles = StyleSheet.create({
   secondaryText: {
     color: "#122F78",
     fontWeight: "600",
+  },
+  accountGuidance: {
+    marginTop: 12,
+    color: "#5b6a8e",
+    fontSize: 13,
+    textAlign: "center",
   },
   backBtn: {
     marginTop: 12,

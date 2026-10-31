@@ -9,7 +9,6 @@ import {
   StatusBar,
   Dimensions,
   ActivityIndicator,
-  Linking,
   RefreshControl,
 } from 'react-native';
 import { getHestory } from '@/app/employeur/services/SubscriptionScreen';
@@ -37,8 +36,6 @@ const plans = [
     period: 'HT/MOIS',
     features: ['Accompagnement essentiel'],
     note: 'Vous gérez encore une partie du recrutement',
-    buttonColor: '#1e4e2a',
-    stripeUrl: 'https://buy.stripe.com/cNicN66Vp2XRcop2jjg3600',
   },
   {
     id: 'pro',
@@ -48,8 +45,6 @@ const plans = [
     period: 'HT/MOIS',
     features: ['Délégation maîtrisée'],
     note: 'Recommandé pour un recrutement fiable et sécurisé',
-    buttonColor: '#2b5bbb',
-    stripeUrl: 'https://buy.stripe.com/00w9AU7Ztbundst1ffg3601',
   },
   {
     id: 'full',
@@ -59,8 +54,6 @@ const plans = [
     period: 'HT/MOIS',
     features: ['Délégation totale'],
     note: 'La solution privilégiée par les employeurs exigeants',
-    buttonColor: '#3a4f8f',
-    stripeUrl: 'https://buy.stripe.com/8x200k5RlgOHbkl2jjg3602',
   },
   {
     id: 'custom',
@@ -70,8 +63,6 @@ const plans = [
     period: '',
     features: ['Volumes importants,', 'recrutement international ou', 'besoins hors standards'],
     isCustom: true,
-    buttonColor: '#f0a11b',
-    stripeUrl: null,
   },
 ];
 
@@ -149,24 +140,6 @@ export default function SubscriptionScreen() {
     loadSubscriptionData(false);
   }, []);
 
-  const handlePlanSelection = async (plan: typeof plans[0]) => {
-    if (currentPack === plan.name) return;
-    if (plan.isCustom) return;
-
-    if (plan.stripeUrl) {
-      try {
-        const supported = await Linking.canOpenURL(plan.stripeUrl);
-        if (supported) {
-          await Linking.openURL(plan.stripeUrl);
-        } else {
-          console.error("Impossible d'ouvrir ce lien : " + plan.stripeUrl);
-        }
-      } catch (error) {
-        console.error("Erreur lors de l'ouverture du lien Stripe:", error);
-      }
-    }
-  };
-
   if (view === 'plans') {
     const sortedPlans = [...plans].sort((a, b) => {
       if (a.name === currentPack) return -1;
@@ -185,6 +158,9 @@ export default function SubscriptionScreen() {
           <View style={{ width: 40 }} />
         </View>
         <ScrollView contentContainerStyle={styles.plansContent}>
+          <Text style={styles.subscriptionNotice}>
+            Pour souscrire à un abonnement, veuillez passer par le site web CMO.
+          </Text>
           {sortedPlans.map((plan) => {
             const isCurrent = currentPack === plan.name;
 
@@ -210,20 +186,6 @@ export default function SubscriptionScreen() {
                 </View>
                 <View style={styles.planCardBottom}>
                   {plan.features.map((f, i) => <Text key={i} style={styles.planFeature}>{f}</Text>)}
-                  
-                  <TouchableOpacity
-                    style={[
-                      styles.planBtn, 
-                      { backgroundColor: plan.buttonColor },
-                      isCurrent && styles.disabledBtn
-                    ]}
-                    onPress={() => handlePlanSelection(plan)}
-                    disabled={isCurrent}
-                  >
-                    <Text style={styles.planBtnText}>
-                      {isCurrent ? 'VOTRE PACK ACTUEL' : 'CHOISIR'}
-                    </Text>
-                  </TouchableOpacity>
 
                   {!plan.isCustom && <Text style={styles.planNote}>{plan.note}</Text>}
                 </View>
@@ -372,6 +334,7 @@ const styles = StyleSheet.create({
   },
   plansTitle: { fontSize: 17, color: '#1b2d5a', fontWeight: '700' },
   plansContent: { padding: 16, gap: 16, paddingBottom: 100 },
+  subscriptionNotice: { backgroundColor: '#fff', borderRadius: 12, padding: 12, color: '#1b2d5a', fontSize: 13, textAlign: 'center' },
   planCard: { borderRadius: 18, borderWidth: 1, borderColor: '#e1e9fb', overflow: 'hidden', backgroundColor: '#eef3ff' },
   planCardCustom: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#f0a11b' },
   planCardTop: { backgroundColor: '#fff', padding: 18, alignItems: 'center' },
@@ -381,8 +344,5 @@ const styles = StyleSheet.create({
   planPeriod: { fontSize: 12, color: '#5b6a8e' },
   planCardBottom: { backgroundColor: '#eef3ff', padding: 16, alignItems: 'center', gap: 4 },
   planFeature: { fontSize: 13, color: '#1b2d5a' },
-  planBtn: { marginTop: 10, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 22 },
-  planBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   planNote: { marginTop: 10, fontSize: 12, color: '#5b6a8e', textAlign: 'center' },
-  disabledBtn: { backgroundColor: '#a1a1aa', opacity: 0.7 },
 });

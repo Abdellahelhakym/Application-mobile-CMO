@@ -48,6 +48,12 @@
         }
       ],
       "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "CMO a besoin d'accéder à votre photothèque pour que vous puissiez choisir une photo de profil. Par exemple, vous sélectionnez une photo de votre galerie pour l'afficher sur votre compte candidat ou sur la page de votre entreprise. Seule la photo que vous choisissez est utilisée."
+        }
+      ],
       "@react-native-community/datetimepicker",
       "expo-web-browser"
     ],

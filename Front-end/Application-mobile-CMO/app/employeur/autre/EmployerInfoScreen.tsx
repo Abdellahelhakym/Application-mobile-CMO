@@ -8,7 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Image
+  Image,
 } from 'react-native';
 import { Edit2, Trash2, Upload } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -61,14 +61,7 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
     return () => { mounted = false; };
   }, []);
 
-  const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (permissionResult.granted === false) {
-      Alert.alert("Permission requise", "Vous devez autoriser l'accès à vos photos.");
-      return;
-    }
-
+  const openPhotoLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -90,6 +83,15 @@ export default function EmployerInfoScreen({ onBack }: EmployerInfoScreenProps) 
         name: filename,
         type: type,
       });
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      await openPhotoLibrary();
+    } catch (error) {
+      console.error("Erreur d'accès à la photothèque :", error);
+      Alert.alert('Erreur', 'Impossible d’ouvrir la photothèque.');
     }
   };
 

@@ -114,32 +114,30 @@ export const IdentityTab = ({
     }
   };
 
+  const openPhotoLibrary = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+
+    const asset = result.assets[0];
+    setPhoto(asset.uri);
+    setHasImageError(false);
+
+    const image = {
+      uri: asset.uri,
+      name: asset.fileName ?? `profile_${Date.now()}.jpg`,
+      type: asset.mimeType ?? 'image/jpeg',
+    };
+    setPhotoUpload(image);
+  };
+
   const handlePickPhoto = async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (permission.status !== 'granted') {
-        Alert.alert('Permission requise', "Autorisez l'accès à la galerie pour importer une photo.");
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-      });
-
-      if (result.canceled || !result.assets?.length) return;
-
-      const asset = result.assets[0];
-      setPhoto(asset.uri);
-      setHasImageError(false);
-
-      const image = {
-        uri: asset.uri,
-        name: asset.fileName ?? `profile_${Date.now()}.jpg`,
-        type: asset.mimeType ?? 'image/jpeg',
-      };
-      setPhotoUpload(image);
+      await openPhotoLibrary();
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de mettre à jour la photo.');
     }

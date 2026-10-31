@@ -2,6 +2,7 @@ import { Eye, EyeOff } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -10,7 +11,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as WebBrowser from "expo-web-browser";
 import { changePassword } from "../services/PasswordChange";
 
 type ValidationRule = {
@@ -95,9 +95,7 @@ const ChangePasswordScreen: React.FC = () => {
 
   const handleForgotPassword = async () => {
     try {
-      await WebBrowser.openBrowserAsync(
-        "https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie"
-      );
+      await Linking.openURL("https://mycmo.conceptmaindoeuvre.com/mot-de-passe-oublie");
     } catch (error) {
       console.error(error);
       alert("Impossible d'ouvrir la page.");
@@ -236,6 +234,9 @@ const ChangePasswordScreen: React.FC = () => {
           <TouchableOpacity style={styles.forgotBtn} onPress={handleForgotPassword}>
             <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
           </TouchableOpacity>
+          <Text style={styles.accountGuidance}>
+            Après la réinitialisation de votre mot de passe, revenez dans l’application pour vous connecter.
+          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -351,6 +352,12 @@ const styles = StyleSheet.create({
     color: "#1a6bbd",
     fontSize: 14,
     fontWeight: "500",
+  },
+  accountGuidance: {
+    marginTop: 12,
+    color: "#5b6a8e",
+    fontSize: 13,
+    textAlign: "center",
   },
 });
 
